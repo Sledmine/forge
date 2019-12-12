@@ -2,16 +2,16 @@
 Halo Custom Edition Forge system using Chimera and SAPP
 
 ### What is it?
-HForge is a project that aims to add Forge-like system from posterior sequels of the game to any Halo Custom Edition map, currently the project is only compatible with Forge Island map, check Workshop for references.
+HForge is a project that aims to add Forge-like system from posterior sequels of the game to any Halo Custom Edition map, currently the project is only compatible with Forge Island map project.
 
-### How is it possible?
-This project was made with Chimera Lua Scripting for the client side and SAPP Lua Scripting on the server side, this allow us to share data via rcon messages and intercept any message to execute actions client or server sided.
+### How was it created?
+This project was made with Chimera Lua Scripting for the client side and SAPP Lua Scripting on the server side,this allow us to share data via rcon messages and intercept any message to execute actions client or server sided.
 
 HForge implements LuaBlam giving us easy memory access and ensuring API compatibility with SAPP plus other libraries implemented to give the best experience as possible.
 
 Using semi-REST architecture as the base of this project we are able to keep performance, data persistence and functionality along all the entire development.
 
-It reimplements some concepts from modern app libraries like ReactJS, giving behaivour and operability to the project.
+It reimplements some concepts from modern app libraries like Redux, giving behaivour and operability to the project.
 
 ### Highlights
 - Provides a store for all the Forge objects created on the server meaning the store is reusable, when a player joins mid game all the objects stored on it can be pushed to the new player and sync everything created by other players on the server.
@@ -34,4 +34,3 @@ But we need a place to keep those forged maps... ;)
 -  If any other map would have HForge compatibility... as Gangstarr said: "infinite skills create miracles".
 
 - HForge is now an open source project for anything your mind can create, with HForge came different concepts and libraries to help you to expand Halo Custom Edition.
-
