@@ -11,7 +11,7 @@ HForge implements LuaBlam giving us easy memory access and ensuring API compatib
 
 Using semi-REST architecture as the base of this project we are able to keep performance, data persistence and functionality along all the entire development.
 
-It reimplements some concepts from modern app libraries like Redux, giving behaivour and operability to the project.
+It reimplements some concepts from modern app libraries like the store from Redux, giving behavior and operability to the project.
 
 ### Highlights
 - Provides a store for all the Forge objects created on the server meaning the store is reusable, when a player joins mid game all the objects stored on it can be pushed to the new player and sync everything created by other players on the server.
