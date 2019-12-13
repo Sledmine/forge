@@ -29,7 +29,7 @@ It reimplements some concepts from modern app libraries like the store from reac
 This project is part of something just much bigger than adding one map with Forge to a game like Halo Custom Edition.
 
 - Forged maps are tons way smaller than full maps, so sharing different map layouts for different gametypes means fast on demand maps.
-But we need a place to keep those forged maps... ;)
+But we need a place to keep those forged maps... if you know what i mean ;)
 
 -  If any other map would have HForge compatibility... as Gangstarr said: "infinite skills create miracles".
 
