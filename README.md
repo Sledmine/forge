@@ -7,11 +7,11 @@ HForge is a project that aims to add Forge-like system from posterior sequels of
 ### How was it created?
 This project was made with Chimera Lua Scripting for the client side and SAPP Lua Scripting on the server side this allow us to share data via rcon messages and intercept any message to execute actions client or server sided.
 
-HForge implements LuaBlam giving us easy memory access and ensuring API compatibility with SAPP plus other libraries implemented to give the best experience as possible.
+HForge implements LuaBlam giving easy memory access and ensuring API compatibility with SAPP plus other libraries implemented to give the best experience as possible.
 
 Using semi-REST architecture as the base of this project we are able to keep performance, data persistence and functionality along all the entire development.
 
-It reimplements some concepts from modern app libraries like the store from Redux, giving behavior and operability to the project.
+It reimplements some concepts from modern app libraries like the store from react-redux, giving behavior and operability to the project.
 
 ### Highlights
 - Provides a store for all the Forge objects created on the server meaning the store is reusable, when a player joins mid game all the objects stored on it can be pushed to the new player and sync everything created by other players on the server.
@@ -22,7 +22,7 @@ It reimplements some concepts from modern app libraries like the store from Redu
 
 ### Features
 - Full forge mode control, monitor biped, interactive menu, semi-CRUD for any forge object.
-- Forged map saving and loading.
+- Forged maps file support, saving and loading.
 - Spawn reflection system.
 
 ### Long way to Forge
