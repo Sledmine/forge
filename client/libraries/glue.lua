@@ -14,6 +14,11 @@ function glue.round(x, p)
 	return floor(x / p + .5) * p
 end
 
+function glue.dround(number, decimals)
+	local power = 10^decimals
+	return math.floor(number * power) / power
+end
+
 function glue.floor(x, p)
 	p = p or 1
 	return floor(x / p) * p
@@ -228,6 +233,22 @@ function glue.indexof(v, t, eq, i, j)
 	end
 end
 
+-- Return the index of a table/array if value exists
+function glue.arrayhas(array, value)
+	for k,v in pairs(array) do
+		if (v == value) then return k end
+	end
+	return nil
+end
+
+-- Get the new value of an array
+function glue.arraynv(oldArray, newArray)
+	for k,v in pairs(newArray) do
+		if (not glue.arrayhas(oldArray, v)) then return v end
+	end
+	return nil
+end
+
 --reverse elements of a list in place. works with ffi arrays too.
 function glue.reverse(t, i, j)
 	i = i or 1
@@ -274,6 +295,18 @@ glue.string = {}
 local function iterate_once(s, s1)
 	return s1 == nil and s or nil
 end
+
+function glue.string.split(divider, string)
+    if (divider == nil or divider == '') then return 1 end
+    local position, array = 0, {}
+    for st, sp in function() return string.find(string, divider, position, true) end do
+        table.insert(array, string.sub(string, position, st-1))
+        position = sp + 1
+    end
+    table.insert(array, string.sub(string, position))
+    return array
+end
+
 function glue.string.gsplit(s, sep, start, plain)
 	start = start or 1
 	plain = plain or false
@@ -333,6 +366,7 @@ end
 
 --string or number to hex.
 function glue.string.tohex(s, upper)
+	local s = tostring(s)
 	if type(s) == 'number' then
 		return (upper and '%08.8X' or '%08.8x'):format(s)
 	end
@@ -349,6 +383,7 @@ end
 
 --hex to string.
 function glue.string.fromhex(s)
+	local s = tostring(s)
 	if #s % 2 == 1 then
 		return glue.string.fromhex('0'..s)
 	end
@@ -938,6 +973,23 @@ if bit then
 		return bor(yes and mask or 0, band(over, bnot(mask)))
 	end
 
+end
+
+function glue.childsbyparent(object, desiredParent)
+    for parent,childs in pairs(object) do
+		--cprint("Looking for parent: " .. parent)
+		if (parent == desiredParent) then
+			--cprint("Parent found, sending back childs!")
+			return childs
+		end
+		if (childs) then
+			local parentFoundInChildren = glue.childsbyparent(childs, desiredParent)
+			if (parentFoundInChildren) then
+				return parentFoundInChildren
+			end
+		end
+    end
+    return nil
 end
 
 return glue
