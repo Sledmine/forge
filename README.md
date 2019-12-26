@@ -29,7 +29,6 @@ It reimplements some concepts from modern app libraries like the store from reac
 
 ### To do
 - Forge permission system, deny forge commands and features.
-- 
 
 ### Long way to Forge
 This project is part of something just much bigger than adding one map with Forge to a game like Halo Custom Edition.
