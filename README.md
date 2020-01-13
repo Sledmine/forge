@@ -22,6 +22,8 @@ It reimplements some concepts from modern app libraries like the store from reac
 
 ### Features
 - Multiple biped support.
+- Object highlight.
+- Dynamic forge objects addition.
 - Dynamic forge menu.
 - Semi-CRUD for any forge object.
 - Forged maps file support, saving and loading.
