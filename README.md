@@ -33,7 +33,7 @@ It reimplements some concepts from modern app libraries like the store from reac
 - Forge permission system, deny forge commands and features.
 
 ### Long way to Forge
-This project is part of something just much bigger than adding one map with Forge to a game like Halo Custom Edition.
+This project is part of something just much bigger than creating a map with Forge for Halo Custom Edition.
 
 - Forged maps are tons way smaller than full maps, so sharing different map layouts for different gametypes means fast on demand maps. But we need a place to keep those forged maps... if you know what i mean ;)
 
