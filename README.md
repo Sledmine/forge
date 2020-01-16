@@ -29,8 +29,13 @@ It reimplements some concepts from modern app libraries like the store from reac
 - Forged maps file support, saving and loading.
 - Spawn reflection system.
 
+### In progress
+- Forge permission system, deny forge commands and features for specific players.
+- Better dynamic object selection.
+
 ### To do
-- Forge permission system, deny forge commands and features.
+- Semi-gravity system for more precise object spawning (concept only working on spawn points already).
+- Grid layout for object placement.
 
 ### Long way to Forge
 This project is part of something just much bigger than creating a map with Forge for Halo Custom Edition.
