@@ -2,7 +2,7 @@
 Halo Custom Edition Forge system using Chimera and SAPP
 
 ### What is it?
-HForge is a project that aims to add Forge-like system from posterior sequels of the game to any Halo Custom Edition map, currently the project is only compatible with Forge Island map project.
+HForge is a project that aims to add Forge-like system from posterior sequels of the game to any Halo Custom Edition map, by now our Forge Island map is the only one compatible with the project.
 
 ### How was it created?
 This project was made with Chimera Lua Scripting on the client side and SAPP Lua Scripting on the server side, allowing us to share data via rcon messages and intercept any message to execute client side or server side actions.
@@ -48,5 +48,9 @@ This project is part of something just much bigger than creating a map with Forg
 
 ### Now.. some comments about the project made by me
 
-- Believe it or not, the hardest part was not object synchronization in s multiplayer game, (pretty much based on just HTTP requests).
-- One of the most frustrating part was the dyanmic forge menu, i love it and i hate it, that menu is almost fake, Halo was not designed to handle that kind of interaction with a menu at all.
+- Believe it or not, the hardest part was not object synchronization in a multiplayer game, (pretty much based on the same behaviour of simple HTTP requests).
+- One of the most frustrating part was the dyanmic forge menu, i love it and i hate it, that menu is almost fake, Halo CE was not designed to handle that kind of interaction with a menu at all.
+- I really wanted to encourage library implementation, they are useful to avoid repeated code, providing abstraction and bringing some standard functionality to any project.
+- All the dynamic stuff is in deed dynamic but... in a certain range of a static structure, by default Halo CE is pretty much static and some stuff was not supposed to change on the fly.
+- A Forge version compatible with other maps can be done, but we need to make a standard static map structures, to achieve a really universal forge script.
+
