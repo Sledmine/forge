@@ -49,7 +49,7 @@ This project is part of something just much bigger than creating a map with Forg
 ### Now.. some comments about the project made by me
 
 - Believe it or not, the hardest part was not object synchronization in a multiplayer game, (pretty much based on the same behaviour of simple HTTP requests).
-- The most frustating part was the dynamic forge menu, i love it and i hate it, that menu is almost fake, Halo CE was not prepared to handle a menu with that functionality and interaction.
+- The most frustating part was the dynamic forge menu, i love it and i hate it, that menu is almost fake, Halo CE was not designed at all to handle a menu with that functionality and interaction.
 - I really wanted to encourage library implementation, they are useful to avoid repeated code, providing abstraction and bringing some standard functionality to any project.
 - All the dynamic stuff is in deed dynamic but... in a certain range of a static structure, by default Halo CE is pretty much static and some stuff was not supposed to change on the fly.
 - A Forge version compatible with other maps can be done, but we need to make a standard static map structure, to achieve a really universal forge script.
