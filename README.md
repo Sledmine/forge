@@ -45,3 +45,8 @@ This project is part of something just much bigger than creating a map with Forg
 - Any other map can implement HForge compatibility... as Gangstarr said: "infinite skills create miracles".
 
 - HForge is now an open source project for anything your mind can create, with HForge came different concepts and libraries to help you to expand Halo Custom Edition (just took us like 15 years to reach this point lol).
+
+### Now.. some comments about the project made by me
+
+- Believe it or not, the hardest part was not object synchronization in s multiplayer game, (pretty much based on just HTTP requests).
+- One of the most frustrating part was the dyanmic forge menu, i love it and i hate it, that menu is almost fake, Halo was not designed to handle that kind of interaction with a menu at all.
