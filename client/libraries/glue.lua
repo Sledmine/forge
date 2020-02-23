@@ -975,17 +975,30 @@ if bit then
 
 end
 
-function glue.childsbyparent(object, desiredParent)
+function glue.childsByParent(object, desiredParent)
     for parent,childs in pairs(object) do
-		--cprint("Looking for parent: " .. parent)
 		if (parent == desiredParent) then
-			--cprint("Parent found, sending back childs!")
 			return childs
 		end
 		if (childs) then
-			local parentFoundInChildren = glue.childsbyparent(childs, desiredParent)
+			local parentFoundInChildren = glue.childsByParent(childs, desiredParent)
 			if (parentFoundInChildren) then
 				return parentFoundInChildren
+			end
+		end
+    end
+    return nil
+end
+
+function glue.parentByChild(object, desiredChild)
+    for parent,childs in pairs(object) do
+		if (childs[desiredChild]) then
+			return parent
+		end
+		if (childs) then
+			local childrenFoundInParent = glue.parentByChild(childs, desiredChild)
+			if (childrenFoundInParent) then
+				return childrenFoundInParent
 			end
 		end
     end
