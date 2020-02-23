@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------------
--- HForge Client - Forge Island Client Script
+-- Forge Island Client Script
 -- Author: Sledmine
 -- Version: 3.0
 -- Script client side for Forge Island
