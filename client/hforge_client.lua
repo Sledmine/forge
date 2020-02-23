@@ -5,15 +5,15 @@
 -- Script client side for Forge Island
 ------------------------------------------------------------------------------
 
+clua_version = 2.042
+
 local blam = require 'luablam'
 local inspect = require 'inspect'
 local json = require 'json'
 local lfs = require 'lfs'
 local glue = require 'glue'
 
-clua_version = 2.042
-
-local debugMode = false
+local debugMode = true
 
 -- Internal functions
 -- Super function to keep compatibility with SAPP and printing debug messages if needed
@@ -47,13 +47,11 @@ local minimumZSpawnPoint = -18.69
 
 -- Reset all the global variables
 local function flushScript()
-    set_callback('tick')
-    set_callback('rcon message')
     localScenery = {}
     objectsStore = {}
     playerLocalData = {}
     lastSpawnedObject = {}
-    distance = 4
+    distance = 5
     blockDistance = true
 end
 
@@ -71,6 +69,15 @@ end
 local function getObjectByServerId(objectId)
     for k, v in pairs(objectsStore) do
         if (v.serverId == objectId) then
+            return k
+        end
+    end
+    return nil
+end
+
+local function inSceneryList(tagId, objectList)
+    for k, v in pairs(objectList) do
+        if (get_tag_id('scen', v) == tagId) then
             return k
         end
     end
@@ -120,12 +127,23 @@ local widgetDefinitions = {
 
 -- Scenery definitions
 local sceneries = {
-    spawnPoint = '[shm]\\halo_4\\scenery\\spawning\\spawn point\\spawn point'
+    spawnPoint = '[shm]\\halo_4\\scenery\\spawning\\spawn point\\spawn point',
+    spawnPointBlueTeam = '[shm]\\halo_4\\scenery\\spawning\\spawn point blue team\\spawn point blue team',
+    spawnPointGray = '[shm]\\halo_4\\scenery\\spawning\\spawn point gray\\spawn point gray',
+    spawnPointRedTeam = '[shm]\\halo_4\\scenery\\spawning\\spawn point red team\\spawn point red team',
+    spawnPointVehicle = '[shm]\\halo_4\\scenery\\spawning\\spawn point vehicle\\spawn point vehicle'
 }
 
--- Shader definitions
-local shaders = {
-    selectedObject = '[shm]\\halo_4\\scenery\\shared\\shaders\\object aimed'
+local spawnValues = {
+    -- CTF, Blue Team
+    spawnPointBlueTeam = {type = 1, team = 1},
+    -- CTF, Red Team
+    spawnPointRedTeam = {type = 1, team = 0},
+    -- Generic, Both teams
+    spawnPoint = {type = 12, team = 0},
+    -- Generic, Both teams
+    spawnPointGray = {type = 12, team = 0},
+    spawnPointVehicle = {type = 1}
 }
 
 -- Changes default crosshair values
@@ -203,36 +221,203 @@ local function forgeMenuHandle()
     return 0
 end
 
--- Reflect any scenery spawn point as a real game spawn point
-local function reflectSpawnPoints()
+local function resetSpawnPoints()
     local scenario = blam.scenario(get_tag(0))
+
     local mapSpawnCount = scenario.spawnLocationCount
-    cprint('Found ' .. mapSpawnCount .. ' stock spawn points!')
+    local vehicleLocationCount = scenario.vehicleLocationCount
+
+    cprint('Found ' .. mapSpawnCount .. ' stock player starting points!')
+    cprint('Found ' .. vehicleLocationCount .. ' stock vehicle location points!')
     local mapSpawnPoints = scenario.spawnLocationList
-    for i = 2, mapSpawnCount do
+    -- Reset any spawn point, except the first one
+    for i = 1, mapSpawnCount do
+        -- Disable them by setting type to 0
         mapSpawnPoints[i].type = 0
     end
-    local lastReflectedSpawn = 0
-    for k, composedObject in pairs(objectsStore) do
-        local tempObject = blam.object(get_object(k))
-        -- Object exists, it's a scenery and it's a spawn point scenery
-        if (tempObject and tempObject.type == 6 and tempObject.tagId == get_tag_id('scen', sceneries.spawnPoint)) then
-            cprint('Found spawn point at object index: ' .. k)
-            lastReflectedSpawn = lastReflectedSpawn + 1
-            mapSpawnPoints[lastReflectedSpawn].x = composedObject.x
-            mapSpawnPoints[lastReflectedSpawn].y = composedObject.y
-            mapSpawnPoints[lastReflectedSpawn].z = composedObject.z
-            mapSpawnPoints[lastReflectedSpawn].rotation = math.rad(composedObject.yaw)
-            mapSpawnPoints[lastReflectedSpawn].type = 12
+    local vehicleLocationList = scenario.vehicleLocationList
+    for i = 2, vehicleLocationCount do
+        vehicleLocationList[i].type = 65535
+        execute_script('object_destroy v' .. vehicleLocationList[i].nameIndex)
+    end
+    blam.scenario(get_tag(0), {spawnLocationList = mapSpawnPoints, vehicleLocationList = vehicleLocationList})
+end
+
+--[[
+        0 = none
+        1 = ctf
+        2 = slayer
+        3 = oddball
+        4 = king of the hill
+        5 = race
+        6 = terminator
+        12 = all games
+        13 = all except ctf
+        14 = all except race and ctf
+    ]]
+-- Must be called after adding scenery object to the store!!
+-- @return true if found an available spawn
+local function createSpawnPoint(objectLocalId, spawnType, teamIndex)
+    local scenario = blam.scenario(get_tag(0))
+    local mapSpawnCount = scenario.spawnLocationCount
+    local mapSpawnPoints = scenario.spawnLocationList
+
+    local spawnObject = objectsStore[objectLocalId]
+    -- Object exists, it's synced
+    if (spawnObject) then
+        if (not spawnObject.reflectedSpawn) then
+            for i = 1, mapSpawnCount do
+                if (mapSpawnPoints[i].type == 0) then
+                    -- Replace spawn point values
+                    mapSpawnPoints[i].x = spawnObject.x
+                    mapSpawnPoints[i].y = spawnObject.y
+                    mapSpawnPoints[i].z = spawnObject.z
+                    mapSpawnPoints[i].rotation = math.rad(spawnObject.yaw)
+                    mapSpawnPoints[i].teamIndex = teamIndex
+                    mapSpawnPoints[i].type = spawnType
+
+                    -- Debug spawn index
+                    cprint('Creating spawn replacing index: ' .. i)
+                    spawnObject.reflectedSpawn = i
+
+                    -- Stop looking for "available" spawn slots
+                    break
+                end
+            end
+        else
+            -- Replace spawn point values
+            mapSpawnPoints[spawnObject.reflectedSpawn].x = spawnObject.x
+            mapSpawnPoints[spawnObject.reflectedSpawn].y = spawnObject.y
+            mapSpawnPoints[spawnObject.reflectedSpawn].z = spawnObject.z
+            mapSpawnPoints[spawnObject.reflectedSpawn].rotation = math.rad(spawnObject.yaw)
+            cprint(mapSpawnPoints[spawnObject.reflectedSpawn].type)
+            -- Debug spawn index
+            cprint('Updating spawn replacing index: ' .. spawnObject.reflectedSpawn)
+        end
+        -- Update spawn point list
+        blam.scenario(get_tag(0), {spawnLocationList = mapSpawnPoints})
+        return true
+    end
+    return false
+end
+
+-- Must be called before deleting scenery object from the store!!
+-- @return true if spawn has been deleted
+local function deleteSpawnPoint(objectLocalId)
+    local scenario = blam.scenario(get_tag(0))
+    local mapSpawnCount = scenario.spawnLocationCount
+    cprint(mapSpawnCount)
+    local mapSpawnPoints = scenario.spawnLocationList
+
+    local spawnObject = objectsStore[objectLocalId]
+    -- Object exists, it's synced
+    if (spawnObject and spawnObject.reflectedSpawn) then
+        if (mapSpawnPoints[spawnObject.reflectedSpawn]) then
+            -- Disable or "delete" spawn point by setting type as 0
+            mapSpawnPoints[spawnObject.reflectedSpawn].type = 0
+
+            -- Update spawn point list
+            blam.scenario(get_tag(0), {spawnLocationList = mapSpawnPoints})
+
+            -- Debug spawn index
+            cprint('Deleting spawn replacing index: ' .. spawnObject.reflectedSpawn)
+            return true
         end
     end
-    blam.scenario(get_tag(0), {spawnLocationList = mapSpawnPoints})
+    return false
+end
+
+--[[
+    0 = banshee
+    1 = warthog
+]]
+-- Must be called after adding scenery object to the store!!
+-- @return true if found an available spawn
+local function createVehicleSpawnPoint(objectLocalId, vehicleType)
+    -- Get all the scenario data
+    local scenario = blam.scenario(get_tag(0))
+    local vehicleLocationCount = scenario.vehicleLocationCount
+    cprint('Maximum count of vehicle spawn points: ' .. vehicleLocationCount)
+    local vehicleLocationList = scenario.vehicleLocationList
+
+    -- Get all the incoming object data
+    local spawnObject = objectsStore[objectLocalId]
+    -- Object exists, it's synced
+    if (spawnObject) then
+        if (not spawnObject.reflectedSpawn) then
+            for i = 2, vehicleLocationCount do
+                if (vehicleLocationList[i].type == 65535) then
+                    -- Replace spawn point values
+                    vehicleLocationList[i].x = spawnObject.x
+                    vehicleLocationList[i].y = spawnObject.y
+                    vehicleLocationList[i].z = spawnObject.z
+
+                    -- REMINDER!!! Check vehicle rotation
+
+                    vehicleLocationList[i].type = vehicleType
+
+                    -- Debug spawn index
+                    cprint('Creating spawn replacing index: ' .. i)
+                    spawnObject.reflectedSpawn = i
+
+                    -- Update spawn point list
+                    blam.scenario(get_tag(0), {vehicleLocationList = vehicleLocationList})
+
+                    execute_script('object_create_anew v' .. vehicleLocationList[i].nameIndex)
+                    -- Stop looking for "available" spawn slots
+                    break
+                end
+            end
+        else
+            -- Replace spawn point values
+            vehicleLocationList[spawnObject.reflectedSpawn].x = spawnObject.x
+            vehicleLocationList[spawnObject.reflectedSpawn].y = spawnObject.y
+            vehicleLocationList[spawnObject.reflectedSpawn].z = spawnObject.z
+
+            -- REMINDER!!! Check vehicle rotation
+
+            -- Debug spawn index
+            cprint('Updating spawn replacing index: ' .. spawnObject.reflectedSpawn)
+
+            -- Update spawn point list
+            blam.scenario(get_tag(0), {vehicleLocationList = vehicleLocationList})
+        end
+        return true
+    end
+    return false
+end
+
+-- Must be called before deleting scenery object from the store!!
+-- @return true if spawn has been deleted
+local function deleteVehicleSpawnPoint(objectLocalId)
+    local scenario = blam.scenario(get_tag(0))
+    local vehicleLocationCount = scenario.vehicleLocationCount
+    local vehicleLocationList = scenario.vehicleLocationList
+
+    local spawnObject = objectsStore[objectLocalId]
+    -- Object exists, it's synced
+    if (spawnObject and spawnObject.reflectedSpawn) then
+        if (vehicleLocationList[spawnObject.reflectedSpawn]) then
+            -- Disable or "delete" spawn point by setting type as 0
+            vehicleLocationList[spawnObject.reflectedSpawn].type = 65535
+
+            -- Update spawn point list
+            blam.scenario(get_tag(0), {vehicleLocationList = vehicleLocationList})
+
+            execute_script('object_destroy v' .. vehicleLocationList[spawnObject.reflectedSpawn].nameIndex)
+
+            -- Debug spawn index
+            cprint('Deleting spawn replacing index: ' .. spawnObject.reflectedSpawn)
+            return true
+        end
+    end
+    return false
 end
 
 -- Update the amount of budget used per scenery object
 local function updateBudgetCount()
     local sceneryCount = 0
-    for i = 0, 1023 do
+    for i = 1, 1023 do
         local tempObject = blam.object(get_object(i))
 
         -- If object exists and is a scenery object
@@ -254,9 +439,6 @@ local function updateBudgetCount()
     local amountBarAddress = get_tag('ui_widget_definition', widgetDefinitions.amountBar)
     local amountBar = blam.uiWidgetDefinition(amountBarAddress)
     blam.uiWidgetDefinition(amountBarAddress, {width = currentProgressBarSize})
-
-    -- As "updateBudgetCount" is called every time an object is deleted/created we can use it to reflect spawn points
-    reflectSpawnPoints()
 end
 
 -- Look into game script globals for a hooked UI events
@@ -333,6 +515,7 @@ local function updateForgeMenu(element)
         end
     end
     cprint('Scenery database has ' .. #glue.keys(sceneryDatabase) .. ' objects.')
+    cprint(inspect(availableObjects.root))
     local elementsTextAddress = get_tag('unicode_string_list', unicodeStrings.elementsText)
     local elementsText = blam.unicodeStringList(elementsTextAddress)
     local function updatePages(current, last)
@@ -433,7 +616,6 @@ end
 -- Self explanatory
 local function openForgeMenu()
     updateForgeMenu(0)
-    updateBudgetCount()
     execute_script('multiplayer_map_name letsforge')
     execute_script('multiplayer_map_name ' .. map)
 end
@@ -557,8 +739,23 @@ local function detachObjectToPlayer(erase)
     localScenery = {}
 end
 
+-- Avoid other objects to be highlighted
+local function unhighlightObjects()
+    for objectLocalId, composedObject in pairs(objectsStore) do
+        local objectAddress = get_object(objectLocalId)
+        local tempObject = blam.object(objectAddress)
+        if (tempObject) then
+            -- If object is an scenery
+            if (tempObject.type == 6) then
+                blam.object(get_object(objectLocalId), {health = 0})
+            end
+        end
+    end
+end
+
 -- Swap between monitor and spartan
 local function swapForgeBiped()
+    unhighlightObjects()
     if (server_type == 'local') then
         setCrosshairState(-1)
         detachObjectToPlayer(true)
@@ -592,17 +789,21 @@ end
 -- Spawn object with specific properties and sync it
 local function spawnLocalObject(objectProperties)
     cprint('Trying to spawn object with tag id: ' .. objectProperties.tagId)
-    local tagPath = get_tag_path(objectProperties.tagId)
-    local backupZ = objectProperties.z
-    if (objectProperties.z < minimumZSpawnPoint) then
-        objectProperties.z = minimumZSpawnPoint
+
+    -- Fix Z value if object is trying to spawn inside bsp
+    local fixedZ = objectProperties.z
+    if (fixedZ < minimumZSpawnPoint) then
+        fixedZ = minimumZSpawnPoint
     end
+
+    -- Get tag path of the incoming object
+    local tagPath = get_tag_path(objectProperties.tagId)
 
     -- Get current objects
     local objectsBeforeSpawn = getExistentObjects()
 
     -- Executing new object spawn, TODO: add automatic tag type detection (?)
-    spawn_object('scen', tagPath, objectProperties.x, objectProperties.y, objectProperties.z)
+    spawn_object('scen', tagPath, objectProperties.x, objectProperties.y, fixedZ)
 
     -- Getting new objects after object spawn action
     local objectsAfterSpawn = getExistentObjects()
@@ -611,22 +812,41 @@ local function spawnLocalObject(objectProperties)
     -- This is needed because Chimera API returns a different object id than the ones Halo is tracking
     local objectLocalId = glue.arraynv(objectsBeforeSpawn, objectsAfterSpawn)
     if (objectLocalId) then
-        cprint('Object succesfully spawned with id: ' .. objectLocalId)
-
         -- If spawn is in local mode, then serverId is the same as localId
         if (not objectProperties.serverId) then
             objectProperties.serverId = objectLocalId
         end
 
-        -- Sync scenery object
-        objectsStore[objectLocalId] = objectProperties
-
         -- Update object Z
-        blam.object(get_object(objectLocalId), {z = backupZ})
+        blam.object(get_object(objectLocalId), {z = objectProperties.z})
+
+        -- Update object rotation
         rotateObject(objectLocalId, objectProperties.yaw, objectProperties.pitch, objectProperties.roll)
+
+        -- Sync object with store
+        objectsStore[objectLocalId] = objectProperties
 
         -- Update budget count
         updateBudgetCount()
+
+        -- Reflect spawnpoints
+        local tagName = inSceneryList(objectProperties.tagId, sceneries)
+        if (tagName) then
+            if (tagName:find('spawnPoint') and not tagName:find('spawnPointVehicle')) then
+                local spawnData = spawnValues[tagName]
+                -- We are trying to create a player spawn point
+                if (not createSpawnPoint(objectLocalId, spawnData.type, spawnData.team)) then
+                    cprint('ERROR!!: Spawn point with id: ' .. objectLocalId .. " can't be CREATED!!")
+                end
+            else
+                -- We are trying to create vehicle spawn point
+                if (server_type == 'local') then
+                    createVehicleSpawnPoint(objectLocalId, spawnValues[tagName].type)
+                end
+            end
+        end
+
+        cprint('Object succesfully spawned with id: ' .. objectLocalId)
     else
         cprint('Error at trying to spawn object!!!')
     end
@@ -639,9 +859,7 @@ local function updateLocalObject(objectProperties)
     -- Look into local objectsStore for the equivalent one in the server
     local objectLocalId = getObjectByServerId(objectProperties.serverId)
     if (objectLocalId) then
-        cprint('Object succesfully updated with local id: ' .. objectLocalId)
-
-        -- Sync scenery object
+        -- Sync object with store
         objectsStore[objectLocalId].yaw = objectProperties.yaw
         objectsStore[objectLocalId].pitch = objectProperties.pitch
         objectsStore[objectLocalId].roll = objectProperties.roll
@@ -649,7 +867,7 @@ local function updateLocalObject(objectProperties)
         objectsStore[objectLocalId].y = objectProperties.y
         objectsStore[objectLocalId].z = objectProperties.z
 
-        -- Update object Z
+        -- Update object position
         blam.object(
             get_object(objectLocalId),
             {
@@ -658,16 +876,40 @@ local function updateLocalObject(objectProperties)
                 z = objectProperties.z
             }
         )
+
+        -- Update object rotation
         rotateObject(objectLocalId, objectProperties.yaw, objectProperties.pitch, objectProperties.roll)
 
         -- Update budget count
         updateBudgetCount()
+
+        -- Get tag properties
+        local tempObject = blam.object(get_object(objectLocalId))
+
+        -- Reflect spawnpoints
+        local tagName = inSceneryList(tempObject.tagId, sceneries)
+        if (tagName) then
+            if (tagName:find('spawnPoint') and not tagName:find('spawnPointVehicle')) then
+                local spawnData = spawnValues[tagName]
+                -- We are trying to UPDATE a player spawn point
+                if (not createSpawnPoint(objectLocalId)) then
+                    cprint('ERROR!!: Spawn point with id: ' .. objectLocalId .. " can't be UPDATED!!")
+                end
+            else
+                -- We are trying to UPDATE vehicle spawn point
+                if (server_type == 'local') then
+                    createVehicleSpawnPoint(objectLocalId)
+                end
+            end
+        end
+        cprint('Object succesfully updated with local id: ' .. objectLocalId)
     else
         cprint('Error at trying to update object!!!')
     end
 end
 
 local function flushForge()
+    resetSpawnPoints()
     cprint('FLUSHING ALL THE FORGE STUFFFFFFFFFF')
     for k, v in pairs(objectsStore) do
         if (get_object(k)) then
@@ -732,12 +974,42 @@ function decodeIncomingData(data)
         return false
     elseif (command == '#d') then
         cprint('Decoding incoming object deletion...')
+
         local objectServerId = tonumber(splittedData[2])
+
+        -- There is an object with the required id
         if (objectServerId) then
+            -- Get local object id by server id
             local objectLocalId = getObjectByServerId(objectServerId)
+
+            -- Object exists and it's a synced object
             if (objectLocalId and get_object(objectLocalId)) then
+                cprint('Deleting object with id: ' .. objectLocalId)
+
+                -- Get object properties
+                local tempObject = blam.object(get_object(objectLocalId))
+
+                -- Reflect spawn points
+                local tagName = inSceneryList(tempObject.tagId, sceneries)
+                if (tagName) then
+                    if (tagName:find('spawnPoint') and not tagName:find('spawnPointVehicle')) then
+                        if (not deleteSpawnPoint(objectLocalId)) then
+                            cprint('ERROR!: Spawn point with id:' .. objectLocalId .. ' can not be DELETED!!!')
+                        end
+                    else
+                        if (server_type == 'local') then
+                            deleteVehicleSpawnPoint(objectLocalId)
+                        end
+                    end
+                end
+
+                -- Erase the object from the game memory
                 delete_object(objectLocalId)
+
+                -- Erase the object from objects store
                 objectsStore[objectLocalId] = nil
+
+                -- Update global budget count
                 updateBudgetCount()
             else
                 console_out('Error at trying to erase object with serverId: ' .. objectServerId)
@@ -751,6 +1023,23 @@ function decodeIncomingData(data)
         return false
     end
     return true
+end
+
+local function convertDataToRequest(data)
+    local request = {}
+    for property, value in pairs(data) do
+        local encodedValue
+        if (type(value) ~= 'number') then
+            encodedValue = glue.tohex(value)
+        else
+            encodedValue = value
+        end
+        table.insert(request, encodedValue)
+        cprint(property .. ' ' .. encodedValue)
+    end
+    local commandRequest = table.concat(request, ',')
+    cprint('Request size is: ' .. #commandRequest + 5 .. ' characters')
+    return commandRequest
 end
 
 -- Send an object spawn request to the server
@@ -768,23 +1057,7 @@ local function sendObjectSpawn(composedObject)
             composedObject.pitch,
             composedObject.roll
         }
-        local function convertDataToRequest(data)
-            local request = {}
-            for property, value in pairs(compressedData) do
-                local encodedValue
-                if (type(value) ~= 'number') then
-                    encodedValue = glue.tohex(value)
-                else
-                    encodedValue = value
-                end
-                table.insert(request, encodedValue)
-                cprint(property .. ' ' .. encodedValue)
-            end
-            local commandRequest = table.concat(request, ',')
-            cprint('Request size is: ' .. #commandRequest + 5 .. ' characters')
-            return "rcon forge '#s," .. commandRequest .. "'" -- Spawn format
-        end
-        local request = convertDataToRequest(compressedData)
+        local request = "rcon forge '#s," .. convertDataToRequest(compressedData) .. "'" -- Spawn format
         cprint(inspect(request))
         if (server_type ~= 'local') then
             -- Player is connected to a server
@@ -811,23 +1084,7 @@ local function sendObjectUpdate(composedObject)
             composedObject.pitch,
             composedObject.roll
         }
-        local function convertDataToRequest(data)
-            local request = {}
-            for property, value in pairs(compressedData) do
-                local encodedValue
-                if (type(value) ~= 'number') then
-                    encodedValue = glue.tohex(value)
-                else
-                    encodedValue = value
-                end
-                table.insert(request, encodedValue)
-                cprint(property .. ' ' .. encodedValue)
-            end
-            local commandRequest = table.concat(request, ',')
-            cprint('Request size is: ' .. #commandRequest + 5 .. ' characters')
-            return "rcon forge '#u," .. commandRequest .. "'" -- Spawn format
-        end
-        local request = convertDataToRequest(compressedData)
+        local request = "rcon forge '#u," .. convertDataToRequest(compressedData) .. "'" -- Spawn format
         cprint(inspect(request))
         if (server_type ~= 'local') then
             -- Player is connected to a server
@@ -863,6 +1120,7 @@ function onTick()
     UIWidgetsHooks()
     local playerBipedAddress = get_dynamic_player()
     if (playerBipedAddress) then
+        
         local player = blam.biped(playerBipedAddress)
         -- Player exists and is in monitor/forge mode
         if (player and isPlayerMonitor(playerBipedAddress)) then
@@ -915,7 +1173,7 @@ function onTick()
                 -- Anti-spawn thing
                 if (zOffset < minimumZSpawnPoint) then
                     local tempObject = blam.object(get_object(localScenery.id))
-                    if (tempObject and tempObject.tagId == get_tag_id('scen', sceneries.spawnPoint)) then
+                    if (tempObject and inSceneryList(tempObject.tagId, sceneries)) then
                         -- Update monitor crosshair to "not placeable" state
                         zOffset = minimumZSpawnPoint
                         setCrosshairState(3)
@@ -1164,7 +1422,7 @@ function onCommand(command)
             listForgeMaps()
             return false
         elseif (forgeCommand == 'fdump') then
-            console_out('Current sceneries in game memory:')
+            --[[console_out('Current sceneries in game memory:')
             for i = 0, 1023 do
                 local tempObject = blam.object(get_object(i))
                 if (tempObject and tempObject.type == 6) then
@@ -1172,7 +1430,20 @@ function onCommand(command)
                 end
             end
             glue.writefile('fdumpStore.txt', inspect(objectsStore), 't')
-            console_out('Dumped forge objects state into fdumpStore.txt!!')
+            console_out('Dumped forge objects state into fdumpStore.txt!!')]]
+            local scenario = blam.scenario(get_tag(0))
+            local vehicleLocationCount = scenario.vehicleLocationCount
+            local vehicleLocationList = scenario.vehicleLocationList
+            cprint('Found ' .. vehicleLocationCount .. ' stock vehicle location points!')
+            for k, v in pairs(vehicleLocationList) do
+                if (v.type ~= 65535) then
+                    cprint(inspect(v))
+                end
+            end
+            return false
+        elseif (forgeCommand == 'freset') then
+            execute_script('object_destroy_all')
+            flushScript()
             return false
         end
     end
@@ -1194,6 +1465,7 @@ function saveForgeMap(mapName)
         -- Remove all the unimportant data
         fmapComposedObject.tagId = nil
         fmapComposedObject.serverId = nil
+        fmapComposedObject.reflectedSpawn = nil
 
         -- Add tag path property
         fmapComposedObject.tagPath = sceneryPath
@@ -1261,33 +1533,39 @@ end
 
 -- Convert global script into map script
 function onMapLoad()
-    flushScript()
+    alreadyLoaded = true
     if (isForgeMap()) then
+        cprint('We are in boiiiiis!')
+
         -- Forge maps folder creation
         forgeMapsFolder = lfs.currentdir() .. '\\fmaps'
         local alreadyForgeMapsFolder = not lfs.mkdir(forgeMapsFolder)
         if (not alreadyForgeMapsFolder) then
             console_out('Createad forge maps folder!')
         end
-        updateForgedMapsMenu()
+
+        -- updateForgedMapsMenu()
+        
         set_callback('tick', 'onTick')
         set_callback('rcon message', 'decodeIncomingData')
         set_callback('command', 'onCommand')
     else
-        flushScript()
+        console_out('This is not a compatible Forge map!!!')
     end
 end
 
-if (server_type ~= 'local' and isForgeMap()) then
-    -- Prevent the script from being reloaded on a server
-    execute_script('disconnect')
-elseif (server_type == 'local' and isForgeMap()) then
-    -- Allows the script to run by just reloading it
-    onMapLoad()
-
-    -- Erase every object on the map, TODO: reupdate object storage with current objects
-    execute_script('object_destroy_all')
+function onUnload()
+    if (#getExistentObjects() > 0) then
+        saveForgeMap('unsaved')
+        execute_script('object_destroy_all')
+    end
 end
 
 -- Prepare event callbacks
-set_callback('map load', 'onMapLoad')
+set_callback('map postload', 'onMapLoad') -- Thanks Jerry to add this callback!
+set_callback('unload', 'onUnload')
+
+-- Allows the script to run by just reloading it
+if (server_type == 'local') then
+    onMapLoad()
+end
