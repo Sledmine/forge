@@ -44,7 +44,7 @@ This project is part of something just much bigger than creating a map with Forg
 
 - Any other map can implement Forge compatibility... as Gangstarr said: "infinite skills create miracles".
 
-- Forge is now an open source project for anything your mind can create, with Forge came different concepts and libraries to help you to expand Halo Custom Edition (just took us like 15 years to reach this point lol).
+- Forge is now an open source project for anything your mind can create, with Forge came different concepts and libraries to help you to expand Halo Custom Edition (just took us like 15 years to reach this point of content lol).
 
 ### Now.. some comments about the project made by me
 
@@ -53,3 +53,12 @@ This project is part of something just much bigger than creating a map with Forg
 - I really wanted to encourage library implementation, they are useful to avoid repeated code, providing abstraction and bringing some standard functionality to any project.
 - All the dynamic stuff is in deed dynamic but... in a certain range of a static structure, by default Halo CE is pretty much static and some stuff was not supposed to change on the fly.
 - A Forge version compatible with other maps can be done, but we need to make a standard static map structure, to achieve a really universal forge script.
+- Spawn reflection was refactored a couple of times due to bad implementation and at the end the correct structure to handle spawns was simple than i expected, i ended mixing my fake "redux store" with spawn stuff meaning that some objects in the store are just forge objects, but some of those forge objects are spawn points.. or what i called spawn objects.
+
+# FAQ
+
+## Why is not possible to see objects that other other players forging? 
+- I wanted to keep the communication system "REST" as possible, sending data about 16 players taking, leaving and rotating objects in real time would be really hard to handle, there are some possibilities of bringing this feature in future versions of Forge. At the end of the day that's just some kind of "visual" feature, create, update and delete is 100% covered now and it's functional.
+
+## Can i run this on a LAN game?
+- The answer is yes.. but actually no. You can indeed run Forge on a LAN game, but just that, if you start a game on LAN you will be able to access to all the Forge features except playing with people, this is because in LAN there is no "server" to ask for object requests, you are the server but you are not able to make rcon replys and keep communication with players connected to your game.
