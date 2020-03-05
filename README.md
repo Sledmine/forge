@@ -21,9 +21,13 @@ It reimplements some concepts from modern app libraries like the store from reac
 - Rcon messages come with full range compression, position and rotation values are too important to keep them exactly in the same way they were sent, the compression used in Forge ensures the maximum and the minimum exact value at the moment of decompression using string.pack and string.unpack from Lua 5.3 (SAPP uses Lua 5.1, but some compatibility with Lua 5.3 can be achived by implemeting a compatibility library, bringing string.unpack and string.pack as a backport).
 
 ### Features
-- Multiple biped support.
-- Object highlight.
-- Dynamic forge objects addition.
+**Multiple biped support**
+- There is a simple built in system to associate players with a specific biped, used to swap between spartan and monitor, other bipeds can be added.
+**Object highlighting**:
+- If you are looking at a certain object this one becomes "highlighted" from the rest of the objects.
+
+- Dynamic Forge objects addition
+  Every scenery in the scenario palette is going to be taken as a Forge object.
 - Dynamic forge menu.
 - Semi-CRUD for any forge object.
 - Forged maps file support, saving and loading.
