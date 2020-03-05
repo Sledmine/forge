@@ -22,13 +22,15 @@ It reimplements some concepts from modern app libraries like the store from reac
 
 ### Features
 **Multiple biped support**
-- There is a simple built in system to associate players with a specific biped, used to swap between spartan and monitor, other bipeds can be added.
-**Object highlighting**:
-- If you are looking at a certain object this one becomes "highlighted" from the rest of the objects.
+There is a simple built in system to associate players with a specific biped, used to swap between spartan and monitor, other bipeds can be added.
 
-- Dynamic Forge objects addition
-  Every scenery in the scenario palette is going to be taken as a Forge object.
-- Dynamic forge menu.
+**Object highlighting**
+If you are looking at a certain object this one becomes "highlighted" from the rest of the objects.
+
+**Dynamic Forge objects addition**
+Every scenery in the scenario palette is going to be taken as a Forge object.
+
+**Dynamic forge menu**
 - Semi-CRUD for any forge object.
 - Forged maps file support, saving and loading.
 - Spawn reflection system.
@@ -66,3 +68,4 @@ This project is part of something just much bigger than creating a map with Forg
 
 ## Can i run this on a LAN game?
 - The answer is yes.. but actually no. You can indeed run Forge on a LAN game, but just that, if you start a game on LAN you will be able to access to all the Forge features except playing with people, this is because in LAN there is no "server" to ask for object requests, you are the server but you are not able to make rcon replys and keep communication with players connected to your game.
+
