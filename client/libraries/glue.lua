@@ -975,6 +975,7 @@ if bit then
 
 end
 
+-- Added by Sledmine 13/08/2019, v1
 function glue.childsByParent(object, desiredParent)
     for parent,childs in pairs(object) do
 		if (parent == desiredParent) then
@@ -990,6 +991,7 @@ function glue.childsByParent(object, desiredParent)
     return nil
 end
 
+-- Added by Sledmine 13/08/2019, v1
 function glue.parentByChild(object, desiredChild)
     for parent,childs in pairs(object) do
 		if (childs[desiredChild]) then
@@ -1003,6 +1005,31 @@ function glue.parentByChild(object, desiredChild)
 		end
     end
     return nil
+end
+
+-- Chunks
+-- Split a list/array into small parts of given size
+-- Sledmine 27/02/2020
+-- v1.0
+function glue.chunks(list, chunks)
+	local chunkCounter = 0
+	local chunk = {}
+	local chunkList = {}
+	-- Append chunks to the list in the specified amount of elements
+	for k,v in pairs(list) do
+		if (chunkCounter == chunks) then
+			glue.append(chunkList, chunk)
+			chunk = {}
+			chunkCounter = 0
+		end
+		glue.append(chunk, v)
+		chunkCounter = chunkCounter + 1
+	end
+	-- If there was a chunk that was not completed append it
+	if (chunkCounter ~= 0) then
+		glue.append(chunkList, chunk)
+	end
+	return chunkList
 end
 
 return glue

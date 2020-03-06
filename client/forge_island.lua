@@ -1,18 +1,24 @@
 ------------------------------------------------------------------------------
 -- Forge Island Client Script
 -- Author: Sledmine
--- Version: 3.0
--- Script client side for Forge Island
+-- Version: 3.1
+-- Client side script for Forge Island
 ------------------------------------------------------------------------------
 
 clua_version = 2.042
 
-local blam = require 'luablam'
+-- Common Lua libraries
 local inspect = require 'inspect'
 local json = require 'json'
+-- TODO, pure Lua file system based on Windows dir and similar commands!!
 local lfs = require 'lfs'
 local glue = require 'glue'
 
+-- Specific Halo Custom Edition libraries
+local blam = require 'luablam'
+local maethrillian = require 'maethrillian'
+
+-- Default debug mode state
 local debugMode = true
 
 -- Internal functions
@@ -125,25 +131,33 @@ local widgetDefinitions = {
     errorNonmodalFullscreen = 'ui\\shell\\error\\error_nonmodal_fullscreen'
 }
 
--- Scenery definitions
-local sceneries = {
-    spawnPoint = '[shm]\\halo_4\\scenery\\spawning\\spawn point\\spawn point',
-    spawnPointBlueTeam = '[shm]\\halo_4\\scenery\\spawning\\spawn point blue team\\spawn point blue team',
-    spawnPointGray = '[shm]\\halo_4\\scenery\\spawning\\spawn point gray\\spawn point gray',
-    spawnPointRedTeam = '[shm]\\halo_4\\scenery\\spawning\\spawn point red team\\spawn point red team',
-    spawnPointVehicle = '[shm]\\halo_4\\scenery\\spawning\\spawn point vehicle\\spawn point vehicle'
+-- Spawn objects definitions
+local spawnObjects = {
+    allGamesGenericSpawnPoint = '[shm]\\halo_4\\scenery\\spawning\\players\\all games\\generic spawn point\\generic spawn point',
+    ctfSpawnPointBlueTeam = '[shm]\\halo_4\\scenery\\spawning\\players\\ctf\\ctf spawn point blue team\\ctf spawn point blue team',
+    ctfSpawnPointReadTeam = '[shm]\\halo_4\\scenery\\spawning\\players\\ctf\\ctf spawn point red team\\ctf spawn point red team',
+    slayerSpawnPointBlueTeam = '[shm]\\halo_4\\scenery\\spawning\\players\\slayer\\slayer spawn point blue team\\slayer spawn point blue team',
+    bansheeSpawn = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\banshee spawn\\banshee spawn',
+    warthogSpawn = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\warthog spawn\\warthog spawn',
+    ghostSpawn = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\ghost spawn\\ghost spawn',
+    scorpionSpawn = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\scorpion spawn\\scorpion spawn',
+    cTurretSpawn = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\c turret spawn\\c turret spawn'
 }
 
 local spawnValues = {
     -- CTF, Blue Team
-    spawnPointBlueTeam = {type = 1, team = 1},
+    ctfSpawnPointBlueTeam = {type = 1, team = 1},
     -- CTF, Red Team
-    spawnPointRedTeam = {type = 1, team = 0},
+    ctfSpawnPointReadTeam = {type = 1, team = 0},
     -- Generic, Both teams
-    spawnPoint = {type = 12, team = 0},
+    slayerSpawnPointBlueTeam = {type = 3, team = 0},
     -- Generic, Both teams
-    spawnPointGray = {type = 12, team = 0},
-    spawnPointVehicle = {type = 1}
+    allGamesGenericSpawnPoint = {type = 12, team = 0},
+    bansheeSpawn = {type = 0},
+    warthogSpawn = {type = 1},
+    ghostSpawn = {type = 2},
+    scorpionSpawn = {type = 3},
+    cTurretSpawn = {type = 4}
 }
 
 -- Changes default crosshair values
@@ -351,8 +365,9 @@ local function createVehicleSpawnPoint(objectLocalId, vehicleType)
                     vehicleLocationList[i].x = spawnObject.x
                     vehicleLocationList[i].y = spawnObject.y
                     vehicleLocationList[i].z = spawnObject.z
-
-                    -- REMINDER!!! Check vehicle rotation
+                    vehicleLocationList[i].yaw = math.rad(spawnObject.yaw)
+                    vehicleLocationList[i].pitch = math.rad(spawnObject.pitch)
+                    vehicleLocationList[i].roll = math.rad(spawnObject.roll)
 
                     vehicleLocationList[i].type = vehicleType
 
@@ -373,6 +388,9 @@ local function createVehicleSpawnPoint(objectLocalId, vehicleType)
             vehicleLocationList[spawnObject.reflectedSpawn].x = spawnObject.x
             vehicleLocationList[spawnObject.reflectedSpawn].y = spawnObject.y
             vehicleLocationList[spawnObject.reflectedSpawn].z = spawnObject.z
+            vehicleLocationList[spawnObject.reflectedSpawn].yaw = math.rad(spawnObject.yaw)
+            vehicleLocationList[spawnObject.reflectedSpawn].pitch = math.rad(spawnObject.pitch)
+            vehicleLocationList[spawnObject.reflectedSpawn].roll = math.rad(spawnObject.roll)
 
             -- REMINDER!!! Check vehicle rotation
 
@@ -427,6 +445,7 @@ local function updateBudgetCount()
     end
 
     local budgetUsed = (sceneryCount * 50)
+
     local currentProgressBarSize = glue.round(budgetUsed * maximumProgressBarSize / 10000)
     cprint('Budget Used: ' .. budgetUsed)
 
@@ -505,7 +524,7 @@ local function updateForgeMenu(element)
         sceneriesSplit = fixedSplittedPath
         sceneryDatabase[sceneriesSplit[#sceneriesSplit]] = sceneryPath
         -- Set first level as the root of available current objects
-        -- THIS IS CALLED BY REFERENCE TO MODIFY availableObjects
+        -- THIS IS CALLED BY REFERENCE TO MODIFºY availableObjects
         local treePosition = availableObjects.root
         for k, v in pairs(sceneriesSplit) do
             if (not treePosition[v]) then
@@ -515,7 +534,6 @@ local function updateForgeMenu(element)
         end
     end
     cprint('Scenery database has ' .. #glue.keys(sceneryDatabase) .. ' objects.')
-    cprint(inspect(availableObjects.root))
     local elementsTextAddress = get_tag('unicode_string_list', unicodeStrings.elementsText)
     local elementsText = blam.unicodeStringList(elementsTextAddress)
     local function updatePages(current, last)
@@ -523,13 +541,13 @@ local function updateForgeMenu(element)
         if (paginationTextAddress) then
             local pagination = blam.unicodeStringList(paginationTextAddress)
             local paginationStringList = pagination.stringList
-            cprint(inspect(paginationStringList))
             paginationStringList[2] = tostring(current)
             paginationStringList[4] = tostring(last)
             blam.unicodeStringList(paginationTextAddress, {stringList = paginationStringList})
         end
     end
-    local function writeMenuList(menuElements)
+    local function writeMenuList(menuElements, page)
+        -- Sort all the elements in the menu
         table.sort(
             menuElements,
             function(a, b)
@@ -537,23 +555,44 @@ local function updateForgeMenu(element)
             end
         )
         if (#menuElements > 0) then
+            -- Always set maximum widgets as the same of the elements of the menu
+            cprint('Current elements in the list: ' .. #menuElements)
             local newChildWidgetsCount = #menuElements
-            updatePages(1, 1)
+
+            -- Split all the elements in the list into chunks of 6 elements
+            local newMenuElements = glue.chunks(menuElements, 6)
+
+            local lastPage = #newMenuElements
+
+            cprint('Current page: ' .. page)
+            currentPage = page
+
+            -- Update the pages in the current number of pages
+            updatePages(page, lastPage)
+
+            -- Maximum amount of pages has been reached, create a new page
             if (newChildWidgetsCount > 6) then
-                newChildWidgetsCount = 6
-                cprint('Maximum elements per page, generating another page. THIS WAS DISABLED!!! DUH...')
-                updatePages(1, 2)
-                lastElements = {}
-                for i = 7, #menuElements do
-                    lastElements[#lastElements + 1] = menuElements[i]
-                end
+                pagination = {list = menuElements, lastPage = lastPage}
+
+                -- Set widget count to 6 elements plus 2 buttons for page navigation
+                newChildWidgetsCount = #newMenuElements[page]
+
+                -- Create a new page for the
+                -- cprint('Maximum elements per page, splitting elements into pages.')
+                cprint('New number of pages: ' .. #newMenuElements)
+            else
+                pagination = nil
             end
-            blam.unicodeStringList(elementsTextAddress, {stringList = menuElements})
-            -- We send new event type for this widget to force a new render on it
+
+            -- Update elements list
+            blam.unicodeStringList(elementsTextAddress, {stringList = newMenuElements[page]})
+
+            -- We update the quantity of elements in the menu
+            -- A new event type is replaced for this widget to force a new render on it
             blam.uiWidgetDefinition(
                 get_tag('ui_widget_definition', widgetDefinitions.categoryList),
                 {
-                    childWidgetsCount = newChildWidgetsCount,
+                    childWidgetsCount = newChildWidgetsCount + 2,
                     eventType = 33
                 }
             )
@@ -561,15 +600,26 @@ local function updateForgeMenu(element)
     end
     local newElements
     if (element == 0) then
+        -- Get back in to the page list
         newElements = glue.keys(availableObjects.root)
-        writeMenuList(newElements)
-    elseif (element == 7 or element == 8) then
-        --[[ Do that page thing here!!!!!]]
-        if (lastElements) then
-            writeMenuList(lastElements)
-            updatePages(2, 2)
-            lastElements = nil
+        writeMenuList(newElements, 1)
+    elseif (element == 7) then
+        -- Get forward in to the page list
+        if (pagination) then
+            if (currentPage > 1) then
+                currentPage = currentPage - 1
+            end
+            writeMenuList(pagination.list, currentPage)
         end
+        cprint('There ARE NOT PAGES TO SHOW!')
+    elseif (element == 8) then
+        if (pagination) then
+            if (currentPage < pagination.lastPage) then
+                currentPage = currentPage + 1
+            end
+            writeMenuList(pagination.list, currentPage)
+        end
+        cprint('There ARE NOT PAGES TO SHOW!')
     elseif (element == 9) then
         if (lastElement) then
             cprint('Trying to get back in the menu!!!')
@@ -578,7 +628,7 @@ local function updateForgeMenu(element)
                 lastElement = parent
                 cprint('Children found in parent: ' .. parent)
                 newElements = glue.keys(glue.childsByParent(availableObjects, parent))
-                writeMenuList(newElements)
+                writeMenuList(newElements, 1)
                 return nil
             end
         end
@@ -606,7 +656,7 @@ local function updateForgeMenu(element)
             if (elementsList) then
                 lastElement = desiredElement
                 newElements = glue.keys(elementsList)
-                writeMenuList(newElements)
+                writeMenuList(newElements, 1)
             end
         end
     end
@@ -615,6 +665,8 @@ end
 
 -- Self explanatory
 local function openForgeMenu()
+    -- Reset pagination
+    pagination = nil
     updateForgeMenu(0)
     execute_script('multiplayer_map_name letsforge')
     execute_script('multiplayer_map_name ' .. map)
@@ -830,10 +882,11 @@ local function spawnLocalObject(objectProperties)
         updateBudgetCount()
 
         -- Reflect spawnpoints
-        local tagName = inSceneryList(objectProperties.tagId, sceneries)
-        if (tagName) then
-            if (tagName:find('spawnPoint') and not tagName:find('spawnPointVehicle')) then
-                local spawnData = spawnValues[tagName]
+        local objectName = inSceneryList(objectProperties.tagId, spawnObjects)
+        if (objectName) then
+            cprint(objectName)
+            if (objectName:find('SpawnPoint')) then
+                local spawnData = spawnValues[objectName]
                 -- We are trying to create a player spawn point
                 if (not createSpawnPoint(objectLocalId, spawnData.type, spawnData.team)) then
                     cprint('ERROR!!: Spawn point with id: ' .. objectLocalId .. " can't be CREATED!!")
@@ -841,7 +894,7 @@ local function spawnLocalObject(objectProperties)
             else
                 -- We are trying to create vehicle spawn point
                 if (server_type == 'local') then
-                    createVehicleSpawnPoint(objectLocalId, spawnValues[tagName].type)
+                    createVehicleSpawnPoint(objectLocalId, spawnValues[objectName].type)
                 end
             end
         end
@@ -887,10 +940,10 @@ local function updateLocalObject(objectProperties)
         local tempObject = blam.object(get_object(objectLocalId))
 
         -- Reflect spawnpoints
-        local tagName = inSceneryList(tempObject.tagId, sceneries)
-        if (tagName) then
-            if (tagName:find('spawnPoint') and not tagName:find('spawnPointVehicle')) then
-                local spawnData = spawnValues[tagName]
+        local objectName = inSceneryList(tempObject.tagId, spawnObjects)
+        if (objectName) then
+            if (objectName:find('SpawnPoint')) then
+                local spawnData = spawnValues[objectName]
                 -- We are trying to UPDATE a player spawn point
                 if (not createSpawnPoint(objectLocalId)) then
                     cprint('ERROR!!: Spawn point with id: ' .. objectLocalId .. " can't be UPDATED!!")
@@ -943,8 +996,6 @@ function decodeIncomingData(data)
             if (not value) then
                 cprint('Incoming object data is in a WRONG format!!!')
                 return false
-            else
-                cprint(property .. ' ' .. value)
             end
         end
         cprint('Object spawn succesfully decoded!')
@@ -990,9 +1041,9 @@ function decodeIncomingData(data)
                 local tempObject = blam.object(get_object(objectLocalId))
 
                 -- Reflect spawn points
-                local tagName = inSceneryList(tempObject.tagId, sceneries)
-                if (tagName) then
-                    if (tagName:find('spawnPoint') and not tagName:find('spawnPointVehicle')) then
+                local objectName = inSceneryList(tempObject.tagId, spawnObjects)
+                if (objectName) then
+                    if (objectName:find('SpawnPoint')) then
                         if (not deleteSpawnPoint(objectLocalId)) then
                             cprint('ERROR!: Spawn point with id:' .. objectLocalId .. ' can not be DELETED!!!')
                         end
@@ -1025,40 +1076,33 @@ function decodeIncomingData(data)
     return true
 end
 
-local function convertDataToRequest(data)
-    local request = {}
-    for property, value in pairs(data) do
-        local encodedValue
-        if (type(value) ~= 'number') then
-            encodedValue = glue.tohex(value)
-        else
-            encodedValue = value
-        end
-        table.insert(request, encodedValue)
-        cprint(property .. ' ' .. encodedValue)
-    end
-    local commandRequest = table.concat(request, ',')
-    cprint('Request size is: ' .. #commandRequest + 5 .. ' characters')
-    return commandRequest
-end
-
 -- Send an object spawn request to the server
 local function sendObjectSpawn(composedObject)
-    local object = blam.object(get_object(composedObject.id))
+    local object = composedObject.object
+    if (not object) then
+        object = blam.object(get_object(composedObject.id))
+    end
     if (object) then
         detachObjectToPlayer(true)
         cprint('Sending object spawn request... for tagId: ' .. object.tagId)
-        local compressedData = {
-            string.pack('I4', object.tagId),
-            string.pack('f', object.x),
-            string.pack('f', object.y),
-            string.pack('f', object.z),
-            composedObject.yaw,
-            composedObject.pitch,
-            composedObject.roll
+        local objectSpawnData = {
+            {value = object.tagId, compression = 'I4'},
+            {value = object.x, compression = 'f'},
+            {value = object.y, compression = 'f'},
+            {value = object.z, compression = 'f'},
+            {value = composedObject.yaw},
+            {value = composedObject.pitch},
+            {value = composedObject.roll}
         }
-        local request = "rcon forge '#s," .. convertDataToRequest(compressedData) .. "'" -- Spawn format
+        -- Data compression process
+        local compressedData = maethrillian.compress(objectSpawnData)
+
+        -- Object spawn request structure, using compressed data
+        local request = "rcon forge '#s," .. maethrillian.convertDataToRequest(compressedData) .. "'"
+
+        -- Debug request format
         cprint(inspect(request))
+        cprint('Request size: ' .. #request - 11)
         if (server_type ~= 'local') then
             -- Player is connected to a server
             execute_script(request)
@@ -1066,6 +1110,8 @@ local function sendObjectSpawn(composedObject)
             -- Mockup server response in local mode
             decodeIncomingData(string.gsub(string.gsub(request, "rcon forge '", ''), "'", ''))
         end
+    else
+        cprint('ERROR!!!: At trying to send object spawn!')
     end
 end
 
@@ -1075,17 +1121,24 @@ local function sendObjectUpdate(composedObject)
     if (object) then
         detachObjectToPlayer(true)
         cprint('Sending object update request... for serverId: ' .. composedObject.serverId)
-        local compressedData = {
-            string.pack('I4', composedObject.serverId),
-            string.pack('f', object.x),
-            string.pack('f', object.y),
-            string.pack('f', object.z),
-            composedObject.yaw,
-            composedObject.pitch,
-            composedObject.roll
+        local objectUpdateData = {
+            {value = composedObject.serverId, compression = 'I4'},
+            {value = object.x, compression = 'f'},
+            {value = object.y, compression = 'f'},
+            {value = object.z, compression = 'f'},
+            {value = composedObject.yaw},
+            {value = composedObject.pitch},
+            {value = composedObject.roll}
         }
-        local request = "rcon forge '#u," .. convertDataToRequest(compressedData) .. "'" -- Spawn format
+        -- Data compression process
+        local compressedData = maethrillian.compress(objectUpdateData)
+
+        -- Object update request structure, using compressed data
+        local request = "rcon forge '#u," .. maethrillian.convertDataToRequest(compressedData) .. "'"
+
+        -- Debug request format
         cprint(inspect(request))
+        cprint('Request size: ' .. #request - 11)
         if (server_type ~= 'local') then
             -- Player is connected to a server
             execute_script(request)
@@ -1120,7 +1173,6 @@ function onTick()
     UIWidgetsHooks()
     local playerBipedAddress = get_dynamic_player()
     if (playerBipedAddress) then
-        
         local player = blam.biped(playerBipedAddress)
         -- Player exists and is in monitor/forge mode
         if (player and isPlayerMonitor(playerBipedAddress)) then
@@ -1173,7 +1225,7 @@ function onTick()
                 -- Anti-spawn thing
                 if (zOffset < minimumZSpawnPoint) then
                     local tempObject = blam.object(get_object(localScenery.id))
-                    if (tempObject and inSceneryList(tempObject.tagId, sceneries)) then
+                    if (tempObject and inSceneryList(tempObject.tagId, spawnObjects)) then
                         -- Update monitor crosshair to "not placeable" state
                         zOffset = minimumZSpawnPoint
                         setCrosshairState(3)
@@ -1422,7 +1474,7 @@ function onCommand(command)
             listForgeMaps()
             return false
         elseif (forgeCommand == 'fdump') then
-            --[[console_out('Current sceneries in game memory:')
+            console_out('Current sceneries in game memory:')
             for i = 0, 1023 do
                 local tempObject = blam.object(get_object(i))
                 if (tempObject and tempObject.type == 6) then
@@ -1430,16 +1482,7 @@ function onCommand(command)
                 end
             end
             glue.writefile('fdumpStore.txt', inspect(objectsStore), 't')
-            console_out('Dumped forge objects state into fdumpStore.txt!!')]]
-            local scenario = blam.scenario(get_tag(0))
-            local vehicleLocationCount = scenario.vehicleLocationCount
-            local vehicleLocationList = scenario.vehicleLocationList
-            cprint('Found ' .. vehicleLocationCount .. ' stock vehicle location points!')
-            for k, v in pairs(vehicleLocationList) do
-                if (v.type ~= 65535) then
-                    cprint(inspect(v))
-                end
-            end
+            console_out('Dumped forge objects state into fdumpStore.txt!!')
             return false
         elseif (forgeCommand == 'freset') then
             execute_script('object_destroy_all')
@@ -1491,11 +1534,17 @@ function loadForgeMap(mapName)
         console_out('Loading forge map...')
         forgeObjects = json.decode(fmapContent)
         if (forgeObjects and #forgeObjects > 0) then
+            -- Clean the previous forge session
             flushForge()
             for k, v in pairs(forgeObjects) do
-                v.tagId = get_tag_id('scen', v.tagPath)
-                v.tagPath = nil
-                spawnLocalObject(v)
+                local tagId = get_tag_id('scen', v.tagPath)
+                if (tagId) then
+                    v.tagId = tagId
+                    v.tagPath = nil
+                    spawnLocalObject(v)
+                else
+                    console_out("ERROR!!!!!!!! At trying to spawn tag: '" .. v.tagPath .. "'")
+                end
             end
             console_out("Succesfully loaded '" .. mapName .. "' fmap!")
         else
@@ -1531,11 +1580,10 @@ function isForgeMap()
     return map == 'forge_island_local' or map == 'forge_island' or map == 'forge_island_beta' or map == 'forge'
 end
 
--- Convert global script into map script
 function onMapLoad()
     alreadyLoaded = true
     if (isForgeMap()) then
-        cprint('We are in boiiiiis!')
+        cprint('Forge is ready!')
 
         -- Forge maps folder creation
         forgeMapsFolder = lfs.currentdir() .. '\\fmaps'
@@ -1545,7 +1593,7 @@ function onMapLoad()
         end
 
         -- updateForgedMapsMenu()
-        
+
         set_callback('tick', 'onTick')
         set_callback('rcon message', 'decodeIncomingData')
         set_callback('command', 'onCommand')
