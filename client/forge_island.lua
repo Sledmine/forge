@@ -141,7 +141,8 @@ local spawnObjects = {
     warthogSpawn = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\warthog spawn\\warthog spawn',
     ghostSpawn = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\ghost spawn\\ghost spawn',
     scorpionSpawn = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\scorpion spawn\\scorpion spawn',
-    cTurretSpawn = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\c turret spawn\\c turret spawn'
+    cTurretSpawn = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\c turret spawn\\c turret spawn',
+    soccerBallSpawn = '[shm]\\halo_4\\scenery\\spawning\\objects\\soccer ball spawn\\soccer ball spawn'
 }
 
 local spawnValues = {
@@ -157,7 +158,8 @@ local spawnValues = {
     warthogSpawn = {type = 1},
     ghostSpawn = {type = 2},
     scorpionSpawn = {type = 3},
-    cTurretSpawn = {type = 4}
+    cTurretSpawn = {type = 4},
+    soccerBallSpawn = {type = 5}
 }
 
 -- Changes default crosshair values

@@ -46,7 +46,7 @@ Every scenery in the scenario palette is going to be taken as a Forge object.
 ### Long way to Forge
 This project is part of something just much bigger than creating a map with Forge for Halo Custom Edition.
 
-- Forged maps are tons way smaller than full maps, so sharing different map layouts for different gametypes means fast on demand maps. But we need a place to keep those forged maps... if you know what i mean ;)
+- Forged maps are tons way smaller than full maps, so sharing different map layouts for different gametypes means fast on demand maps. But we need a place to keep those forged maps... if you know what I mean ;)
 
 - Any other map can implement Forge compatibility... as Gangstarr said: "infinite skills create miracles".
 
@@ -55,16 +55,16 @@ This project is part of something just much bigger than creating a map with Forg
 ### Now.. some comments about the project made by me
 
 - Believe it or not, the hardest part was not object synchronization in a multiplayer game, (pretty much based on the same behaviour of simple HTTP requests).
-- The most frustating part was the dynamic forge menu, i love it and i hate it, that menu is almost fake, Halo CE was not designed at all to handle a menu with that functionality and interaction.
+- The most frustating part was the dynamic forge menu, I love it and I hate it, that menu is almost fake, Halo CE was not designed at all to handle a menu with that functionality and interaction.
 - I really wanted to encourage library implementation, they are useful to avoid repeated code, providing abstraction and bringing some standard functionality to any project.
 - All the dynamic stuff is in deed dynamic but... in a certain range of a static structure, by default Halo CE is pretty much static and some stuff was not supposed to change on the fly.
 - A Forge version compatible with other maps can be done, but we need to make a standard static map structure, to achieve a really universal forge script.
-- Spawn reflection was refactored a couple of times due to bad implementation and at the end the correct structure to handle spawns was simple than i expected, i ended mixing my fake "redux store" with spawn stuff meaning that some objects in the store are just forge objects, but some of those forge objects are spawn points.. or what i called spawn objects.
+- Spawn reflection was refactored a couple of times due to bad implementation and at the end the correct structure to handle spawns was simple than I expected, I ended mixing my fake "redux store" with spawn stuff meaning that some objects in the store are just forge objects, but some of those forge objects are spawn points.. or what I called spawn objects.
 
 # FAQ
 
 ## Why is not possible to see objects that other other players forging? 
 - I wanted to keep the communication system "REST" as possible, sending data about 16 players taking, leaving and rotating objects in real time would be really hard to handle, there are some possibilities of bringing this feature in future versions of Forge. At the end of the day that's just some kind of "visual" feature, create, update and delete is 100% covered now and it's functional.
 
-## Can i run this on a LAN game?
+## Can I run this on a LAN game?
 - The answer is yes.. but actually no. You can indeed run Forge on a LAN game, but just that, if you start a game on LAN you will be able to access to all the Forge features except playing with people, this is because in LAN there is no "server" to ask for object requests, you are the server but you are not able to make rcon replys and keep communication with players connected to your game.
