@@ -1,12 +1,15 @@
 ------------------------------------------------------------------------------
 -- Blam library for Chimera/SAPP Lua scripting.
 -- Authors: Sledmine
--- Version: 3.2
+-- Version: 3.3
 -- Improves memory handle and provides standard functions for scripting
 ------------------------------------------------------------------------------
 --[[
 
 Changelog:
+
+3.3: Added vertex list reading for collision geometries.
+    - Added dataReclaimer for collsions vertices. (15 = VertexL)
 
 3.2: Fixed vehicle list rotation, added new unified API function.
     - Added binding for "execute_script" function from Chimera to SAPP.
@@ -282,7 +285,7 @@ local function dispatchOperation(dataReclaimer, operation, value) -- Decide wich
                 spawnLocationListAddress = spawnLocationListAddress + 0x34
             end
             return spawnLocationList
-        elseif (dataReclaimer[2] == 14) then -- PlayerSLL
+        elseif (dataReclaimer[2] == 14) then -- VehicleSL
             local vehicleCount = read_dword(dataReclaimer[1] - 0x4)
             local vehicleListAddress = read_dword(dataReclaimer[1])
 
@@ -304,6 +307,23 @@ local function dispatchOperation(dataReclaimer, operation, value) -- Decide wich
                 vehicleListAddress = vehicleListAddress + 0x78
             end
             return vehicleList
+        elseif (dataReclaimer[2] == 15) then -- VertexL
+            local vertexCount = read_dword(dataReclaimer[1] - 0x4)
+            local vertexAdressList = read_dword(dataReclaimer[1])
+
+            -- Entities list for spawns
+            local vertexList = {}
+
+            for i = 1, vertexCount do
+                -- Entity creation for every spawn location
+                local vertex = {}
+                vertex.x = read_float(vertexAdressList)
+                vertex.y = read_float(vertexAdressList + 0x4)
+                vertex.z = read_float(vertexAdressList + 0x8)
+                vertexList[i] = vertex
+                vertexAdressList = vertexAdressList + 0x10
+            end
+            return vertexList
         end
     end
 end
@@ -427,6 +447,11 @@ local sceneryStructure = {
     modifierShader = {0x90 + 0xC, 3}
 }
 
+local collisionGeometryStructure = {
+    vertexCount = {0x408, 5},
+    vertexList = {0x40C, 15}
+}
+
 local availableObjectTypes = {
     object = {objectStructure},
     biped = {objectStructure, bipedStructure},
@@ -434,7 +459,8 @@ local availableObjectTypes = {
     weaponHudInterface = {weaponHudInterfaceStructure},
     unicodeStringList = {unicodeStringListStructure},
     scenario = {scenarioStructure},
-    scenery = {sceneryStructure}
+    scenery = {sceneryStructure},
+    collisionGeometry = {collisionGeometryStructure}
 }
 
 local function proccessRequestedObject(desiredObject, address, properties)
@@ -472,41 +498,47 @@ local function proccessRequestedObject(desiredObject, address, properties)
     return outputProperties
 end
 
-local function object(address, properties)
+function luablam.object(address, properties)
     return proccessRequestedObject('object', address, properties)
 end
 
-local function biped(address, properties)
+function luablam.biped(address, properties)
     return proccessRequestedObject('biped', address, properties)
 end
 
-local function uiWidgetDefinition(address, properties)
+function luablam.uiWidgetDefinition(address, properties)
     local tagDataAddress = read_dword(address + 0x14)
     return proccessRequestedObject('uiWidgetDefinition', tagDataAddress, properties)
 end
 
-local function weaponHudInterface(address, properties)
+function luablam.weaponHudInterface(address, properties)
     local tagDataAddress = read_dword(address + 0x14)
     return proccessRequestedObject('weaponHudInterface', tagDataAddress, properties)
 end
 
-local function unicodeStringList(address, properties)
+function luablam.unicodeStringList(address, properties)
     local tagDataAddress = read_dword(address + 0x14)
     return proccessRequestedObject('unicodeStringList', tagDataAddress, properties)
 end
 
-local function scenario(address, properties)
+function luablam.scenario(address, properties)
     local tagDataAddress = read_dword(address + 0x14)
     return proccessRequestedObject('scenario', tagDataAddress, properties)
 end
 
-local function scenery(address, properties)
+function luablam.scenery(address, properties)
     local tagDataAddress = read_dword(address + 0x14)
     return proccessRequestedObject('scenery', tagDataAddress, properties)
 end
 
+
+function luablam.collisionGeometry(address, properties)
+    local tagDataAddress = read_dword(address + 0x14)
+    return proccessRequestedObject('collisionGeometry', tagDataAddress, properties)
+end
+
 -- Credits to Devieth and IceCrow14
-local function playerIsLookingAt(target, sensitivity, zOffset)
+function luablam.playerIsLookingAt(target, sensitivity, zOffset)
     local baseline_sensitivity = 0.012 -- Minimum for distance scaling.
     local function read_vector3d(Address)
         return read_float(Address), read_float(Address + 0x4), read_float(Address + 0x8)
@@ -543,13 +575,7 @@ local function playerIsLookingAt(target, sensitivity, zOffset)
     return false
 end
 
-luablam.biped = biped
-luablam.object = object
-luablam.uiWidgetDefinition = uiWidgetDefinition
-luablam.weaponHudInterface = weaponHudInterface
-luablam.unicodeStringList = unicodeStringList
-luablam.scenario = scenario
-luablam.scenery = scenery
-luablam.playerIsLookingAt = playerIsLookingAt
-
+--[[local function playerIsLookingAt(target)
+    return true
+end]]
 return luablam

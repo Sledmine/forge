@@ -1,8 +1,7 @@
 
---Lua extended vocabulary of tools.
---Written by Cosmin Apreutesei. Public domain.
-
-if not ... then require'glue_test'; return end
+-- Lua extended vocabulary of tools.
+-- Written by Cosmin Apreutesei. Public domain.
+-- Expanded by Sledmine.
 
 local glue = {}
 
