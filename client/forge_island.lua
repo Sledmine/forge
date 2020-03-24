@@ -332,7 +332,12 @@ function forgeReducer(state, action)
             mapsMenu = {
                 mapsList = {},
                 currentMapsList = {},
-                currentPage = 1
+                currentPage = 1,
+                sidebar = {
+                    height = constants.maximumSidebarSize,
+                    position = 0,
+                    slice = 0
+                }
             },
             forgeMenu = {
                 desiredElement = 'root',
@@ -356,16 +361,29 @@ function forgeReducer(state, action)
     if (action.type == 'UPDATE_MAP_LIST') then
         state.mapsMenu.mapsList = action.payload.mapsList
         state.mapsMenu.currentMapsList = glue.chunks(state.mapsMenu.mapsList, 8)
+        if (#state.mapsMenu.currentMapsList > 1) then
+            local sidebar_height = glue.floor(constants.maximumSidebarSize / #state.mapsMenu.currentMapsList)
+            if (sidebar_height < constants.minimumSidebarSize) then
+                sidebar_height = constants.minimumSidebarSize
+            end
+            state.mapsMenu.sidebar.height = sidebar_height
+            state.mapsMenu.sidebar.position = 0
+            state.mapsMenu.sidebar.slice = glue.round((constants.maximumSidebarSize - sidebar_height) / (#state.mapsMenu.currentMapsList - 1))
+        end
         cprint(inspect(state.mapsMenu))
         return state
     elseif (action.type == 'INCREMENT_MAPS_MENU_PAGE') then
         if (state.mapsMenu.currentPage < #state.mapsMenu.currentMapsList) then
             state.mapsMenu.currentPage = state.mapsMenu.currentPage + 1
+            state.mapsMenu.sidebar.height = state.mapsMenu.sidebar.height + state.mapsMenu.sidebar.slice
+            state.mapsMenu.sidebar.position = state.mapsMenu.sidebar.position + state.mapsMenu.sidebar.slice
         end
         return state
     elseif (action.type == 'DECREMENT_MAPS_MENU_PAGE') then
         if (state.mapsMenu.currentPage > 1) then
             state.mapsMenu.currentPage = state.mapsMenu.currentPage - 1
+            state.mapsMenu.sidebar.height = state.mapsMenu.sidebar.height - state.mapsMenu.sidebar.slice
+            state.mapsMenu.sidebar.position = state.mapsMenu.sidebar.position - state.mapsMenu.sidebar.slice
         end
         return state
     elseif (action.type == 'UPDATE_FORGE_OBJECTS_LIST') then
@@ -530,6 +548,14 @@ function onMapLoad()
                         forgeState.currentMap.version,
                         forgeState.currentMap.description
                     }
+                }
+            )
+
+            blam.uiWidgetDefinition(
+                get_tag('ui_widget_definition', constants.widgetDefinitions.sidebar),
+                {
+                    height = forgeState.mapsMenu.sidebar.height,
+                    boundsY = forgeState.mapsMenu.sidebar.position
                 }
             )
         end

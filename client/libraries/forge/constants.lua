@@ -9,6 +9,8 @@ local constants = {}
 
 constants.maximumProgressBarSize = 171
 constants.minimumZSpawnPoint = -18.69
+constants.maximumSidebarSize = 249
+constants.minimumSidebarSize = 40
 
 -- Request types definition
 constants.actionTypes = {
@@ -45,7 +47,8 @@ constants.widgetDefinitions = {
     forgeMenu = 'ui\\shell\\error\\error_nonmodal_fullscreen',
     forgeList = '[shm]\\halo_4\\ui\\shell\\forge_menu\\category_menu\\category_list',
     mapsList = '[shm]\\halo_4\\ui\\shell\\pause_game\\forge_options_menu\\maps_list\\maps_list',
-    errorNonmodalFullscreen = 'ui\\shell\\error\\error_nonmodal_fullscreen'
+    errorNonmodalFullscreen = 'ui\\shell\\error\\error_nonmodal_fullscreen',
+    sidebar = '[shm]\\halo_4\\ui\\shell\\pause_game\\forge_options_menu\\forge_map_list_sidebar_bar'
 }
 
 -- Spawn objects definitions
