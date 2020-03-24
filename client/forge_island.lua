@@ -337,7 +337,8 @@ function forgeReducer(state, action)
                 sidebar = {
                     height = constants.maximumSidebarSize,
                     position = 0,
-                    slice = 0
+                    slice = 0,
+                    overflow = 0
                 }
             },
             forgeMenu = {
@@ -362,31 +363,49 @@ function forgeReducer(state, action)
     if (action.type == 'UPDATE_MAP_LIST') then
         state.mapsMenu.mapsList = action.payload.mapsList
         state.mapsMenu.currentMapsList = glue.chunks(state.mapsMenu.mapsList, 8)
-        if (#state.mapsMenu.currentMapsList > 1) then
-            local sidebarHeight = glue.floor(constants.maximumSidebarSize / #state.mapsMenu.currentMapsList)
+        local totalPages = #state.mapsMenu.currentMapsList
+        if (totalPages > 1) then
+            local sidebarHeight = glue.floor(constants.maximumSidebarSize / totalPages)
             if (sidebarHeight < constants.minimumSidebarSize) then
                 sidebarHeight = constants.minimumSidebarSize
             end
-            state.mapsMenu.sidebar.height = sidebarHeight
-            state.mapsMenu.sidebar.position = 0
-            state.mapsMenu.sidebar.slice =
-                glue.round((constants.maximumSidebarSize - sidebarHeight) / (#state.mapsMenu.currentMapsList - 1))
+            local spaceLeft = constants.maximumSidebarSize - sidebarHeight
+            state.mapsMenu.sidebar.slice = glue.round(spaceLeft / (totalPages - 1))
+            local fullSize = sidebarHeight + (state.mapsMenu.sidebar.slice * (totalPages - 1))
+            state.mapsMenu.sidebar.overflow = fullSize - constants.maximumSidebarSize
+            state.mapsMenu.sidebar.height = sidebarHeight - state.mapsMenu.sidebar.overflow
         end
         cprint(inspect(state.mapsMenu))
         return state
     elseif (action.type == 'INCREMENT_MAPS_MENU_PAGE') then
         if (state.mapsMenu.currentPage < #state.mapsMenu.currentMapsList) then
             state.mapsMenu.currentPage = state.mapsMenu.currentPage + 1
-            state.mapsMenu.sidebar.height = state.mapsMenu.sidebar.height + state.mapsMenu.sidebar.slice
-            state.mapsMenu.sidebar.position = state.mapsMenu.sidebar.position + state.mapsMenu.sidebar.slice
+            local newHeight = state.mapsMenu.sidebar.height + state.mapsMenu.sidebar.slice
+            local newPosition = state.mapsMenu.sidebar.position + state.mapsMenu.sidebar.slice
+            if (state.mapsMenu.currentPage == 3) then
+                newHeight = newHeight + state.mapsMenu.sidebar.overflow
+            end
+            if (state.mapsMenu.currentPage == #state.mapsMenu.currentMapsList - 1) then
+                newHeight = newHeight - state.mapsMenu.sidebar.overflow
+            end
+            state.mapsMenu.sidebar.height = newHeight
+            state.mapsMenu.sidebar.position = newPosition
         end
         cprint(state.mapsMenu.currentPage)
         return state
     elseif (action.type == 'DECREMENT_MAPS_MENU_PAGE') then
         if (state.mapsMenu.currentPage > 1) then
             state.mapsMenu.currentPage = state.mapsMenu.currentPage - 1
-            state.mapsMenu.sidebar.height = state.mapsMenu.sidebar.height - state.mapsMenu.sidebar.slice
-            state.mapsMenu.sidebar.position = state.mapsMenu.sidebar.position - state.mapsMenu.sidebar.slice
+            local newHeight = state.mapsMenu.sidebar.height - state.mapsMenu.sidebar.slice
+            local newPosition = state.mapsMenu.sidebar.position - state.mapsMenu.sidebar.slice
+            if (state.mapsMenu.currentPage == 2) then
+                newHeight = newHeight - state.mapsMenu.sidebar.overflow
+            end
+            if (state.mapsMenu.currentPage == #state.mapsMenu.currentMapsList - 2) then
+                newHeight = newHeight + state.mapsMenu.sidebar.overflow
+            end
+            state.mapsMenu.sidebar.height = newHeight
+            state.mapsMenu.sidebar.position = newPosition
         end
         cprint(state.mapsMenu.currentPage)
         return state
