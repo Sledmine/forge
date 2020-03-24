@@ -233,7 +233,6 @@ function onTick()
     if (player) then
         player.isMonitor = isPlayerMonitor()
         if (player.isMonitor) then
-
             playerStore:dispatch({type = 'UPDATE_OFFSETS', payload = {player = player}})
 
             -- Open Forge menu by pressing 'Q'
@@ -362,13 +361,14 @@ function forgeReducer(state, action)
         state.mapsMenu.mapsList = action.payload.mapsList
         state.mapsMenu.currentMapsList = glue.chunks(state.mapsMenu.mapsList, 8)
         if (#state.mapsMenu.currentMapsList > 1) then
-            local sidebar_height = glue.floor(constants.maximumSidebarSize / #state.mapsMenu.currentMapsList)
-            if (sidebar_height < constants.minimumSidebarSize) then
-                sidebar_height = constants.minimumSidebarSize
+            local sidebarHeight = glue.floor(constants.maximumSidebarSize / #state.mapsMenu.currentMapsList)
+            if (sidebarHeight < constants.minimumSidebarSize) then
+                sidebarHeight = constants.minimumSidebarSize
             end
-            state.mapsMenu.sidebar.height = sidebar_height
+            state.mapsMenu.sidebar.height = sidebarHeight
             state.mapsMenu.sidebar.position = 0
-            state.mapsMenu.sidebar.slice = glue.round((constants.maximumSidebarSize - sidebar_height) / (#state.mapsMenu.currentMapsList - 1))
+            state.mapsMenu.sidebar.slice =
+                glue.round((constants.maximumSidebarSize - sidebarHeight) / (#state.mapsMenu.currentMapsList - 1))
         end
         cprint(inspect(state.mapsMenu))
         return state
@@ -534,6 +534,15 @@ function onMapLoad()
             -- Wich ui widget will be updated and how many items it will show
             menu.update(constants.widgetDefinitions.mapsList, #currentMapsList)
 
+            -- Refresh fake sidebar in maps menu
+            blam.uiWidgetDefinition(
+                get_tag('ui_widget_definition', constants.widgetDefinitions.sidebar),
+                {
+                    height = forgeState.mapsMenu.sidebar.height,
+                    boundsY = forgeState.mapsMenu.sidebar.position
+                }
+            )
+
             -- Refresh current forge map information
             blam.unicodeStringList(
                 get_tag('unicode_string_list', constants.unicodeStrings.pauseGameStrings),
@@ -548,14 +557,6 @@ function onMapLoad()
                         forgeState.currentMap.version,
                         forgeState.currentMap.description
                     }
-                }
-            )
-
-            blam.uiWidgetDefinition(
-                get_tag('ui_widget_definition', constants.widgetDefinitions.sidebar),
-                {
-                    height = forgeState.mapsMenu.sidebar.height,
-                    boundsY = forgeState.mapsMenu.sidebar.position
                 }
             )
         end
