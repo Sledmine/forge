@@ -203,7 +203,7 @@ function playerReducer(state, action)
                 cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
         end
         return state
-    elseif (action.type == 'DETTACH_OBJECT') then -- REMINDER TO SEND REQUEST IF NEEDED
+    elseif (action.type == 'DETACH_OBJECT') then -- REMINDER TO SEND REQUEST IF NEEDED
         state.attachedObject = nil
         return state
     elseif (action.type == 'DESTROY_OBJECT') then -- REMINDER TO SEND REQUEST IF NEEDED
@@ -253,6 +253,8 @@ function onTick()
                 )
                 if (player.jumpHold) then
                     playerStore:dispatch({type = 'DESTROY_OBJECT'})
+                elseif (player.weaponSTH) then
+                    playerStore:dispatch({type = 'DETACH_OBJECT'})
                 end
             else
                 setCrosshairState(0)
@@ -389,6 +391,7 @@ function forgeReducer(state, action)
             state.mapsMenu.sidebar.height = newHeight
             state.mapsMenu.sidebar.position = newPosition
         end
+        cprint(state.mapsMenu.currentPage)
         return state
     elseif (action.type == 'DECREMENT_MAPS_MENU_PAGE') then
         if (state.mapsMenu.currentPage > 1) then
@@ -404,6 +407,7 @@ function forgeReducer(state, action)
             state.mapsMenu.sidebar.height = newHeight
             state.mapsMenu.sidebar.position = newPosition
         end
+        cprint(state.mapsMenu.currentPage)
         return state
     elseif (action.type == 'UPDATE_FORGE_OBJECTS_LIST') then
         state.forgeMenu = action.payload.forgeMenu
@@ -444,8 +448,7 @@ function forgeReducer(state, action)
         if (action.type == '@@lua-redux/INIT') then
             cprint('Default state has been created!')
         else
-            cprint('WARNING!!! The dispatched event does not exist!', 'warning')
-            cprint(action.type, 'category')
+            cprint('ERROR!!! The dispatched event does not exist:', 'error')
         end
         return state
     end
