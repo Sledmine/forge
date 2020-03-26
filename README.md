@@ -44,6 +44,7 @@ Every scenery in the scenario palette is going to be taken as a Forge object.
 - Object Placement Grid
 - Map Voting Menu
 - Precise Looking At Object Detection
+- Automatic Tag Detection
 
 ### Long way to Forge
 This project is part of something just much bigger than creating a map with Forge for Halo Custom Edition.

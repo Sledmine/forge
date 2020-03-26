@@ -14,7 +14,7 @@ local glue = require 'glue'
 local redux = require 'lua-redux'
 
 -- Specific Halo Custom Edition libraries
-local blam = require 'luablam'
+local blam = require 'lua-blam'
 local maethrillian = require 'maethrillian'
 local hfs = require 'hcefs'
 
@@ -24,6 +24,7 @@ local hook = require 'forge.hook'
 local constants = require 'forge.constants'
 local menu = require 'forge.menu'
 
+menu.
 -- Default debug mode state
 debugMode = false
 

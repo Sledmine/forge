@@ -5,10 +5,12 @@
 -- Menus handler
 ------------------------------------------------------------------------------
 
-local blam = require 'luablam'
+local blam = require 'lua-blam'
 
 local menu = {}
 
+---@param widgetPath string
+---@param widgetCount number
 function menu.update(widgetPath, widgetCount)
     blam.uiWidgetDefinition(
         get_tag('ui_widget_definition', widgetPath),
@@ -20,7 +22,8 @@ function menu.update(widgetPath, widgetCount)
     )
 end
 
-function menu.close(widgetPath, widgetCount)
+---@param widgetPath string
+function menu.close(widgetPath)
     blam.uiWidgetDefinition(
         get_tag('ui_widget_definition', widgetPath),
         {
@@ -30,7 +33,8 @@ function menu.close(widgetPath, widgetCount)
     )
 end
 
-function menu.stopClose(widgetPath, widgetCount)
+---@param widgetPath string
+function menu.stopClose(widgetPath)
     blam.uiWidgetDefinition(
         get_tag('ui_widget_definition', widgetPath),
         {
@@ -40,6 +44,7 @@ function menu.stopClose(widgetPath, widgetCount)
     )
 end
 
+---@param widgetPath string
 function menu.stopUpdate(widgetPath)
     blam.uiWidgetDefinition(
         get_tag('ui_widget_definition', widgetPath),

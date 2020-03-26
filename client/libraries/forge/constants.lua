@@ -44,7 +44,7 @@ constants.unicodeStrings = {
 -- UI widget definitions
 constants.widgetDefinitions = {
     amountBar = '[shm]\\halo_4\\ui\\shell\\forge_menu\\budget_dialog\\budget_progress_bar',
-    forgeMenu = 'ui\\shell\\error\\error_nonmodal_fullscreen',
+    forgeMenu = '[shm]\\halo_4\\ui\\shell\\forge_menu\\forge_menu',
     forgeList = '[shm]\\halo_4\\ui\\shell\\forge_menu\\category_menu\\category_list',
     mapsList = '[shm]\\halo_4\\ui\\shell\\pause_game\\forge_options_menu\\maps_list\\maps_list',
     errorNonmodalFullscreen = 'ui\\shell\\error\\error_nonmodal_fullscreen',
