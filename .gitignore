@@ -41,3 +41,5 @@ luac.out
 
 #  Symbolic links
 *.symlink
+
+client/libraries/*.lua
