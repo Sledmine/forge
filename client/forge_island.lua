@@ -24,12 +24,14 @@ local hook = require 'forge.hook'
 local constants = require 'forge.constants'
 local menu = require 'forge.menu'
 
-menu.
 -- Default debug mode state
 debugMode = false
 
 -- Internal functions
+
 -- Super function to keep compatibility with SAPP and printing debug messages if needed
+---@param message string
+---@param color string  | "'category'" | "'warning'" | "'error'" | "'success'"
 local function cprint(message, color)
     if (debugMode) then
         --console_out(message)
@@ -47,6 +49,11 @@ local function cprint(message, color)
     end
 end
 
+-- Super function for debug printing and accurate spawning
+---@param type string | "'scen'" | '"bipd"'
+---@param tagPath string
+---@param x number @param y number @param Z number
+---@return number | nil objectId
 local function cspawn_object(type, tagPath, x, y, z)
     cprint(' -> [ Object Spawning ]')
     cprint('Type:', 'category')
@@ -54,6 +61,12 @@ local function cspawn_object(type, tagPath, x, y, z)
     cprint('Tag  Path:', 'category')
     cprint(tagPath)
     cprint('Trying to spawn object...', 'warning')
+    -- Prevent objects from phantom spawning!
+    -- local variables are accesed first than parameter variables
+    local z = z
+    if (z < constants.minimumZSpawnPoint) then
+        z = constants.minimumZSpawnPoint
+    end
     local objectId = spawn_object(type, tagPath, x, y, z)
     if (objectId) then
         cprint('-> Object succesfully spawned!!!', 'success')
@@ -63,6 +76,7 @@ local function cspawn_object(type, tagPath, x, y, z)
     return nil
 end
 
+---@return table objectsList
 local function get_objects()
     local objectsList = {}
     for i = 0, 1023 do
@@ -98,6 +112,7 @@ local function swapBiped()
 end
 
 -- Changes default crosshair values
+---@param state number
 local function setCrosshairState(state)
     local forgeCrosshairAddress = get_tag('weapon_hud_interface', constants.weaponHudInterfaces.forgeCrosshair)
     local forgeCrosshair = blam.weaponHudInterface(forgeCrosshairAddress)
@@ -155,6 +170,7 @@ local function setCrosshairState(state)
 end
 
 -- Check if current player is using a monitor biped
+---@return boolean
 local function isPlayerMonitor()
     local tempObject = blam.object(get_dynamic_player())
     if (tempObject and tempObject.tagId == get_tag_id('bipd', constants.bipeds.monitor)) then
@@ -174,6 +190,7 @@ local blockDistance = true
 set_callback('map postload', 'onMapLoad') -- Thanks Jerry to add this callback!
 set_callback('unload', 'onScriptUnload')
 
+---@return boolean
 function validateMapName()
     return map == 'forge_island_local' or map == 'forge_island' or map == 'forge_island_beta'
 end
@@ -226,12 +243,26 @@ function playerReducer(state, action)
     end
 end
 
+test = 5
+
 -- Update internal state along the time
 function onTick()
     -- Get player object
     local player = blam.biped(get_dynamic_player())
     local playerState = playerStore:getState()
     if (player) then
+
+        for i = 0, get_tags_count() - 1 do
+            local type = get_tag_type(i)
+            if (type == 'antr') then
+                if (get_tag_path(i):find('rifle')) then
+                    local modelAnim = blam.modelAnimations(get_tag(i))
+                    modelAnim.firstPersonWeaponAnimationList[14] = test
+                    blam.modelAnimations(get_tag(i), modelAnim)
+                end
+            end
+        end
+
         player.isMonitor = isPlayerMonitor()
         if (player.isMonitor) then
             playerStore:dispatch({type = 'UPDATE_OFFSETS', payload = {player = player}})
@@ -269,6 +300,16 @@ function onTick()
             -- Convert into monitor
             if (player.flashlightKey) then
                 swapBiped()
+            end
+
+            
+            if (player.meleeKey) then
+                console_out('melee')
+                if (test == 4) then
+                    test = 5
+                else
+                    test = 4
+                end
             end
         end
     end
@@ -325,6 +366,20 @@ function onTick()
 end
 
 function objectsReducer()
+    -- Create default state if it does not exist
+    if (not state) then
+        state = {
+            distance = 5,
+            attachedObject = nil,
+            xOffset = 0,
+            yOffset = 0,
+            zOffset = 0
+        }
+    end
+    if (true) then
+    else
+        return state
+    end
 end
 
 function forgeReducer(state, action)
@@ -460,6 +515,17 @@ function onMapLoad()
     playerStore = redux.createStore(playerReducer)
     forgeStore = redux.createStore(forgeReducer) -- Isolated store for all the Forge 'app' data
     objectsStore = redux.createStore(objectsReducer) -- Unique store for all the Forge Objects
+
+    for i = 0, get_tags_count() - 1 do
+        local type = get_tag_type(i)
+        if (type == 'antr') then
+            if (get_tag_path(i):find('rifle')) then
+                console_out(get_tag_path(i))
+                local modelAnim = blam.modelAnimations(get_tag(i))
+                console_out(inspect(modelAnim))
+            end
+        end
+    end
 
     local forgeState = forgeStore:getState()
     local scenario = blam.scenario(get_tag(0))

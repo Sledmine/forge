@@ -2,16 +2,16 @@
 Halo Custom Edition Forge system using Chimera and SAPP
 
 ### What is it?
-Forge is a project that aims to add Forge-like system from posterior sequels of the game to any Halo Custom Edition map, by now our Forge Island map is the only one compatible with the project.
+Forge is a project that aims to add Forge-like system from posterior sequels of the Halo saga into any Halo Custom Edition map!... BY NOW Forge is only compatible with the Forge Island map, there are plans to add compatibility with Forge World map in the future!
 
 ### How was it created?
 This project was made with Chimera Lua Scripting on the client side and SAPP Lua Scripting on the server side, allowing us to share data via rcon messages and intercept any message to execute client side or server side actions.
 
-Forge implements LuaBlam giving easy memory access and ensuring API compatibility with SAPP, plus other libraries to give the best possible experience.
+Forge implements [lua-blam](https://github.com/Sledmine/lua-blam) giving easy memory access and ensuring API compatibility with SAPP, plus other libraries to give the most stable experience, avoiding random crashes as possible and ensuring project maintainability.
 
-Using semi-REST architecture as the base of this project we are able to keep performance, data persistence and functionality along all the entire development, every request for update, deletion and creation is proccessed just once, only when needed in a single rcon message with specific properties.
+This project is based in some type of REST architecture, meaning that is made to keep data persistence and functionality along the entire development, every request proccess for updating, deleting and spawning is proccessed just once, only when needed, in a single rcon message with specific and accurate properties.
 
-It reimplements some concepts from modern app libraries like the store from react-redux, giving behavior and operability to the project.
+Forge reimplements some concepts from modern app libraries like the store from  [redux-js](https://redux.js.org), giving security, behavior, performance and operability to the project.
 
 ### Highlights
 - Provides a store for all the Forge objects created on the server meaning the store is reusable, when a player joins mid game all the objects in the store can be pushed to the new player and sync everything created by other players on the server.
@@ -35,12 +35,17 @@ Every scenery in the scenario palette is going to be taken as a Forge object.
   - Forged maps file support, saving and loading.
   - Spawn reflection system.
 
+### State Structure
+All the state handled by Forge on the background is respresented in this diagram, mapped by type, feature and functionality:
+
+![alt text](https://raw.githubusercontent.com/Sledmine/Forge/master/diagrams/Forge%20State%20Diagram.png)
+
 ### In progress
 - Forge permission system, deny forge commands and features for specific players.
 - Better dynamic object selection.
 
 ### To do
-- Semi-gravity System
+- Collision BSP System
 - Object Placement Grid
 - Map Voting Menu
 - Precise Looking At Object Detection
@@ -49,16 +54,17 @@ Every scenery in the scenario palette is going to be taken as a Forge object.
 ### Long way to Forge
 This project is part of something just much bigger than creating a map with Forge for Halo Custom Edition.
 
-- Forged maps are tons way smaller than full maps, so sharing different map layouts for different gametypes means fast on demand maps. But we need a place to keep those forged maps... if you know what I mean ;)
+- Forged maps are tons way smaller than full maps, so sharing different map layouts for different gametypes means fast on demand maps. But we need a place, cof cof, workshop... to keep those forged maps. If you know what I mean ;)
 
-- Any other map can implement Forge compatibility... as Gangstarr said: "infinite skills create miracles".
+- Any other map can implement Forge compatibility with the correct adjustments, we are working into a way for providing base files for adding Forge to any map... as Gangstarr said: "infinite skills create miracles".
 
 - Forge is now an open source project for anything your mind can create, with Forge came different concepts and libraries to help you to expand Halo Custom Edition (just took us like 15 years to reach this point of content lol).
 
 ### Libraries used in the project
 
+- LuaBlam: https://github.com/Sledmine/lua-blam
 - Redux: https://github.com/piperswe/lua-redux
-- Glue: https://github.com/Sledmine/Glue
+- Glue: https://github.com/Sledmine/glue
 - Inspect: https://github.com/kikito/inspect.lua
 - JSON: https://github.com/rxi/json.lua
 - Compat53: https://github.com/keplerproject/lua-compat-5.3
