@@ -11,7 +11,7 @@ Forge implements [lua-blam](https://github.com/Sledmine/lua-blam) giving easy me
 
 This project is based in some type of REST architecture, meaning that is made to keep data persistence and functionality along the entire development, every request proccess for updating, deleting and spawning is proccessed just once, only when needed, in a single rcon message with specific and accurate properties.
 
-Forge reimplements some concepts from modern app libraries like the store from  [redux-js](https://redux.js.org), giving security, behavior, performance and operability to the project.
+Forge reimplements some concepts from modern app libraries like the store from [redux-js](https://redux.js.org) using [lua-redux](https://github.com/piperswe/lua-redux), giving security, behavior, performance and operability to the project.
 
 ### Highlights
 - Provides a store for all the Forge objects created on the server meaning the store is reusable, when a player joins mid game all the objects in the store can be pushed to the new player and sync everything created by other players on the server.
