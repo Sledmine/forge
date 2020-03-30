@@ -36,7 +36,7 @@ Every scenery in the scenario palette is going to be taken as a Forge object.
   - Spawn reflection system.
 
 ### State Structure
-All the state handled by Forge on the background is respresented in this diagram, mapped by type, feature and functionality:
+All the state handled on the background by Forge is respresented in this diagram, mapped by type, feature and functionality:
 
 ![alt text](https://raw.githubusercontent.com/Sledmine/Forge/master/diagrams/Forge%20State%20Diagram.png)
 
