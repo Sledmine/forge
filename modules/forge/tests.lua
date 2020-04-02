@@ -5,9 +5,7 @@
 -- Couple of tests for Forge functionality
 ------------------------------------------------------------------------------
 
-local glue = require 'glue'
 local lu = require 'luaunit'
-local maethrillian = require 'maethrillian'
 local constants = require 'forge.constants'
 
 -- Mocked function to redirect print calls to test print
