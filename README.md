@@ -68,3 +68,4 @@ This project is part of something just much bigger than creating a map with Forg
 - Inspect: https://github.com/kikito/inspect.lua
 - JSON: https://github.com/rxi/json.lua
 - Compat53: https://github.com/keplerproject/lua-compat-5.3
+- LuaUnit: https://github.com/bluebird75/luaunit
