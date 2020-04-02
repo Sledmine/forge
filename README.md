@@ -2,16 +2,16 @@
 Halo Custom Edition Forge system using Chimera and SAPP
 
 ### What is it?
-Forge is a project that aims to add Forge-like system from posterior sequels of the Halo saga into any Halo Custom Edition map!... BY NOW Forge is only compatible with the Forge Island map, there are plans to add compatibility with Forge World map in the future!
+Forge is a project that aims to add Forge-like system from posterior sequels of the Halo saga into any Halo Custom Edition map!... **BY NOW** Forge is only compatible with the Forge Island map, there are plans to add compatibility with Forge World map in the future!
 
 ### How was it created?
 This project was made with Chimera Lua Scripting on the client side and SAPP Lua Scripting on the server side, allowing us to share data via rcon messages and intercept any message to execute client side or server side actions.
 
 Forge implements [lua-blam](https://github.com/Sledmine/lua-blam) giving easy memory access and ensuring API compatibility with SAPP, plus other libraries to give the most stable experience, avoiding random crashes as possible and ensuring project maintainability.
 
-This project is based in some type of REST architecture, meaning that is made to keep data persistence and functionality along the entire development, every request proccess for updating, deleting and spawning is proccessed just once, only when needed, in a single rcon message with specific and accurate properties.
+This project is based in some type of REST architecture, meaning that is made to keep data persistence and functionality along the entire development, every request proccess for updating, deleting and spawning is proccessed just once, only when needed, in a single rcon message with specific properties.
 
-Forge reimplements some concepts from modern app libraries like the store from [redux-js](https://redux.js.org) using [lua-redux](https://github.com/piperswe/lua-redux), giving security, behavior, performance and operability to the project.
+Forge reimplements some concepts from modern app libraries like the store from [redux-js](https://redux.js.org) using [lua-redux](https://github.com/piperswe/lua-redux), giving security, performance and operability to the project.
 
 ### Highlights
 - Provides a store for all the Forge objects created on the server meaning the store is reusable, when a player joins mid game all the objects in the store can be pushed to the new player and sync everything created by other players on the server.
@@ -28,12 +28,13 @@ There is a simple built in system to associate players with a specific biped, us
 If you are looking at a certain object this one becomes "highlighted" from the rest of the objects.
 
 - **Dynamic Forge objects addition**:
-Every scenery in the scenario palette is going to be taken as a Forge object.
+Every scenery in the scenario palette is taken as a Forge object and stored in a scenery database.
 
-- **Dynamic forge menu**:
-  - Semi-CRUD for any forge object.
-  - Forged maps file support, saving and loading.
-  - Spawn reflection system.
+- **Dynamic Forge menu**: Every scenery stored in the scenery database is split into categories and dynamically loaded in the Forge objects menu.
+
+- Create, update and delete for any Forge object.
+- Forged maps file support, saving and loading.
+- Spawn reflection system.
 
 ### State Structure
 All the state handled on the background by Forge is respresented in this diagram, mapped by type, feature and functionality:
@@ -41,7 +42,7 @@ All the state handled on the background by Forge is respresented in this diagram
 ![alt text](https://raw.githubusercontent.com/Sledmine/Forge/master/diagrams/Forge%20State%20Diagram.png)
 
 ### In progress
-- Forge permission system, deny forge commands and features for specific players.
+- Forge permission system, deny Forge requets and features for specific players.
 - Better dynamic object selection.
 
 ### To do
