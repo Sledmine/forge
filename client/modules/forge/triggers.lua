@@ -2,7 +2,7 @@
 -- Forge Triggers
 -- Author: Sledmine
 -- Version: 1.0
--- Menus handler
+-- Menu triggers
 ------------------------------------------------------------------------------
 
 local triggers = {}

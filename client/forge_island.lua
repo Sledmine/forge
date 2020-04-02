@@ -23,6 +23,8 @@ local triggers = require 'forge.triggers'
 local hook = require 'forge.hook'
 local constants = require 'forge.constants'
 local menu = require 'forge.menu'
+local features = require 'forge.features'
+local tests = require 'forge.tests'
 
 -- Default debug mode state
 debugMode = false
@@ -31,8 +33,8 @@ debugMode = false
 
 -- Super function to keep compatibility with SAPP and printing debug messages if needed
 ---@param message string
----@param color string  | "'category'" | "'warning'" | "'error'" | "'success'"
-local function cprint(message, color)
+---@param color string | "'category'" | "'warning'" | "'error'" | "'success'"
+function cprint(message, color)
     if (debugMode) then
         --console_out(message)
         if (color == 'category') then
@@ -54,7 +56,7 @@ end
 ---@param tagPath string
 ---@param x number @param y number @param Z number
 ---@return number | nil objectId
-local function cspawn_object(type, tagPath, x, y, z)
+function cspawn_object(type, tagPath, x, y, z)
     cprint(' -> [ Object Spawning ]')
     cprint('Type:', 'category')
     cprint(type)
@@ -69,114 +71,11 @@ local function cspawn_object(type, tagPath, x, y, z)
     end
     local objectId = spawn_object(type, tagPath, x, y, z)
     if (objectId) then
-        cprint('-> Object succesfully spawned!!!', 'success')
+        cprint('-> Object: ' ..  objectId..' succesfully spawned!!!', 'success')
         return objectId
     end
     cprint('Error at trying to spawn object!!!!', 'error')
     return nil
-end
-
----@return table objectsList
-local function get_objects()
-    local objectsList = {}
-    for i = 0, 1023 do
-        if (get_object(i)) then
-            objectsList[#objectsList + 1] = i
-        end
-    end
-    return objectsList
-end
-
--- Mod functions
-local function swapBiped()
-    if (server_type == 'local') then
-        -- Needs kinda refactoring, probably splitting this into LuaBlam
-        local globalsTagAddress = get_tag('matg', 'globals\\globals')
-        local globalsTagData = read_dword(globalsTagAddress + 0x14)
-        local globalsTagMultiplayerBipedTagIdAddress = globalsTagData + 0x9BC + 0xC
-        local currentGlobalsBipedTagId = read_dword(globalsTagMultiplayerBipedTagIdAddress)
-        cprint('Globals Biped ID: ' .. currentGlobalsBipedTagId)
-        for i = 0, 1023 do
-            local tempObject = blam.object(get_object(i))
-            if (tempObject and tempObject.tagId == get_tag_id('bipd', constants.bipeds.spartan)) then
-                write_dword(globalsTagMultiplayerBipedTagIdAddress, get_tag_id('bipd', constants.bipeds.monitor))
-                delete_object(i)
-            elseif (tempObject and tempObject.tagId == get_tag_id('bipd', constants.bipeds.monitor)) then
-                write_dword(globalsTagMultiplayerBipedTagIdAddress, get_tag_id('bipd', constants.bipeds.spartan))
-                delete_object(i)
-            end
-        end
-    else
-        execute_script('rcon forge #b')
-    end
-end
-
--- Changes default crosshair values
----@param state number
-local function setCrosshairState(state)
-    local forgeCrosshairAddress = get_tag('weapon_hud_interface', constants.weaponHudInterfaces.forgeCrosshair)
-    local forgeCrosshair = blam.weaponHudInterface(forgeCrosshairAddress)
-    if (state == 0) then
-        blam.weaponHudInterface(
-            forgeCrosshairAddress,
-            {
-                defaultRed = 64,
-                defaultGreen = 169,
-                defaultBlue = 255,
-                sequenceIndex = 1
-            }
-        )
-    elseif (state == 1) then
-        blam.weaponHudInterface(
-            forgeCrosshairAddress,
-            {
-                defaultRed = 0,
-                defaultGreen = 255,
-                defaultBlue = 0,
-                sequenceIndex = 2
-            }
-        )
-    elseif (state == 2) then
-        blam.weaponHudInterface(
-            forgeCrosshairAddress,
-            {
-                defaultRed = 0,
-                defaultGreen = 255,
-                defaultBlue = 0,
-                sequenceIndex = 3
-            }
-        )
-    elseif (state == 3) then
-        blam.weaponHudInterface(
-            forgeCrosshairAddress,
-            {
-                defaultRed = 255,
-                defaultGreen = 0,
-                defaultBlue = 0,
-                sequenceIndex = 4
-            }
-        )
-    else
-        blam.weaponHudInterface(
-            forgeCrosshairAddress,
-            {
-                defaultRed = 64,
-                defaultGreen = 169,
-                defaultBlue = 255,
-                sequenceIndex = 0
-            }
-        )
-    end
-end
-
--- Check if current player is using a monitor biped
----@return boolean
-local function isPlayerMonitor()
-    local tempObject = blam.object(get_dynamic_player())
-    if (tempObject and tempObject.tagId == get_tag_id('bipd', constants.bipeds.monitor)) then
-        return true
-    end
-    return false
 end
 
 -- Global script variables
@@ -206,7 +105,7 @@ function playerReducer(state, action)
             zOffset = 0
         }
     end
-    if (action.type == 'ATTACH_OBJECT') then
+    if (action.type == 'CREATE_AND_ATTACH_OBJECT') then
         if (state.attachedObject) then
             if (get_object(state.attachedObject)) then
                 delete_object(state.attachedObject)
@@ -221,10 +120,14 @@ function playerReducer(state, action)
                 cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
         end
         return state
-    elseif (action.type == 'DETACH_OBJECT') then -- REMINDER TO SEND REQUEST IF NEEDED
+        -- TO DO: Send a request to attach this object to a player in the server side
+    elseif (action.type == 'ATTACH_OBJECT') then
+        state.attachedObject = action.payload.objectId
+        return state
+    elseif (action.type == 'DETACH_OBJECT') then -- Update request if needed
         state.attachedObject = nil
         return state
-    elseif (action.type == 'DESTROY_OBJECT') then -- REMINDER TO SEND REQUEST IF NEEDED
+    elseif (action.type == 'DESTROY_OBJECT') then -- Delete request if needed
         if (state.attachedObject) then
             if (get_object(state.attachedObject)) then
                 delete_object(state.attachedObject)
@@ -243,28 +146,16 @@ function playerReducer(state, action)
     end
 end
 
-test = 5
-
 -- Update internal state along the time
 function onTick()
     -- Get player object
     local player = blam.biped(get_dynamic_player())
     local playerState = playerStore:getState()
     if (player) then
-
-        for i = 0, get_tags_count() - 1 do
-            local type = get_tag_type(i)
-            if (type == 'antr') then
-                if (get_tag_path(i):find('rifle')) then
-                    local modelAnim = blam.modelAnimations(get_tag(i))
-                    modelAnim.firstPersonWeaponAnimationList[14] = test
-                    blam.modelAnimations(get_tag(i), modelAnim)
-                end
-            end
-        end
-
-        player.isMonitor = isPlayerMonitor()
+        player.isMonitor = features.isPlayerMonitor()
+        --cprint(player.x .. ' ' .. player.y .. ' ' .. player.z)
         if (player.isMonitor) then
+            -- Calculate player point of view
             playerStore:dispatch({type = 'UPDATE_OFFSETS', payload = {player = player}})
 
             -- Open Forge menu by pressing 'Q'
@@ -278,10 +169,30 @@ function onTick()
             -- Check if monitor has an object attached
             local attachedObject = playerState.attachedObject
             if (attachedObject) then
-                setCrosshairState(2)
+
+                -- Unhighlight objects
+                features.unhighlightAll()
+
+                -- Update crosshair
+                features.setCrosshairState(2)
+
+                if (playerState.zOffset < constants.minimumZSpawnPoint) then
+                    -- Set crosshair to not allowed
+                    features.setCrosshairState(3)
+                end
+
+                -- Update object position
                 blam.object(
                     get_object(attachedObject),
-                    {x = playerState.xOffset, y = playerState.yOffset, z = playerState.zOffset}
+                    {
+                        x = playerState.xOffset,
+                        y = playerState.yOffset,
+                        z = playerState.zOffset
+                        -- TODO: Object color customization!
+                        --[[redA = math.random(0,1),
+                        greenA = math.random(0,1),
+                        blueA = math.random(0,1)]]
+                    }
                 )
                 if (player.jumpHold) then
                     playerStore:dispatch({type = 'DESTROY_OBJECT'})
@@ -289,27 +200,50 @@ function onTick()
                     playerStore:dispatch({type = 'DETACH_OBJECT'})
                 end
             else
-                setCrosshairState(0)
+                -- Set crosshair to not selected states
+                features.setCrosshairState(0)
+
+                -- Unhighlight objects
+                features.unhighlightAll()
+
+                -- Get if player is looking at some object
+                for objectId = 0, #get_objects() do
+                    local tempObject = blam.object(get_object(objectId))
+                    -- Object exists
+                    if (tempObject) then
+                        local tagType = get_tag_type(tempObject.tagId)
+                        if (tagType == 'scen') then
+                            local isPlayerLookingAt = features.playerIsLookingAt(objectId, 0.05, 0)
+                            if (isPlayerLookingAt) then
+                                -- Update crosshair state
+                                features.setCrosshairState(1)
+
+                                -- Hightlight object at player view
+                                features.highlightObject(objectId, 0.7)
+
+                                -- Player is taking the object
+                                if (player.weaponPTH) then
+                                    playerStore:dispatch({type = 'ATTACH_OBJECT', payload = {objectId = objectId}})
+                                end
+
+                            end
+                        end
+                    end
+                end
             end
 
             -- Convert into spartan
             if (player.crouchHold) then
-                swapBiped()
+                playerStore:dispatch({type = 'DETACH_OBJECT'})
+                features.swapBiped()
             end
         else
             -- Convert into monitor
             if (player.flashlightKey) then
-                swapBiped()
+                features.swapBiped()
             end
 
-            
             if (player.meleeKey) then
-                console_out('melee')
-                if (test == 4) then
-                    test = 5
-                else
-                    test = 4
-                end
             end
         end
     end
@@ -350,7 +284,7 @@ function onTick()
             local sceneryPath = forgeState.forgeMenu.objectsDatabase[desiredElement]
             if (sceneryPath) then
                 cprint(' -> [ Forge Menu ]')
-                playerStore:dispatch({type = 'ATTACH_OBJECT', payload = {path = sceneryPath}})
+                playerStore:dispatch({type = 'CREATE_AND_ATTACH_OBJECT', payload = {path = sceneryPath}})
             else
                 forgeStore:dispatch({type = 'DOWNWARD_NAV_FORGE_MENU', payload = {desiredElement = desiredElement}})
             end
@@ -516,17 +450,6 @@ function onMapLoad()
     forgeStore = redux.createStore(forgeReducer) -- Isolated store for all the Forge 'app' data
     objectsStore = redux.createStore(objectsReducer) -- Unique store for all the Forge Objects
 
-    for i = 0, get_tags_count() - 1 do
-        local type = get_tag_type(i)
-        if (type == 'antr') then
-            if (get_tag_path(i):find('rifle')) then
-                console_out(get_tag_path(i))
-                local modelAnim = blam.modelAnimations(get_tag(i))
-                console_out(inspect(modelAnim))
-            end
-        end
-    end
-
     local forgeState = forgeStore:getState()
     local scenario = blam.scenario(get_tag(0))
 
@@ -667,12 +590,46 @@ function onMapLoad()
 
         loadForgeMapsList()
 
-        set_callback('tick', 'onTick')
+        set_callback('frame', 'onTick')
         set_callback('rcon message', 'onRcon')
         set_callback('command', 'onCommand')
     else
         console_out_error('This is not a compatible Forge map!!!')
     end
+end
+
+function onRcon(message)
+    cprint('Incoming rcon message:', 'warning')
+    cprint(message)
+    local request = string.gsub(message, "'", '')
+    local splitData = glue.string.split(',', request)
+    local requestType = splitData[1]
+    if (requestType == constants.requestTypes.SPAWN_OBJECT) then
+        cprint('Decoding incoming object SPAWN...', 'warning')
+
+        local requestData = maethrillian.convertRequestToData(request, constants.requestFormats.SPAWN_OBJECT)
+
+        cprint('Request parsing done.', 'success')
+
+        return false, requestData
+    elseif (requestType == constants.requestTypes.UPDATE_OBJECT) then
+        cprint('Decoding incoming object UPDATE...', 'warning')
+
+        local requestData = maethrillian.convertRequestToData(request, constants.requestFormats.UPDATE_OBJECT)
+
+        cprint('Request parsing done.', 'success')
+
+        return false, requestData
+    elseif (requestType == constants.requestTypes.DELETE_OBJECT) then
+        cprint('Decoding incoming object DELETE...', 'warning')
+
+        local requestData = maethrillian.convertRequestToData(request, constants.requestFormats.DELETE_OBJECT)
+
+        cprint('Request parsing done.', 'success')
+
+        return false, requestData
+    end
+    return true
 end
 
 function loadForgeMapsList()
@@ -746,11 +703,13 @@ function onCommand(command)
                 end
             end
             return false
-        elseif (forgeCommand == 'fdump') then
-            --[[console_out('Dumping forge objects store...')
-            glue.writefile('fdumpStore.txt', inspect(objectsStore), 't')
-            console_out('DONE!, fdumpStore has been created.txt!!')]]
-            forgeStore:dispatch({type = 'RESET_FORGE'})
+        elseif (forgeCommand == 'ftest') then
+            -- Testing rcon communication
+            tests.run()
+            return false
+        elseif (forgeCommand == 'fprint') then
+            -- Testing rcon communication
+            cprint(inspect(get_objects()))
             return false
         elseif (forgeCommand == 'freset') then
             execute_script('object_destroy_all')

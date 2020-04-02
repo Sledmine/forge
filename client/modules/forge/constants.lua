@@ -13,13 +13,20 @@ constants.maximumSidebarSize = 249
 constants.minimumSidebarSize = 40
 
 -- Request types definition
-constants.actionTypes = {
-    'LOAD_MAP',
-    'SPAWN_OBJECT',
-    'UPDATE_OBJECT',
-    'DELETE_OBJECT',
-    'UPDATE_MAP_LIST'
+constants.requestTypes = {
+    ['LOAD_MAP'] = '#l',
+    ['SPAWN_OBJECT'] = '#s',
+    ['UPDATE_OBJECT'] = '#u',
+    ['DELETE_OBJECT'] = '#d'
 }
+
+constants.requestFormats = {
+    ['SPAWN_OBJECT'] = {'requestType', 'tagId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll'},
+    ['UPDATE_OBJECT'] = {'requestType','serverId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll'},
+    ['DELETE_OBJECT'] = {'requestType', 'serverId'}
+}
+
+constants.testObjectPath = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\scorpion spawn\\scorpion spawn'
 
 -- Biped tag definitions
 constants.bipeds = {
