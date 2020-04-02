@@ -7,6 +7,7 @@
 
 local glue = require 'glue'
 local lu = require 'luaunit'
+local maethrillian = require 'maethrillian'
 local constants = require 'forge.constants'
 
 -- Mocked function to redirect print calls to test print
@@ -32,25 +33,25 @@ function test_Rcon:setUp()
         end
     end
     self.expectedDecodeResultSpawn = {
-        requestType = '#s',
-        tagId = '1234',
-        x = '1.0',
-        y = '2.0',
-        z = '3.0',
-        yaw = '360',
-        pitch = '360',
-        roll = '360'
+        pitch="360",
+        requestType="#s",
+        roll="360",
+        tagId="d2040000",
+        x="0000803f",
+        y="00000040",
+        yaw="360",
+        z="00004040"
     }
 
     self.expectedDecodeResultUpdate = {
-        requestType = '#u',
-        serverId = '1234',
-        x = '1.0',
-        y = '2.0',
-        z = '3.0',
-        yaw = '360',
-        pitch = '360',
-        roll = '360'
+        pitch="360",
+        requestType="#u",
+        roll="360",
+        serverId="1234",
+        x="0000803f",
+        y="00000040",
+        yaw="360",
+        z="00004040"
     }
 
     self.expectedDecodeResultDelete = {
@@ -101,8 +102,52 @@ end
 
 test_Request = {}
 
-function test_Request:test_Encode_Spawn()
+function test_Request:setUp()
+    self.expectedEncodeSpawnResult = '#s,d2040000,0000803f,00000040,00004040,360,360,360'
+    self.expectedEncodeUpdateResult = '#u,1234,0000803f,00000040,00004040,360,360,360'
+    self.expectedEncodeDeleteResult = '#d,1234'
+end
 
+function test_Request:test_Encode_Spawn()
+    local objectExample = {
+        requestType = '#s',
+        tagId = '1234',
+        x = '1.0',
+        y = '2.0',
+        z = '3.0',
+        yaw = '360',
+        pitch = '360',
+        roll = '360'
+    }
+    local result, request = sendRequest(objectExample)
+    lu.assertEquals(result, true)
+    lu.assertEquals(request, self.expectedEncodeSpawnResult)
+end
+
+function test_Request:test_Encode_Update()
+    local objectExample = {
+        requestType = '#u',
+        serverId = '1234',
+        x = '1.0',
+        y = '2.0',
+        z = '3.0',
+        yaw = '360',
+        pitch = '360',
+        roll = '360'
+    }
+    local result, request = sendRequest(objectExample)
+    lu.assertEquals(result, true)
+    lu.assertEquals(request, self.expectedEncodeUpdateResult)
+end
+
+function test_Request:test_Encode_Spawn()
+    local objectExample = {
+        requestType = '#d',
+        serverId = '1234'
+    }
+    local result, request = sendRequest(objectExample)
+    lu.assertEquals(result, true)
+    lu.assertEquals(request, self.expectedEncodeDeleteResult)
 end
 
 ----------------------------------------------------
@@ -111,15 +156,15 @@ function tests.run()
     local runner = lu.LuaUnit.new()
     runner:setOutputType('junit', 'forge_tests_results')
     runner:runSuite()
-    if (bprint) then
+    --[[if (bprint) then
         print = bprint
-    end
+    end]]
 end
 
 -- Mocked arguments and executions for standalone execution and in game execution
 if (not arg) then
     arg = {'-v'}
-    bprint = print
+    --bprint = print
     print = tprint
 else
     tests.run()

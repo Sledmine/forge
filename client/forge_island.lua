@@ -598,36 +598,53 @@ function onMapLoad()
     end
 end
 
+-- Send a request to the server throug rcon
+---@param data table
+---@return boolean success
+---@return string request
+function sendRequest(data)
+    cprint('-> [ Sending request ]')
+    local requestType = constants.requestTypes[data.requestType]
+    if (requestType) then
+        cprint(requestType, 'category')
+        local compressionFormat = constants.compressionFormats[requestType]
+        local requestObject = maethrillian.compressObject(data, compressionFormat, true)
+
+        local requestOrder = constants.requestFormats[requestType]
+        local request = maethrillian.convertObjectToRequest(requestObject, requestOrder)
+
+        cprint('Request: ' .. request)
+        if (server_type == 'local') then
+            -- We need to mockup the server response in local mode
+            local mockedResponse = string.gsub(string.gsub(request, "rcon forge '", ''), "'", '')
+            return true, request
+        else
+            -- Player is connected to a server
+            execute_script(request)
+            return true, request
+        end
+    end
+    cprint('Error at trying to send request!!!!', 'error')
+    return false
+end
+
 function onRcon(message)
     cprint('Incoming rcon message:', 'warning')
     cprint(message)
     local request = string.gsub(message, "'", '')
     local splitData = glue.string.split(',', request)
-    local requestType = splitData[1]
-    if (requestType == constants.requestTypes.SPAWN_OBJECT) then
-        cprint('Decoding incoming object SPAWN...', 'warning')
+    local requestType = constants.requestTypes[splitData[1]]
+    if (requestType) then
+        cprint('Decoding incoming ' .. requestType .. ' ...', 'warning')
 
-        local requestData = maethrillian.convertRequestToData(request, constants.requestFormats.SPAWN_OBJECT)
-
-        cprint('Request parsing done.', 'success')
-
-        return false, requestData
-    elseif (requestType == constants.requestTypes.UPDATE_OBJECT) then
-        cprint('Decoding incoming object UPDATE...', 'warning')
-
-        local requestData = maethrillian.convertRequestToData(request, constants.requestFormats.UPDATE_OBJECT)
+        local requestObject = maethrillian.convertRequestToObject(request, constants.requestFormats[requestType])
 
         cprint('Request parsing done.', 'success')
 
-        return false, requestData
-    elseif (requestType == constants.requestTypes.DELETE_OBJECT) then
-        cprint('Decoding incoming object DELETE...', 'warning')
+        local compressionFormat = constants.compressionFormats[requestType]
+        requestObject = maethrillian.compressObject(requestObject, compressionFormat, true)
 
-        local requestData = maethrillian.convertRequestToData(request, constants.requestFormats.DELETE_OBJECT)
-
-        cprint('Request parsing done.', 'success')
-
-        return false, requestData
+        return false, requestObject
     end
     return true
 end
@@ -704,7 +721,7 @@ function onCommand(command)
             end
             return false
         elseif (forgeCommand == 'ftest') then
-            -- Testing rcon communication
+            -- Run unit testing
             tests.run()
             return false
         elseif (forgeCommand == 'fprint') then
