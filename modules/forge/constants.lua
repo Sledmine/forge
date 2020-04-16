@@ -12,6 +12,12 @@ constants.minimumZSpawnPoint = -18.69
 constants.maximumSidebarSize = 249
 constants.minimumSidebarSize = 40
 
+constants.actionTypes = {
+    SPAWN_OBJECT = 'SPAWN_OBJECT',
+    UPDATE_OBJECT = 'UPDATE_OBJECT',
+    DELETE_OBJECT = 'DELETE_OBJECT'
+}
+
 -- Request types definition
 constants.requestTypes = {
     --['LOAD_MAP'] = '#l',
@@ -25,15 +31,15 @@ constants.requestTypes = {
 }
 
 constants.requestFormats = {
-    ['SPAWN_OBJECT'] = {'requestType', 'tagId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll'},
-    ['UPDATE_OBJECT'] = {'requestType','serverId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll'},
-    ['DELETE_OBJECT'] = {'requestType', 'serverId'}
+    ['SPAWN_OBJECT'] = {'requestType', 'tagId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll', 'remoteId'},
+    ['UPDATE_OBJECT'] = {'requestType','objectId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll'},
+    ['DELETE_OBJECT'] = {'requestType', 'objectId'}
 }
 
 constants.compressionFormats = {
     ['SPAWN_OBJECT'] = {tagId = 'I4', x = 'f', y = 'f', z = 'f'},
     ['UPDATE_OBJECT'] = {x = 'f', y = 'f', z = 'f'},
-    ['DELETE_OBJECT'] = {} -- Delete does not require compression, by now... 
+    ['DELETE_OBJECT'] = {} -- Delete does not require compression, by now...
 }
 
 constants.testObjectPath = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\scorpion spawn\\scorpion spawn'

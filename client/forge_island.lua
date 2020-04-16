@@ -27,7 +27,7 @@ local features = require 'forge.features'
 local tests = require 'forge.tests'
 
 -- Default debug mode state
-debugMode = false
+debugMode = glue.readfile('forge_debug_mode.dbg', 't')
 
 -- Internal functions
 
@@ -71,10 +71,19 @@ function cspawn_object(type, tagPath, x, y, z)
     end
     local objectId = spawn_object(type, tagPath, x, y, z)
     if (objectId) then
-        cprint('-> Object: ' ..  objectId..' succesfully spawned!!!', 'success')
+        cprint('-> Object: ' .. objectId .. ' succesfully spawned!!!', 'success')
         return objectId
     end
     cprint('Error at trying to spawn object!!!!', 'error')
+    return nil
+end
+
+function getObjectIdByRemoteId(state, remoteId)
+    for k, v in pairs(state) do
+        if (v.remoteId == remoteId) then
+            return k
+        end
+    end
     return nil
 end
 
@@ -86,7 +95,7 @@ local rotationStep = 3
 local blockDistance = true
 
 -- Prepare event callbacks
-set_callback('map postload', 'onMapLoad') -- Thanks Jerry to add this callback!
+set_callback('map load', 'onMapLoad') -- Thanks Jerry to add this callback!
 set_callback('unload', 'onScriptUnload')
 
 ---@return boolean
@@ -98,48 +107,87 @@ function playerReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
         state = {
+            lockDistance = true,
             distance = 5,
-            attachedObject = nil,
+            attachedObjectId = nil,
             xOffset = 0,
             yOffset = 0,
-            zOffset = 0
+            zOffset = 0,
+            yaw = 0,
+            pitch = 0,
+            roll = 0
         }
     end
-    if (action.type == 'CREATE_AND_ATTACH_OBJECT') then
-        if (state.attachedObject) then
-            if (get_object(state.attachedObject)) then
-                delete_object(state.attachedObject)
-                state.attachedObject =
+    if (action.type == 'SET_LOCK_DISTANCE') then
+        state.lockDistance = action.payload.lockDistance
+        return state
+    elseif (action.type == 'CREATE_AND_ATTACH_OBJECT') then
+        -- TO DO: Send a request to attach this object to a player in the server side
+        if (state.attachedObjectId) then
+            if (get_object(state.attachedObjectId)) then
+                delete_object(state.attachedObjectId)
+                state.attachedObjectId =
                     cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
             else
-                state.attachedObject =
+                state.attachedObjectId =
                     cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
             end
         else
-            state.attachedObject =
+            state.attachedObjectId =
                 cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
         end
         return state
-        -- TO DO: Send a request to attach this object to a player in the server side
     elseif (action.type == 'ATTACH_OBJECT') then
-        state.attachedObject = action.payload.objectId
+        state.attachedObjectId = action.payload.objectId
         return state
     elseif (action.type == 'DETACH_OBJECT') then -- Update request if needed
-        state.attachedObject = nil
+        if (state.attachedObjectId) then
+            local objectsState = objectsStore:getState()
+            local composedObject = objectsState[state.attachedObjectId]
+            if (composedObject) then
+                -- Object already exists, send update request
+                composedObject.object = blam.object(get_object(state.attachedObjectId))
+                sendRequest(createRequest(composedObject, constants.requestTypes.UPDATE_OBJECT))
+            else
+                delete_object(state.attachedObjectId)
+                -- Object does not exist, create composed object and send request
+                composedObject = {
+                    object = blam.object(get_object(state.attachedObjectId)),
+                    objectId = state.attachedObjectId,
+                    yaw = state.yaw,
+                    pitch = state.pitch,
+                    roll = state.roll
+                }
+                sendRequest(createRequest(composedObject, constants.requestTypes.SPAWN_OBJECT))
+            end
+            state.attachedObjectId = nil
+        end
         return state
     elseif (action.type == 'DESTROY_OBJECT') then -- Delete request if needed
-        if (state.attachedObject) then
-            if (get_object(state.attachedObject)) then
-                delete_object(state.attachedObject)
+        if (state.attachedObjectId) then
+            local objectsState = objectsStore:getState()
+            local composedObject = objectsState[state.attachedObjectId]
+            if (composedObject) then
+                sendRequest(createRequest(composedObject, constants.requestTypes.DELETE_OBJECT))
+            else
+                delete_object(state.attachedObjectId)
             end
         end
-        state.attachedObject = nil
+        state.attachedObjectId = nil
         return state
     elseif (action.type == 'UPDATE_OFFSETS') then
         local player = action.payload.player
         state.xOffset = player.x + player.cameraX * state.distance
         state.yOffset = player.y + player.cameraY * state.distance
         state.zOffset = player.z + player.cameraZ * state.distance
+        return state
+    elseif (action.type == 'UPDATE_DISTANCE') then
+        local player = action.payload.player
+        local tempObject = blam.object(get_object(state.attachedObjectId))
+        if (tempObject) then
+            state.distance =
+                math.sqrt((tempObject.x - player.x) ^ 2 + (tempObject.y - player.y) ^ 2 + (tempObject.z - player.z) ^ 2)
+        end
         return state
     else
         return state
@@ -167,8 +215,12 @@ function onTick()
             end
 
             -- Check if monitor has an object attached
-            local attachedObject = playerState.attachedObject
-            if (attachedObject) then
+            local attachedObjectId = playerState.attachedObjectId
+            if (attachedObjectId) then
+                if (not playerState.lockDistance) then
+                    playerStore:dispatch({type = 'UPDATE_DISTANCE', payload = {player = player}})
+                    playerStore:dispatch({type = 'UPDATE_OFFSETS', payload = {player = player}})
+                end
 
                 -- Unhighlight objects
                 features.unhighlightAll()
@@ -183,7 +235,7 @@ function onTick()
 
                 -- Update object position
                 blam.object(
-                    get_object(attachedObject),
+                    get_object(attachedObjectId),
                     {
                         x = playerState.xOffset,
                         y = playerState.yOffset,
@@ -200,6 +252,7 @@ function onTick()
                     playerStore:dispatch({type = 'DETACH_OBJECT'})
                 end
             else
+                
                 -- Set crosshair to not selected states
                 features.setCrosshairState(0)
 
@@ -213,7 +266,7 @@ function onTick()
                     if (tempObject) then
                         local tagType = get_tag_type(tempObject.tagId)
                         if (tagType == 'scen') then
-                            local isPlayerLookingAt = features.playerIsLookingAt(objectId, 0.05, 0)
+                            local isPlayerLookingAt = features.playerIsLookingAt(objectId, 0.06, 0)
                             if (isPlayerLookingAt) then
                                 -- Update crosshair state
                                 features.setCrosshairState(1)
@@ -223,9 +276,10 @@ function onTick()
 
                                 -- Player is taking the object
                                 if (player.weaponPTH) then
+                                    -- Set lock distance to true, this will help to take the object from persepective
+                                    playerStore:dispatch({type = 'SET_LOCK_DISTANCE', payload = {lockDistance = false}})
                                     playerStore:dispatch({type = 'ATTACH_OBJECT', payload = {objectId = objectId}})
                                 end
-
                             end
                         end
                     end
@@ -236,6 +290,14 @@ function onTick()
             if (player.crouchHold) then
                 playerStore:dispatch({type = 'DETACH_OBJECT'})
                 features.swapBiped()
+            elseif (player.meleeKey) then
+                playerStore:dispatch({type = 'SET_LOCK_DISTANCE', payload = {lockDistance = not playerState.lockDistance}})
+                hud_message('Distance from object is ' .. tostring(glue.round(playerState.distance)) .. ' units.')
+                if (playerState.lockDistance) then
+                    hud_message('Push n pull.')
+                else
+                    hud_message('Closer or further.')
+                end
             end
         else
             -- Convert into monitor
@@ -243,7 +305,8 @@ function onTick()
                 features.swapBiped()
             end
 
-            if (player.meleeKey) then
+            if (player.actionKey and player.crouchHold) then
+                cspawn_object('bipd', constants.bipeds.spartan, player.x, player.y, player.z)
             end
         end
     end
@@ -299,19 +362,101 @@ function onTick()
     hook.attach('forge_menu_close', menu.stopClose, constants.widgetDefinitions.forgeMenu)
 end
 
-function objectsReducer()
+function objectsReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
-        state = {
-            distance = 5,
-            attachedObject = nil,
-            xOffset = 0,
-            yOffset = 0,
-            zOffset = 0
-        }
+        state = {}
     end
-    if (true) then
+    if (action.type) then
+        cprint('-> [Objects Store]')
+        cprint(action.type, 'category')
+    end
+    if (action.type == constants.actionTypes.SPAWN_OBJECT) then
+        cprint('SPAWNING object to store...', 'warning')
+        local requestObject = action.payload.composedObject
+
+        local tagPath = get_tag_path(requestObject.tagId)
+
+        -- Get all the existent objects in the game before object spawn
+        local objectsBeforeSpawn = get_objects()
+
+        -- Spawn object in the game
+        cspawn_object('scen', tagPath, requestObject.x, requestObject.y, requestObject.z)
+
+        -- Get all the existent objects in the game after object spawn
+        local objectsAfterSpawn = get_objects()
+
+        -- Tricky way to get object local id, due to Chimera API returning a pointer instead of id
+        -- Remember objectId is local to this server
+        local localObjectId = glue.arraynv(objectsBeforeSpawn, objectsAfterSpawn)
+
+        -- Clean and prepare entity
+        requestObject.object = luablam.object(get_object(localObjectId))
+        requestObject.tagId = nil
+        requestObject.requestType = nil
+        requestObject.objectId = localObjectId
+
+        -- We are the server so the remote id is the local objectId
+        if (server_type == 'local') then
+            requestObject.remoteId = requestObject.objectId
+        end
+
+        cprint('localObjectId: ' .. requestObject.objectId)
+        cprint('remoteId: ' .. requestObject.remoteId)
+
+        -- TODO: Create a new object rather than passing it as "reference"
+        local composedObject = requestObject
+
+        -- Store the object in our state
+        state[localObjectId] = composedObject
+
+        return state
+    elseif (action.type == constants.actionTypes.UPDATE_OBJECT) then
+        local requestObject = action.payload.composedObject
+        cprint(inspect(requestObject))
+
+        local composedObject = state[getObjectIdByRemoteId(state, requestObject.objectId)]
+
+        if (composedObject) then
+            cprint('UPDATING object from store...', 'warning')
+            composedObject.x = requestObject.x
+            composedObject.y = requestObject.y
+            composedObject.z = requestObject.z
+            composedObject.yaw = requestObject.yaw
+            composedObject.pitch = requestObject.pitch
+            composedObject.roll = requestObject.roll
+            if (composedObject.z < constants.minimumZSpawnPoint) then
+                composedObject.z = constants.minimumZSpawnPoint
+            end
+            blam.object(
+                get_object(composedObject.objectId),
+                {x = composedObject.x, y = composedObject.y, z = composedObject.z}
+            )
+        else
+            cprint('ERROR!!! The required object does not exist.', 'error')
+        end
+        cprint(inspect(composedObject))
+        return state
+    elseif (action.type == constants.actionTypes.DELETE_OBJECT) then
+        local requestObject = action.payload.composedObject
+
+        local composedObject = state[getObjectIdByRemoteId(state, requestObject.objectId)]
+
+        if (composedObject) then
+            cprint('Deleting object from store...', 'warning')
+            delete_object(composedObject.objectId)
+            composedObject = nil
+            cprint('Done.', 'success')
+        else
+            cprint('ERROR!!! The specified object does not exist.', 'error')
+        end
+        return state
     else
+        if (action.type == '@@lua-redux/INIT') then
+            cprint('Default state has been created!')
+        else
+            cprint('ERROR!!! The dispatched event does not exist:', 'error')
+        end
         return state
     end
 end
@@ -347,7 +492,7 @@ function forgeReducer(state, action)
         }
     end
     if (action.type) then
-        cprint('Dispatched event:')
+        cprint('Forge Store, dispatched event:')
         cprint(action.type, 'category')
     end
     if (action.type == 'UPDATE_MAP_LIST') then
@@ -590,7 +735,7 @@ function onMapLoad()
 
         loadForgeMapsList()
 
-        set_callback('frame', 'onTick')
+        set_callback('tick', 'onTick')
         set_callback('rcon message', 'onRcon')
         set_callback('command', 'onCommand')
     else
@@ -598,16 +743,51 @@ function onMapLoad()
     end
 end
 
+-- Create a request for an object action
+---@param composedObject number
+---@param requestType string
+function createRequest(composedObject, requestType)
+    local objectData = {}
+    if (composedObject) then
+        objectData.requestType = requestType
+        if (requestType == constants.requestTypes.SPAWN_OBJECT) then
+            objectData.tagId = composedObject.object.tagId
+        elseif (requestType == constants.requestTypes.UPDATE_OBJECT) then
+            objectData.objectId = composedObject.objectId
+        elseif (requestType == constants.requestTypes.DELETE_OBJECT) then
+            objectData.objectId = composedObject.objectId
+            return objectData
+        end
+        objectData.x = composedObject.object.x
+        objectData.y = composedObject.object.y
+        objectData.z = composedObject.object.z
+        objectData.yaw = composedObject.yaw
+        objectData.pitch = composedObject.pitch
+        objectData.roll = composedObject.roll
+        return objectData
+    end
+    return nil
+end
+
 -- Send a request to the server throug rcon
 ---@param data table
 ---@return boolean success
 ---@return string request
 function sendRequest(data)
+    cprint(inspect(data))
     cprint('-> [ Sending request ]')
     local requestType = constants.requestTypes[data.requestType]
     if (requestType) then
-        cprint(requestType, 'category')
+        cprint('Type: ' .. requestType, 'category')
         local compressionFormat = constants.compressionFormats[requestType]
+
+        if (not compressionFormat) then
+            cprint('There is no format compression for this request!!!!', 'error')
+            return false
+        end
+
+        cprint('Compression: ' .. inspect(compressionFormat))
+
         local requestObject = maethrillian.compressObject(data, compressionFormat, true)
 
         local requestOrder = constants.requestFormats[requestType]
@@ -617,6 +797,7 @@ function sendRequest(data)
         if (server_type == 'local') then
             -- We need to mockup the server response in local mode
             local mockedResponse = string.gsub(string.gsub(request, "rcon forge '", ''), "'", '')
+            onRcon(mockedResponse)
             return true, request
         else
             -- Player is connected to a server
@@ -639,11 +820,27 @@ function onRcon(message)
 
         local requestObject = maethrillian.convertRequestToObject(request, constants.requestFormats[requestType])
 
-        cprint('Request parsing done.', 'success')
+        if (requestObject) then
+            cprint('Done.', 'success')
+        else
+            cprint('Error at converting request.', 'error')
+            return false, nil
+        end
 
+        cprint('Decompressing ...', 'warning')
         local compressionFormat = constants.compressionFormats[requestType]
-        requestObject = maethrillian.compressObject(requestObject, compressionFormat, true)
+        requestObject = maethrillian.decompressObject(requestObject, compressionFormat)
 
+        if (requestObject) then
+            cprint('Done.', 'success')
+        else
+            cprint('Error at decompressing request.', 'error')
+            return false, nil
+        end
+
+        if (not ftestingMode) then
+            objectsStore:dispatch({type = requestType, payload = {composedObject = requestObject}})
+        end
         return false, requestObject
     end
     return true
@@ -722,11 +919,14 @@ function onCommand(command)
             return false
         elseif (forgeCommand == 'ftest') then
             -- Run unit testing
-            tests.run()
+            tests.run(true)
             return false
         elseif (forgeCommand == 'fprint') then
             -- Testing rcon communication
+            cprint('[Game Objects]', 'category')
             cprint(inspect(get_objects()))
+            cprint('[Objects Store]', 'category')
+            cprint(inspect(glue.keys(objectsStore:getState())))
             return false
         elseif (forgeCommand == 'freset') then
             execute_script('object_destroy_all')

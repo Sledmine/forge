@@ -31,30 +31,31 @@ function test_Rcon:setUp()
         end
     end
     self.expectedDecodeResultSpawn = {
-        pitch="360",
-        requestType="#s",
-        roll="360",
-        tagId="d2040000",
-        x="0000803f",
-        y="00000040",
-        yaw="360",
-        z="00004040"
+        pitch = 360,
+        requestType = '#s',
+        remoteId = 1023,
+        roll = 360,
+        tagId = 1234,
+        x = 1,
+        y = 2,
+        yaw = 360,
+        z = 3
     }
 
     self.expectedDecodeResultUpdate = {
-        pitch="360",
-        requestType="#u",
-        roll="360",
-        serverId="1234",
-        x="0000803f",
-        y="00000040",
-        yaw="360",
-        z="00004040"
+        pitch = 360,
+        requestType = '#u',
+        roll = 360,
+        objectId = 1234,
+        x = 1,
+        y = 2,
+        yaw = 360,
+        z = 3
     }
 
     self.expectedDecodeResultDelete = {
         requestType = '#d',
-        serverId = '1234'
+        objectId = 1234
     }
 end
 
@@ -64,21 +65,21 @@ function test_Rcon:test_Callback()
 end
 
 function test_Rcon:test_Decode_Spawn()
-    local decodeResult, decodeData = onRcon("'#s,1234,1.0,2.0,3.0,360,360,360'")
+    local decodeResult, decodeData = onRcon("'#s,d2040000,0000803f,00000040,00004040,360,360,360,1023'")
     lu.assertEquals(decodeResult, false)
-    lu.assertEquals(self.expectedDecodeResultSpawn, decodeData)
+    lu.assertEquals(decodeData, self.expectedDecodeResultSpawn)
 end
 
 function test_Rcon:test_Decode_Update()
-    local decodeResult, decodeData = onRcon("'#u,1234,1.0,2.0,3.0,360,360,360'")
+    local decodeResult, decodeData = onRcon("'#u,1234,0000803f,00000040,00004040,360,360,360'")
     lu.assertEquals(decodeResult, false)
-    lu.assertEquals(self.expectedDecodeResultUpdate, decodeData)
+    lu.assertEquals(decodeData, self.expectedDecodeResultUpdate)
 end
 
 function test_Rcon:test_Decode_Delete()
     local decodeResult, decodeData = onRcon("'#d,1234'")
     lu.assertEquals(decodeResult, false)
-    lu.assertEquals(self.expectedDecodeResultDelete, decodeData)
+    lu.assertEquals(decodeData, self.expectedDecodeResultDelete)
 end
 
 ----------------- Objects Tests -----------------------
@@ -110,9 +111,9 @@ function test_Request:test_Encode_Spawn()
     local objectExample = {
         requestType = '#s',
         tagId = '1234',
-        x = '1.0',
-        y = '2.0',
-        z = '3.0',
+        x = '1',
+        y = '2',
+        z = '3',
         yaw = '360',
         pitch = '360',
         roll = '360'
@@ -125,7 +126,7 @@ end
 function test_Request:test_Encode_Update()
     local objectExample = {
         requestType = '#u',
-        serverId = '1234',
+        objectId = '1234',
         x = '1.0',
         y = '2.0',
         z = '3.0',
@@ -141,7 +142,7 @@ end
 function test_Request:test_Encode_Spawn()
     local objectExample = {
         requestType = '#d',
-        serverId = '1234'
+        objectId = '1234'
     }
     local result, request = sendRequest(objectExample)
     lu.assertEquals(result, true)
@@ -150,13 +151,17 @@ end
 
 ----------------------------------------------------
 
-function tests.run()
+function tests.run(output)
+    ftestingMode = true
     local runner = lu.LuaUnit.new()
-    runner:setOutputType('junit', 'forge_tests_results')
+    if (output) then
+        runner:setOutputType('junit', 'forge_tests_results')
+    end
     runner:runSuite()
     --[[if (bprint) then
         print = bprint
     end]]
+    ftestingMode = false
 end
 
 -- Mocked arguments and executions for standalone execution and in game execution
