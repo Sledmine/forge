@@ -51,10 +51,25 @@ function features.playerIsLookingAt(target, sensitivity, zOffset)
     return false
 end
 
+local function rotate(X, Y, alpha)
+    local c, s = math.cos(math.rad(alpha)), math.sin(math.rad(alpha))
+    local t1, t2, t3 = X[1] * s, X[2] * s, X[3] * s
+    X[1], X[2], X[3] = X[1] * c + Y[1] * s, X[2] * c + Y[2] * s, X[3] * c + Y[3] * s
+    Y[1], Y[2], Y[3] = Y[1] * c - t1, Y[2] * c - t2, Y[3] * c - t3
+end
+
+function features.convertDegrees(Yaw, Pitch, Roll)
+    local F, L, T = {1, 0, 0}, {0, 1, 0}, {0, 0, 1}
+    rotate(F, L, Yaw)
+    rotate(F, T, Pitch)
+    rotate(T, L, Roll)
+    return {F[1], -L[1], -T[1], -F[3], L[3], T[3]}
+end
+
 -- Changes default crosshair values
 ---@param state number
 function features.setCrosshairState(state)
-    local forgeCrosshairAddress = get_tag('weapon_hud_interface', constants.weaponHudInterfaces.forgeCrosshair)
+    --[[local forgeCrosshairAddress = get_tag('weapon_hud_interface', constants.weaponHudInterfaces.forgeCrosshair)
     if (state == 0) then
         blam.weaponHudInterface(
             forgeCrosshairAddress,
@@ -105,7 +120,7 @@ function features.setCrosshairState(state)
                 sequenceIndex = 0
             }
         )
-    end
+    end]]
 end
 
 -- Check if current player is using a monitor biped

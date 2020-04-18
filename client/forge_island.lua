@@ -78,6 +78,22 @@ function cspawn_object(type, tagPath, x, y, z)
     return nil
 end
 
+-- Rotate object into desired degrees
+function rotateObject(objectId, yaw, pitch, roll)
+    local rotation = features.convertDegrees(yaw, pitch, roll)
+    blam.object(
+        get_object(objectId),
+        {
+            pitch = rotation[1],
+            yaw = rotation[2],
+            roll = rotation[3],
+            xScale = rotation[4],
+            yScale = rotation[5],
+            zScale = rotation[6]
+        }
+    )
+end
+
 function getObjectIdByRemoteId(state, remoteId)
     for k, v in pairs(state) do
         if (v.remoteId == remoteId) then
@@ -90,10 +106,6 @@ end
 -- Global script variables
 -- They can be accessed through global script scope but no by libraries!
 
--- Default rotation step, minimum default distance from an object, distance from object is blocked by default
-local rotationStep = 3
-local blockDistance = true
-
 -- Prepare event callbacks
 set_callback('map load', 'onMapLoad') -- Thanks Jerry to add this callback!
 set_callback('unload', 'onScriptUnload')
@@ -103,7 +115,10 @@ function validateMapName()
     return map == 'forge_island_local' or map == 'forge_island' or map == 'forge_island_beta'
 end
 
+-- Reducers importation
 require 'forge.playerReducer'
+require 'forge.objectsReducer'
+require 'forge.forgeReducer'
 
 -- Update internal state along the time
 function onTick()
@@ -117,17 +132,34 @@ function onTick()
             -- Calculate player point of view
             playerStore:dispatch({type = 'UPDATE_OFFSETS', payload = {player = player}})
 
-            -- Open Forge menu by pressing 'Q'
-            if (player.flashlightKey) then
-                cprint('Opening Forge menu...')
-                -- TO DO: Create a module to load different UI widgets!
-                execute_script('multiplayer_map_name sledisawesome')
-                execute_script('multiplayer_map_name ' .. map)
-            end
-
             -- Check if monitor has an object attached
             local attachedObjectId = playerState.attachedObjectId
             if (attachedObjectId) then
+                -- Change rotation angle
+                if (player.flashlightKey) then
+                    playerStore:dispatch({type = 'CHANGE_ROTATION_ANGLE'})
+                    hud_message('Rotating in: ' .. playerState.currentAngle)
+                elseif (player.actionKeyHold) then
+                    -- Convert into spartan
+                    playerStore:dispatch({type = 'STEP_ROTATION_DEGREE'})
+                    hud_message(playerState.currentAngle .. ': ' .. playerState[playerState.currentAngle])
+
+                    playerStore:dispatch({type = 'ROTATE_OBJECT'})
+                elseif (player.crouchHold) then
+                    playerStore:dispatch({type = 'RESET_ROTATION'})
+                    playerStore:dispatch({type = 'ROTATE_OBJECT'})
+                elseif (player.meleeKey) then
+                    playerStore:dispatch(
+                        {type = 'SET_LOCK_DISTANCE', payload = {lockDistance = not playerState.lockDistance}}
+                    )
+                    hud_message('Distance from object is ' .. tostring(glue.round(playerState.distance)) .. ' units.')
+                    if (playerState.lockDistance) then
+                        hud_message('Push n pull.')
+                    else
+                        hud_message('Closer or further.')
+                    end
+                end
+
                 if (not playerState.lockDistance) then
                     playerStore:dispatch({type = 'UPDATE_DISTANCE', payload = {player = player}})
                     playerStore:dispatch({type = 'UPDATE_OFFSETS', payload = {player = player}})
@@ -163,7 +195,17 @@ function onTick()
                     playerStore:dispatch({type = 'DETACH_OBJECT'})
                 end
             else
-                
+                -- Open Forge menu by pressing 'Q'
+                if (player.flashlightKey) then
+                    cprint('Opening Forge menu...')
+                    -- TO DO: Create a module to load different UI widgets!
+                    execute_script('multiplayer_map_name sledisawesome')
+                    execute_script('multiplayer_map_name ' .. map)
+                elseif (player.crouchHold) then
+                    playerStore:dispatch({type = 'DETACH_OBJECT'})
+                    features.swapBiped()
+                end
+
                 -- Set crosshair to not selected states
                 features.setCrosshairState(0)
 
@@ -182,7 +224,7 @@ function onTick()
                                 -- Update crosshair state
                                 features.setCrosshairState(1)
 
-                                -- Hightlight object at player view
+                                -- Hightlight the object that the player is looking at
                                 features.highlightObject(objectId, 0.7)
 
                                 -- Player is taking the object
@@ -194,20 +236,6 @@ function onTick()
                             end
                         end
                     end
-                end
-            end
-
-            -- Convert into spartan
-            if (player.crouchHold) then
-                playerStore:dispatch({type = 'DETACH_OBJECT'})
-                features.swapBiped()
-            elseif (player.meleeKey) then
-                playerStore:dispatch({type = 'SET_LOCK_DISTANCE', payload = {lockDistance = not playerState.lockDistance}})
-                hud_message('Distance from object is ' .. tostring(glue.round(playerState.distance)) .. ' units.')
-                if (playerState.lockDistance) then
-                    hud_message('Push n pull.')
-                else
-                    hud_message('Closer or further.')
                 end
             end
         else
@@ -271,233 +299,6 @@ function onTick()
     hook.attach('maps_menu', menu.stopUpdate, constants.widgetDefinitions.mapsList)
     hook.attach('forge_menu', menu.stopUpdate, constants.widgetDefinitions.forgeList)
     hook.attach('forge_menu_close', menu.stopClose, constants.widgetDefinitions.forgeMenu)
-end
-
-function objectsReducer(state, action)
-    -- Create default state if it does not exist
-    if (not state) then
-        state = {}
-    end
-    if (action.type) then
-        cprint('-> [Objects Store]')
-        cprint(action.type, 'category')
-    end
-    if (action.type == constants.actionTypes.SPAWN_OBJECT) then
-        cprint('SPAWNING object to store...', 'warning')
-        local requestObject = action.payload.composedObject
-
-        local tagPath = get_tag_path(requestObject.tagId)
-
-        -- Get all the existent objects in the game before object spawn
-        local objectsBeforeSpawn = get_objects()
-
-        -- Spawn object in the game
-        cspawn_object('scen', tagPath, requestObject.x, requestObject.y, requestObject.z)
-
-        -- Get all the existent objects in the game after object spawn
-        local objectsAfterSpawn = get_objects()
-
-        -- Tricky way to get object local id, due to Chimera API returning a pointer instead of id
-        -- Remember objectId is local to this server
-        local localObjectId = glue.arraynv(objectsBeforeSpawn, objectsAfterSpawn)
-
-        -- Clean and prepare entity
-        requestObject.object = luablam.object(get_object(localObjectId))
-        requestObject.tagId = nil
-        requestObject.requestType = nil
-        requestObject.objectId = localObjectId
-
-        -- We are the server so the remote id is the local objectId
-        if (server_type == 'local') then
-            requestObject.remoteId = requestObject.objectId
-        end
-
-        cprint('localObjectId: ' .. requestObject.objectId)
-        cprint('remoteId: ' .. requestObject.remoteId)
-
-        -- TODO: Create a new object rather than passing it as "reference"
-        local composedObject = requestObject
-
-        -- Store the object in our state
-        state[localObjectId] = composedObject
-
-        return state
-    elseif (action.type == constants.actionTypes.UPDATE_OBJECT) then
-        local requestObject = action.payload.composedObject
-        cprint(inspect(requestObject))
-
-        local composedObject = state[getObjectIdByRemoteId(state, requestObject.objectId)]
-
-        if (composedObject) then
-            cprint('UPDATING object from store...', 'warning')
-            composedObject.x = requestObject.x
-            composedObject.y = requestObject.y
-            composedObject.z = requestObject.z
-            composedObject.yaw = requestObject.yaw
-            composedObject.pitch = requestObject.pitch
-            composedObject.roll = requestObject.roll
-            if (composedObject.z < constants.minimumZSpawnPoint) then
-                composedObject.z = constants.minimumZSpawnPoint
-            end
-            blam.object(
-                get_object(composedObject.objectId),
-                {x = composedObject.x, y = composedObject.y, z = composedObject.z}
-            )
-        else
-            cprint('ERROR!!! The required object does not exist.', 'error')
-        end
-        cprint(inspect(composedObject))
-        return state
-    elseif (action.type == constants.actionTypes.DELETE_OBJECT) then
-        local requestObject = action.payload.composedObject
-
-        local composedObject = state[getObjectIdByRemoteId(state, requestObject.objectId)]
-
-        if (composedObject) then
-            cprint('Deleting object from store...', 'warning')
-            delete_object(composedObject.objectId)
-            state[getObjectIdByRemoteId(state, requestObject.objectId)] = nil
-            cprint('Done.', 'success')
-        else
-            cprint('ERROR!!! The specified object does not exist.', 'error')
-        end
-        return state
-    else
-        if (action.type == '@@lua-redux/INIT') then
-            cprint('Default state has been created!')
-        else
-            cprint('ERROR!!! The dispatched event does not exist:', 'error')
-        end
-        return state
-    end
-end
-
-function forgeReducer(state, action)
-    -- Create default state if it does not exist
-    if (not state) then
-        state = {
-            mapsMenu = {
-                mapsList = {},
-                currentMapsList = {},
-                currentPage = 1,
-                sidebar = {
-                    height = constants.maximumSidebarSize,
-                    position = 0,
-                    slice = 0,
-                    overflow = 0
-                }
-            },
-            forgeMenu = {
-                desiredElement = 'root',
-                objectsDatabase = {},
-                objectsList = {root = {}},
-                currentObjectsList = {},
-                currentPage = 1
-            },
-            currentMap = {
-                name = 'Unsaved',
-                author = 'Author: Unknown',
-                version = '1.0',
-                description = 'No description given for this map.'
-            }
-        }
-    end
-    if (action.type) then
-        cprint('Forge Store, dispatched event:')
-        cprint(action.type, 'category')
-    end
-    if (action.type == 'UPDATE_MAP_LIST') then
-        state.mapsMenu.mapsList = action.payload.mapsList
-        state.mapsMenu.currentMapsList = glue.chunks(state.mapsMenu.mapsList, 8)
-        local totalPages = #state.mapsMenu.currentMapsList
-        if (totalPages > 1) then
-            local sidebarHeight = glue.floor(constants.maximumSidebarSize / totalPages)
-            if (sidebarHeight < constants.minimumSidebarSize) then
-                sidebarHeight = constants.minimumSidebarSize
-            end
-            local spaceLeft = constants.maximumSidebarSize - sidebarHeight
-            state.mapsMenu.sidebar.slice = glue.round(spaceLeft / (totalPages - 1))
-            local fullSize = sidebarHeight + (state.mapsMenu.sidebar.slice * (totalPages - 1))
-            state.mapsMenu.sidebar.overflow = fullSize - constants.maximumSidebarSize
-            state.mapsMenu.sidebar.height = sidebarHeight - state.mapsMenu.sidebar.overflow
-        end
-        cprint(inspect(state.mapsMenu))
-        return state
-    elseif (action.type == 'INCREMENT_MAPS_MENU_PAGE') then
-        if (state.mapsMenu.currentPage < #state.mapsMenu.currentMapsList) then
-            state.mapsMenu.currentPage = state.mapsMenu.currentPage + 1
-            local newHeight = state.mapsMenu.sidebar.height + state.mapsMenu.sidebar.slice
-            local newPosition = state.mapsMenu.sidebar.position + state.mapsMenu.sidebar.slice
-            if (state.mapsMenu.currentPage == 3) then
-                newHeight = newHeight + state.mapsMenu.sidebar.overflow
-            end
-            if (state.mapsMenu.currentPage == #state.mapsMenu.currentMapsList - 1) then
-                newHeight = newHeight - state.mapsMenu.sidebar.overflow
-            end
-            state.mapsMenu.sidebar.height = newHeight
-            state.mapsMenu.sidebar.position = newPosition
-        end
-        cprint(state.mapsMenu.currentPage)
-        return state
-    elseif (action.type == 'DECREMENT_MAPS_MENU_PAGE') then
-        if (state.mapsMenu.currentPage > 1) then
-            state.mapsMenu.currentPage = state.mapsMenu.currentPage - 1
-            local newHeight = state.mapsMenu.sidebar.height - state.mapsMenu.sidebar.slice
-            local newPosition = state.mapsMenu.sidebar.position - state.mapsMenu.sidebar.slice
-            if (state.mapsMenu.currentPage == 2) then
-                newHeight = newHeight - state.mapsMenu.sidebar.overflow
-            end
-            if (state.mapsMenu.currentPage == #state.mapsMenu.currentMapsList - 2) then
-                newHeight = newHeight + state.mapsMenu.sidebar.overflow
-            end
-            state.mapsMenu.sidebar.height = newHeight
-            state.mapsMenu.sidebar.position = newPosition
-        end
-        cprint(state.mapsMenu.currentPage)
-        return state
-    elseif (action.type == 'UPDATE_FORGE_OBJECTS_LIST') then
-        state.forgeMenu = action.payload.forgeMenu
-        local objectsList = glue.childsByParent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
-        state.forgeMenu.currentObjectsList = glue.chunks(glue.keys(objectsList), 6)
-        cprint(inspect(state.forgeMenu))
-        return state
-    elseif (action.type == 'INCREMENT_FORGE_MENU_PAGE') then
-        cprint('Page:' .. inspect(state.forgeMenu.currentPage))
-        if (state.forgeMenu.currentPage < #state.forgeMenu.currentObjectsList) then
-            state.forgeMenu.currentPage = state.forgeMenu.currentPage + 1
-        end
-        return state
-    elseif (action.type == 'DECREMENT_FORGE_MENU_PAGE') then
-        cprint('Page:' .. inspect(state.forgeMenu.currentPage))
-        if (state.forgeMenu.currentPage > 1) then
-            state.forgeMenu.currentPage = state.forgeMenu.currentPage - 1
-        end
-        return state
-    elseif (action.type == 'DOWNWARD_NAV_FORGE_MENU') then
-        state.forgeMenu.currentPage = 1
-        state.forgeMenu.desiredElement = action.payload.desiredElement
-        local objectsList = glue.childsByParent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
-        state.forgeMenu.currentObjectsList = glue.chunks(glue.keys(objectsList), 6)
-        cprint(inspect(state.forgeMenu))
-        return state
-    elseif (action.type == 'UPWARD_NAV_FORGE_MENU') then
-        state.forgeMenu.currentPage = 1
-        state.forgeMenu.desiredElement = glue.parentByChild(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
-        local objectsList = glue.childsByParent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
-        state.forgeMenu.currentObjectsList = glue.chunks(glue.keys(objectsList), 6)
-        cprint(inspect(state.forgeMenu))
-        return state
-    elseif (action.type == 'SET_MAP_NAME') then
-        state.currentMap.name = action.payload.mapName
-        return state
-    else
-        if (action.type == '@@lua-redux/INIT') then
-            cprint('Default state has been created!')
-        else
-            cprint('ERROR!!! The dispatched event does not exist:', 'error')
-        end
-        return state
-    end
 end
 
 function onMapLoad()
@@ -799,10 +600,12 @@ function onCommand(command)
             if (newDistance) then
                 hud_message('Distance from object has been set to ' .. newDistance .. ' units.')
                 -- Force distance object update
-                blockDistance = true
-                distance = glue.round(newDistance)
+                playerStore:dispatch({type = 'SET_LOCK_DISTANCE', payload = {lockDistance = true}})
+                local distance = glue.round(newDistance)
+                playerStore:dispatch({type = 'SET_DISTANCE', payload = {distance = distance}})
             else
-                distance = 3
+                local distance = 3
+                playerStore:dispatch({type = 'SET_DISTANCE', payload = {distance = distance}})
             end
             return false
         elseif (forgeCommand == 'fsave') then

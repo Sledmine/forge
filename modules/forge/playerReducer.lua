@@ -1,7 +1,3 @@
-local rotationList = {yaw = 0,
-pitch = 1,
-roll = 2}
-
 function playerReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
@@ -15,8 +11,8 @@ function playerReducer(state, action)
             yaw = 0,
             pitch = 0,
             roll = 0,
-            rotationStep = 2,
-            currentRotation = 'yaw'
+            rotationStep = 3,
+            currentAngle = 'yaw'
         }
     end
     if (action.type == 'SET_LOCK_DISTANCE') then
@@ -37,9 +33,22 @@ function playerReducer(state, action)
             state.attachedObjectId =
                 cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
         end
+        rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
         return state
     elseif (action.type == 'ATTACH_OBJECT') then
         state.attachedObjectId = action.payload.objectId
+        local objectsState = objectsStore:getState()
+        local composedObject = objectsState[state.attachedObjectId]
+        if (composedObject) then
+            state.yaw = composedObject.yaw
+            state.pitch = composedObject.pitch
+            state.roll = composedObject.roll
+        end
+        return state
+    elseif (action.type == 'ROTATE_OBJECT') then
+        if (state.attachedObjectId and get_object(state.attachedObjectId)) then
+            rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
+        end
         return state
     elseif (action.type == 'DETACH_OBJECT') then -- Update request if needed
         if (state.attachedObjectId) then
@@ -48,6 +57,9 @@ function playerReducer(state, action)
             if (composedObject) then
                 -- Object already exists, send update request
                 composedObject.object = blam.object(get_object(state.attachedObjectId))
+                composedObject.yaw = state.yaw
+                composedObject.pitch = state.pitch
+                composedObject.roll = state.roll
                 sendRequest(createRequest(composedObject, constants.requestTypes.UPDATE_OBJECT))
             else
                 delete_object(state.attachedObjectId)
@@ -90,8 +102,47 @@ function playerReducer(state, action)
                 math.sqrt((tempObject.x - player.x) ^ 2 + (tempObject.y - player.y) ^ 2 + (tempObject.z - player.z) ^ 2)
         end
         return state
-    elseif  (action.type == 'CHANGE_ROTATION_ANGLE')
-else
+    elseif (action.type == 'SET_DISTANCE') then
+        state.distance = action.payload.distance
+        return state
+    elseif  (action.type == 'CHANGE_ROTATION_ANGLE') then
+        if (state.currentAngle == 'yaw') then
+            state.currentAngle = 'pitch'
+        elseif (state.currentAngle == 'pitch') then
+            state.currentAngle = 'roll'
+        else
+            state.currentAngle = 'yaw'
+        end
+        return state
+    elseif (action.type == 'SET_ROTATION_STEP') then
+        state.rotationStep = action.payload.step
+        return state
+    elseif (action.type == 'STEP_ROTATION_DEGREE') then
+        local previousRotation = state[state.currentAngle]
+        if (previousRotation >= 360) then
+            state[state.currentAngle] = 0
+        else
+            state[state.currentAngle] = previousRotation + state.rotationStep
+        end
+        return state
+    elseif (action.type == 'SET_ROTATION_DEGREES') then
+        if (action.payload.yaw) then
+            state.yaw = action.payload.yaw
+        end
+        if (action.payload.pitch) then
+            state.yaw = action.payload.pitch
+        end
+        if (action.payload.roll) then
+            state.yaw = action.payload.roll
+        end
+        return state
+    elseif (action.type == 'RESET_ROTATION') then
+        state.yaw = 0
+        state.pitch = 0
+        state.roll = 0
+        state.currentAngle = 'yaw'
+        return state
+    else
         return state
     end
 end
