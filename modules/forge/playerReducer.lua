@@ -60,7 +60,9 @@ function playerReducer(state, action)
                 composedObject.yaw = state.yaw
                 composedObject.pitch = state.pitch
                 composedObject.roll = state.roll
-                sendRequest(createRequest(composedObject, constants.requestTypes.UPDATE_OBJECT))
+                for i = 1, 500 do
+                    sendRequest(createRequest(composedObject, constants.requestTypes.UPDATE_OBJECT))
+                end
             else
                 delete_object(state.attachedObjectId)
                 -- Object does not exist, create composed object and send request

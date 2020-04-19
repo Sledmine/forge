@@ -49,6 +49,8 @@ function objectsReducer(state, action)
         -- Store the object in our state
         state[localObjectId] = composedObject
 
+        forgeStore:dispatch({type='UPDATE_BUDGET'})
+
         return state
     elseif (action.type == constants.actionTypes.UPDATE_OBJECT) then
         local requestObject = action.payload.composedObject
@@ -91,6 +93,7 @@ function objectsReducer(state, action)
         else
             cprint('ERROR!!! The specified object does not exist.', 'error')
         end
+        forgeStore:dispatch({type='UPDATE_BUDGET'})
         return state
     else
         if (action.type == '@@lua-redux/INIT') then

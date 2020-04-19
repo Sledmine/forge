@@ -386,6 +386,15 @@ function onMapLoad()
                 paginationStringList[4] = tostring(#forgeState.forgeMenu.currentObjectsList)
                 blam.unicodeStringList(paginationTextAddress, {stringList = paginationStringList})
             end
+            -- Budget count
+            -- Update unicode string with current budget value
+            local budgetCountAddress = get_tag('unicode_string_list', constants.unicodeStrings.budgetCount)
+            local currentBudget = blam.unicodeStringList(budgetCountAddress)
+            
+            currentBudget.stringList = {forgeState.forgeMenu.currentBudget}
+        
+            -- Refresh budget count
+            blam.unicodeStringList(budgetCountAddress, currentBudget)
 
             local currentMapsList = forgeState.mapsMenu.currentMapsList[forgeState.mapsMenu.currentPage]
             -- Prevent errors when maps does not exist
@@ -428,6 +437,15 @@ function onMapLoad()
                     }
                 }
             )
+
+            -- Refresh budget bar status
+            blam.uiWidgetDefinition(
+                get_tag('ui_widget_definition', constants.widgetDefinitions.amountBar),
+                {
+                    width = forgeState.forgeMenu.currentBarSize
+                }
+            )
+            console_out(forgeState.forgeMenu.currentBarSize)
         end
     )
 
@@ -559,14 +577,15 @@ function onRcon(message)
 end
 
 function loadForgeMapsList()
-    local mapsList = {}
+    local arrayMapsList = {}
     for file in hfs.dir(forgeMapsFolder) do
         if (file ~= '.' and file ~= '..') then
-            glue.append(mapsList, file)
+            glue.append(arrayMapsList, file)
         end
     end
     -- Dispatch state modification!
-    forgeStore:dispatch({type = 'UPDATE_MAP_LIST', payload = {mapsList = mapsList}})
+    local data = {mapsList = arrayMapsList}
+    forgeStore:dispatch({type = 'UPDATE_MAP_LIST', payload = data})
 end
 
 -- Allows the script to run by just reloading it
@@ -641,6 +660,7 @@ function onCommand(command)
             cprint(inspect(get_objects()))
             cprint('[Objects Store]', 'category')
             cprint(inspect(glue.keys(objectsStore:getState())))
+            cprint(#glue.keys(objectsStore:getState()))
             return false
         elseif (forgeCommand == 'freset') then
             execute_script('object_destroy_all')

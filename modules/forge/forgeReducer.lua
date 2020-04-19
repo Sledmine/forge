@@ -18,7 +18,9 @@ function forgeReducer(state, action)
                 objectsDatabase = {},
                 objectsList = {root = {}},
                 currentObjectsList = {},
-                currentPage = 1
+                currentPage = 1,
+                currentBudget = '0',
+                currentBarSize = 0
             },
             currentMap = {
                 name = 'Unsaved',
@@ -115,6 +117,15 @@ function forgeReducer(state, action)
         return state
     elseif (action.type == 'SET_MAP_NAME') then
         state.currentMap.name = action.payload.mapName
+        return state
+    elseif (action.type == 'UPDATE_BUDGET') then
+        if(objectsStore) then
+            local objectState = objectsStore:getState()
+            local currentObjects = tostring(#glue.keys(objectState))
+            local newBarSize =  tonumber(currentObjects) * constants.maximumProgressBarSize / 1024
+            state.forgeMenu.currentBarSize = glue.floor(newBarSize)
+            state.forgeMenu.currentBudget = currentObjects
+        end
         return state
     else
         if (action.type == '@@lua-redux/INIT') then

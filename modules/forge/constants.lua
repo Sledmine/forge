@@ -8,9 +8,11 @@
 local constants = {}
 
 constants.maximumProgressBarSize = 171
+constants.maximumBudget = 1024
 constants.minimumZSpawnPoint = -18.69
 constants.maximumSidebarSize = 249
 constants.minimumSidebarSize = 40
+
 
 constants.actionTypes = {
     SPAWN_OBJECT = 'SPAWN_OBJECT',
