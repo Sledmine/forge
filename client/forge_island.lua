@@ -119,16 +119,12 @@ require 'forge.playerReducer'
 require 'forge.eventsReducer'
 require 'forge.forgeReducer'
 
-local lastBipedMemory = nil
-
 -- Update internal state along the time
 function onTick()
     -- Get player object
-    local playerAddress = get_dynamic_player()
-    local player = blam.biped(playerAddress)
+    local player = blam.biped(get_dynamic_player())
     local playerState = playerStore:getState()
     if (player) then
-        lastBipedMemory = playerAddress
         player.isMonitor = features.isPlayerMonitor()
         --cprint(player.x .. ' ' .. player.y .. ' ' .. player.z)
         if (player.isMonitor) then
@@ -247,14 +243,6 @@ function onTick()
                 cspawn_object('bipd', constants.bipeds.spartan, player.x, player.y, player.z)
             elseif (player.crouchHold) then
                 features.openMenu(constants.widgetDefinitions.loadingMenu)
-            end
-        end
-    else
-        local playerBiped = blam.biped(lastBipedMemory)
-        if (playerBiped) then
-            if (playerBiped.health <= 0) then
-                features.openMenu(constants.widgetDefinitions.loadoutMenu)
-                lastBipedMemory = 0
             end
         end
     end
