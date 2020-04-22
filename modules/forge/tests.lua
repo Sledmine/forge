@@ -33,7 +33,7 @@ function test_Rcon:setUp()
     self.expectedDecodeResultSpawn = {
         pitch = 360,
         requestType = '#s',
-        remoteId = 1023,
+        remoteId = 1234,
         roll = 360,
         tagId = 1234,
         x = 1,
@@ -65,7 +65,7 @@ function test_Rcon:test_Callback()
 end
 
 function test_Rcon:test_Decode_Spawn()
-    local decodeResult, decodeData = onRcon("'#s,d2040000,0000803f,00000040,00004040,360,360,360,1023'")
+    local decodeResult, decodeData = onRcon("'#s,d2040000,0000803f,00000040,00004040,360,360,360,d2040000'")
     lu.assertEquals(decodeResult, false)
     lu.assertEquals(decodeData, self.expectedDecodeResultSpawn)
 end

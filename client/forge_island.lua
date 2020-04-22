@@ -65,14 +65,13 @@ function cspawn_object(type, tagPath, x, y, z)
     cprint('Trying to spawn object...', 'warning')
     -- Prevent objects from phantom spawning!
     -- local variables are accesed first than parameter variables
-    local z = z
     if (z < constants.minimumZSpawnPoint) then
         z = constants.minimumZSpawnPoint
     end
     local objectId = spawn_object(type, tagPath, x, y, z)
     if (objectId) then
         cprint('-> Object: ' .. objectId .. ' succesfully spawned!!!', 'success')
-        return objectId
+        return objectId, x, y, z
     end
     cprint('Error at trying to spawn object!!!!', 'error')
     return nil
@@ -107,7 +106,7 @@ end
 -- They can be accessed through global script scope but no by libraries!
 
 -- Prepare event callbacks
-set_callback('map load', 'onMapLoad') -- Thanks Jerry to add this callback!
+set_callback('map postload', 'onMapLoad') -- Thanks Jerry to add this callback!
 set_callback('unload', 'onScriptUnload')
 
 ---@return boolean
@@ -117,15 +116,19 @@ end
 
 -- Reducers importation
 require 'forge.playerReducer'
-require 'forge.objectsReducer'
+require 'forge.eventsReducer'
 require 'forge.forgeReducer'
+
+local lastBipedMemory = nil
 
 -- Update internal state along the time
 function onTick()
     -- Get player object
-    local player = blam.biped(get_dynamic_player())
+    local playerAddress = get_dynamic_player()
+    local player = blam.biped(playerAddress)
     local playerState = playerStore:getState()
     if (player) then
+        lastBipedMemory = playerAddress
         player.isMonitor = features.isPlayerMonitor()
         --cprint(player.x .. ' ' .. player.y .. ' ' .. player.z)
         if (player.isMonitor) then
@@ -198,9 +201,7 @@ function onTick()
                 -- Open Forge menu by pressing 'Q'
                 if (player.flashlightKey) then
                     cprint('Opening Forge menu...')
-                    -- TO DO: Create a module to load different UI widgets!
-                    execute_script('multiplayer_map_name sledisawesome')
-                    execute_script('multiplayer_map_name ' .. map)
+                    features.openMenu(constants.widgetDefinitions.forgeMenu)
                 elseif (player.crouchHold) then
                     playerStore:dispatch({type = 'DETACH_OBJECT'})
                     features.swapBiped()
@@ -242,10 +243,18 @@ function onTick()
             -- Convert into monitor
             if (player.flashlightKey) then
                 features.swapBiped()
-            end
-
-            if (player.actionKey and player.crouchHold) then
+            elseif (player.actionKey and player.crouchHold and server_type == 'local') then
                 cspawn_object('bipd', constants.bipeds.spartan, player.x, player.y, player.z)
+            elseif (player.crouchHold) then
+                features.openMenu(constants.widgetDefinitions.loadingMenu)
+            end
+        end
+    else
+        local playerBiped = blam.biped(lastBipedMemory)
+        if (playerBiped) then
+            if (playerBiped.health <= 0) then
+                features.openMenu(constants.widgetDefinitions.loadoutMenu)
+                lastBipedMemory = 0
             end
         end
     end
@@ -299,13 +308,14 @@ function onTick()
     hook.attach('maps_menu', menu.stopUpdate, constants.widgetDefinitions.mapsList)
     hook.attach('forge_menu', menu.stopUpdate, constants.widgetDefinitions.forgeList)
     hook.attach('forge_menu_close', menu.stopClose, constants.widgetDefinitions.forgeMenu)
+    hook.attach('forge_menu_close', menu.stopClose, constants.widgetDefinitions.loadingMenu)
 end
 
 function onMapLoad()
     -- Like Redux we have some kind of store baby!! the rest is pure magic..
     playerStore = redux.createStore(playerReducer)
     forgeStore = redux.createStore(forgeReducer) -- Isolated store for all the Forge 'app' data
-    objectsStore = redux.createStore(objectsReducer) -- Unique store for all the Forge Objects
+    eventsStore = redux.createStore(eventsReducer) -- Unique store for all the Forge Objects
 
     local forgeState = forgeStore:getState()
     local scenario = blam.scenario(get_tag(0))
@@ -386,15 +396,32 @@ function onMapLoad()
                 paginationStringList[4] = tostring(#forgeState.forgeMenu.currentObjectsList)
                 blam.unicodeStringList(paginationTextAddress, {stringList = paginationStringList})
             end
+
             -- Budget count
             -- Update unicode string with current budget value
             local budgetCountAddress = get_tag('unicode_string_list', constants.unicodeStrings.budgetCount)
             local currentBudget = blam.unicodeStringList(budgetCountAddress)
-            
+
             currentBudget.stringList = {forgeState.forgeMenu.currentBudget}
-        
+
             -- Refresh budget count
             blam.unicodeStringList(budgetCountAddress, currentBudget)
+
+            -- Refresh budget bar status
+            blam.uiWidgetDefinition(
+                get_tag('ui_widget_definition', constants.widgetDefinitions.amountBar),
+                {
+                    width = forgeState.forgeMenu.currentBarSize
+                }
+            )
+
+            -- Refresh loading bar size
+            blam.uiWidgetDefinition(
+                get_tag('ui_widget_definition', constants.widgetDefinitions.loadingProgress),
+                {
+                    width = forgeState.loadingMenu.currentBarSize
+                }
+            )
 
             local currentMapsList = forgeState.mapsMenu.currentMapsList[forgeState.mapsMenu.currentPage]
             -- Prevent errors when maps does not exist
@@ -437,15 +464,6 @@ function onMapLoad()
                     }
                 }
             )
-
-            -- Refresh budget bar status
-            blam.uiWidgetDefinition(
-                get_tag('ui_widget_definition', constants.widgetDefinitions.amountBar),
-                {
-                    width = forgeState.forgeMenu.currentBarSize
-                }
-            )
-            console_out(forgeState.forgeMenu.currentBarSize)
         end
     )
 
@@ -482,10 +500,21 @@ function createRequest(composedObject, requestType)
         objectData.requestType = requestType
         if (requestType == constants.requestTypes.SPAWN_OBJECT) then
             objectData.tagId = composedObject.object.tagId
+            if (server_type == 'sapp') then
+                objectData.remoteId = composedObject.remoteId
+            end
         elseif (requestType == constants.requestTypes.UPDATE_OBJECT) then
-            objectData.objectId = composedObject.objectId
+            if (server_type ~= 'sapp') then
+                objectData.objectId = composedObject.remoteId
+            else
+                objectData.objectId = composedObject.objectId
+            end
         elseif (requestType == constants.requestTypes.DELETE_OBJECT) then
-            objectData.objectId = composedObject.objectId
+            if (server_type ~= 'sapp') then
+                objectData.objectId = composedObject.remoteId
+            else
+                objectData.objectId = composedObject.objectId
+            end
             return objectData
         end
         objectData.x = composedObject.object.x
@@ -523,16 +552,25 @@ function sendRequest(data)
         local requestOrder = constants.requestFormats[requestType]
         local request = maethrillian.convertObjectToRequest(requestObject, requestOrder)
 
+        request = "rcon forge '" .. request .. "'"
+
         cprint('Request: ' .. request)
         if (server_type == 'local') then
             -- We need to mockup the server response in local mode
             local mockedResponse = string.gsub(string.gsub(request, "rcon forge '", ''), "'", '')
+            cprint('Local Request: ' .. mockedResponse)
             onRcon(mockedResponse)
-            return true, request
-        else
+            return true, mockedResponse
+        elseif (server_type == 'dedicated') then
             -- Player is connected to a server
+            cprint('Dedicated Request: ' .. request)
             execute_script(request)
             return true, request
+        elseif (server_type == 'sapp') then
+            local fixedResponse = string.gsub(request, "rcon forge '", '')
+            cprint('Server Request: ' .. fixedResponse)
+            broadcastRequest(fixedResponse)
+            return true, fixedResponse
         end
     end
     cprint('Error at trying to send request!!!!', 'error')
@@ -569,7 +607,7 @@ function onRcon(message)
         end
 
         if (not ftestingMode) then
-            objectsStore:dispatch({type = requestType, payload = {composedObject = requestObject}})
+            eventsStore:dispatch({type = requestType, payload = {requestObject = requestObject}})
         end
         return false, requestObject
     end
@@ -654,13 +692,15 @@ function onCommand(command)
             -- Run unit testing
             tests.run(true)
             return false
+        elseif (forgeCommand == 'fdump') then
+            glue.writefile('forge_dump.json', inspect(eventsStore:getState().forgeObjects), '')
+            return false
         elseif (forgeCommand == 'fprint') then
             -- Testing rcon communication
             cprint('[Game Objects]', 'category')
             cprint(inspect(get_objects()))
             cprint('[Objects Store]', 'category')
-            cprint(inspect(glue.keys(objectsStore:getState())))
-            cprint(#glue.keys(objectsStore:getState()))
+            cprint(inspect(glue.keys(eventsStore:getState().forgeObjects)))
             return false
         elseif (forgeCommand == 'freset') then
             execute_script('object_destroy_all')

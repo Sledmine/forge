@@ -69,7 +69,7 @@ end
 -- Changes default crosshair values
 ---@param state number
 function features.setCrosshairState(state)
-    --[[local forgeCrosshairAddress = get_tag('weapon_hud_interface', constants.weaponHudInterfaces.forgeCrosshair)
+    local forgeCrosshairAddress = get_tag('weapon_hud_interface', constants.weaponHudInterfaces.forgeCrosshair)
     if (state == 0) then
         blam.weaponHudInterface(
             forgeCrosshairAddress,
@@ -120,7 +120,7 @@ function features.setCrosshairState(state)
                 sequenceIndex = 0
             }
         )
-    end]]
+    end
 end
 
 -- Check if current player is using a monitor biped
@@ -131,30 +131,6 @@ function features.isPlayerMonitor()
         return true
     end
     return false
-end
-
--- Mod functions
-function features.swapBiped()
-    features.unhighlightAll()
-    if (server_type == 'local') then
-        -- Needs kinda refactoring, probably splitting this into LuaBlam
-        local globalsTagAddress = get_tag('matg', 'globals\\globals')
-        local globalsTagData = read_dword(globalsTagAddress + 0x14)
-        local globalsTagMultiplayerBipedTagIdAddress = globalsTagData + 0x9BC + 0xC
-        local currentGlobalsBipedTagId = read_dword(globalsTagMultiplayerBipedTagIdAddress)
-        for i = 0, 1023 do
-            local tempObject = blam.object(get_object(i))
-            if (tempObject and tempObject.tagId == get_tag_id('bipd', constants.bipeds.spartan)) then
-                write_dword(globalsTagMultiplayerBipedTagIdAddress, get_tag_id('bipd', constants.bipeds.monitor))
-                delete_object(i)
-            elseif (tempObject and tempObject.tagId == get_tag_id('bipd', constants.bipeds.monitor)) then
-                write_dword(globalsTagMultiplayerBipedTagIdAddress, get_tag_id('bipd', constants.bipeds.spartan))
-                delete_object(i)
-            end
-        end
-    else
-        execute_script('rcon forge #b')
-    end
 end
 
 function features.unhighlightAll()
@@ -176,6 +152,48 @@ function features.highlightObject(objectId, transparency)
     features.unhighlightAll()
     -- Highlight object
     blam.object(get_object(objectId), {health = transparency})
+end
+
+-- Mod functions
+function features.swapBiped()
+    features.unhighlightAll()
+    if (server_type == 'local') then
+        -- Avoid annoying low health/shield bug after swaping bipeds
+        blam.biped(get_dynamic_player(), {health = 100, shield = 100})
+
+        -- Needs kinda refactoring, probably splitting this into LuaBlam
+        local globalsTagAddress = get_tag('matg', 'globals\\globals')
+        local globalsTagData = read_dword(globalsTagAddress + 0x14)
+        local globalsTagMultiplayerBipedTagIdAddress = globalsTagData + 0x9BC + 0xC
+        local currentGlobalsBipedTagId = read_dword(globalsTagMultiplayerBipedTagIdAddress)
+        for i = 0, 1023 do
+            local tempObject = blam.object(get_object(i))
+            if (tempObject and tempObject.tagId == get_tag_id('bipd', constants.bipeds.spartan)) then
+                write_dword(globalsTagMultiplayerBipedTagIdAddress, get_tag_id('bipd', constants.bipeds.monitor))
+                delete_object(i)
+            elseif (tempObject and tempObject.tagId == get_tag_id('bipd', constants.bipeds.monitor)) then
+                write_dword(globalsTagMultiplayerBipedTagIdAddress, get_tag_id('bipd', constants.bipeds.spartan))
+                delete_object(i)
+            end
+        end
+    else
+        cprint('Requesting monitor biped...')
+        execute_script('rcon forge #b')
+    end
+end
+
+function features.openMenu(tagPath)
+    local newMenuTagId = get_tag_id('DeLa', tagPath)
+    if (newMenuTagId) then
+        blam.uiWidgetDefinition(
+            get_tag('DeLa', constants.widgetDefinitions.errorNonmodalFullscreen),
+            {tagReference = newMenuTagId}
+        )
+        execute_script('multiplayer_map_name sledisawesome')
+        execute_script('multiplayer_map_name ' .. map)
+        return true
+    end
+    return false
 end
 
 return features

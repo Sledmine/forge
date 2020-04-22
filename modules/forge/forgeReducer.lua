@@ -22,6 +22,10 @@ function forgeReducer(state, action)
                 currentBudget = '0',
                 currentBarSize = 0
             },
+            loadingMenu = {
+                currentBarSize = 0,
+                expectedObjects = 1
+            },
             currentMap = {
                 name = 'Unsaved',
                 author = 'Author: Unknown',
@@ -118,13 +122,27 @@ function forgeReducer(state, action)
     elseif (action.type == 'SET_MAP_NAME') then
         state.currentMap.name = action.payload.mapName
         return state
-    elseif (action.type == 'UPDATE_BUDGET') then
-        if(objectsStore) then
-            local objectState = objectsStore:getState()
-            local currentObjects = tostring(#glue.keys(objectState))
-            local newBarSize =  tonumber(currentObjects) * constants.maximumProgressBarSize / 1024
+    elseif (action.type == 'UPDATE_OBJECT_INFO') then
+        if (action.payload) then
+            if (action.payload.expectedObjects) then
+                state.loadingMenu.expectedObjects = action.payload.expectedObjects
+            end
+        end
+        if (eventsStore) then
+            local objectState = eventsStore:getState().forgeObjects
+            local currentObjects = #glue.keys(objectState)
+            local newBarSize = currentObjects * constants.maximumProgressBarSize / 1024
             state.forgeMenu.currentBarSize = glue.floor(newBarSize)
-            state.forgeMenu.currentBudget = currentObjects
+            state.forgeMenu.currentBudget = tostring(currentObjects)
+
+            local expectedObjects = state.loadingMenu.expectedObjects
+            cprint(expectedObjects)
+            local newBarSize = currentObjects * constants.maximumLoadingProgressBarSize / expectedObjects
+            state.loadingMenu.currentBarSize = glue.floor(newBarSize)
+            if (state.loadingMenu.currentBarSize >= constants.maximumLoadingProgressBarSize) then
+                menu.close(constants.widgetDefinitions.loadingMenu)
+            end
+            cprint('size: ' .. state.loadingMenu.currentBarSize)
         end
         return state
     else
