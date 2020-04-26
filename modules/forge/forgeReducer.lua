@@ -23,7 +23,7 @@ function forgeReducer(state, action)
                 currentBarSize = 0
             },
             loadingMenu = {
-                currentBarSize = 0,
+                currentBarSize = 422,
                 expectedObjects = 1
             },
             currentMap = {
@@ -128,21 +128,23 @@ function forgeReducer(state, action)
                 state.loadingMenu.expectedObjects = action.payload.expectedObjects
             end
         end
-        if (eventsStore) then
-            local objectState = eventsStore:getState().forgeObjects
-            local currentObjects = #glue.keys(objectState)
-            local newBarSize = currentObjects * constants.maximumProgressBarSize / 1024
-            state.forgeMenu.currentBarSize = glue.floor(newBarSize)
-            state.forgeMenu.currentBudget = tostring(currentObjects)
+        if (server_type ~= 'sapp') then
+            if (eventsStore) then
+                local objectState = eventsStore:getState().forgeObjects
+                local currentObjects = #glue.keys(objectState)
+                local newBarSize = currentObjects * constants.maximumProgressBarSize / 1024
+                state.forgeMenu.currentBarSize = glue.floor(newBarSize)
+                state.forgeMenu.currentBudget = tostring(currentObjects)
 
-            local expectedObjects = state.loadingMenu.expectedObjects
-            cprint(expectedObjects)
-            local newBarSize = currentObjects * constants.maximumLoadingProgressBarSize / expectedObjects
-            state.loadingMenu.currentBarSize = glue.floor(newBarSize)
-            if (state.loadingMenu.currentBarSize >= constants.maximumLoadingProgressBarSize) then
-                menu.close(constants.widgetDefinitions.loadingMenu)
+                local expectedObjects = state.loadingMenu.expectedObjects
+                cprint(expectedObjects)
+                local newBarSize = currentObjects * constants.maximumLoadingProgressBarSize / expectedObjects
+                state.loadingMenu.currentBarSize = glue.floor(newBarSize)
+                if (state.loadingMenu.currentBarSize >= constants.maximumLoadingProgressBarSize) then
+                    menu.close(constants.widgetDefinitions.loadingMenu)
+                end
+                cprint('size: ' .. state.loadingMenu.currentBarSize)
             end
-            cprint('size: ' .. state.loadingMenu.currentBarSize)
         end
         return state
     else

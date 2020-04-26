@@ -60,7 +60,7 @@ function playerReducer(state, action)
                 composedObject.yaw = state.yaw
                 composedObject.pitch = state.pitch
                 composedObject.roll = state.roll
-                sendRequest(createRequest(composedObject, constants.requestTypes.UPDATE_OBJECT))
+                core.sendRequest(core.createRequest(composedObject, constants.requestTypes.UPDATE_OBJECT))
             else
                 delete_object(state.attachedObjectId)
                 -- Object does not exist, create composed object and send request
@@ -71,7 +71,7 @@ function playerReducer(state, action)
                     pitch = state.pitch,
                     roll = state.roll
                 }
-                sendRequest(createRequest(composedObject, constants.requestTypes.SPAWN_OBJECT))
+                core.sendRequest(core.createRequest(composedObject, constants.requestTypes.SPAWN_OBJECT))
             end
             state.attachedObjectId = nil
         end
@@ -81,7 +81,7 @@ function playerReducer(state, action)
             local forgeObjects = eventsStore:getState().forgeObjects
             local composedObject = forgeObjects[state.attachedObjectId]
             if (composedObject) then
-                sendRequest(createRequest(composedObject, constants.requestTypes.DELETE_OBJECT))
+                core.sendRequest(core.createRequest(composedObject, constants.requestTypes.DELETE_OBJECT))
             else
                 delete_object(state.attachedObjectId)
             end

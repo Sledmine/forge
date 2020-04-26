@@ -25,6 +25,7 @@ constants = require 'forge.constants'
 menu = require 'forge.menu'
 features = require 'forge.features'
 tests = require 'forge.tests'
+core = require 'forge.core'
 
 -- Default debug mode state
 debugMode = glue.readfile('forge_debug_mode.dbg', 't')
@@ -40,9 +41,9 @@ function cprint(message, color)
         if (color == 'category') then
             console_out(message, 0.31, 0.631, 0.976)
         elseif (color == 'warning') then
-            console_out_warning(message)
+            console_out(message)
         elseif (color == 'error') then
-            console_out_error(message)
+            console_out(message)
         elseif (color == 'success') then
             console_out(message, 0.235, 0.82, 0)
         else
@@ -106,7 +107,7 @@ end
 -- They can be accessed through global script scope but no by libraries!
 
 -- Prepare event callbacks
-set_callback('map postload', 'onMapLoad') -- Thanks Jerry to add this callback!
+set_callback('map load', 'onMapLoad') -- Thanks Jerry to add this callback!
 set_callback('unload', 'onScriptUnload')
 
 ---@return boolean
@@ -209,20 +210,26 @@ function onTick()
                 -- Unhighlight objects
                 features.unhighlightAll()
 
+                local forgeObjects = eventsStore:getState().forgeObjects
+
                 -- Get if player is looking at some object
-                for objectId = 0, #get_objects() do
-                    local tempObject = blam.object(get_object(objectId))
+                for objectId, composedObject in pairs(forgeObjects) do
+                    --local tempObject = blam.object(get_object(objectId))
                     -- Object exists
-                    if (tempObject) then
-                        local tagType = get_tag_type(tempObject.tagId)
+                    if (composedObject) then
+                        local tagType = get_tag_type(composedObject.object.tagId)
                         if (tagType == 'scen') then
                             local isPlayerLookingAt = features.playerIsLookingAt(objectId, 0.06, 0)
                             if (isPlayerLookingAt) then
                                 -- Update crosshair state
-                                features.setCrosshairState(1)
+                                if (features.setCrosshairState) then
+                                    features.setCrosshairState(1)
+                                end
 
                                 -- Hightlight the object that the player is looking at
-                                features.highlightObject(objectId, 0.7)
+                                if (features.highlightObject) then
+                                    features.highlightObject(objectId, 1)
+                                end
 
                                 -- Player is taking the object
                                 if (player.weaponPTH) then
@@ -230,6 +237,9 @@ function onTick()
                                     playerStore:dispatch({type = 'SET_LOCK_DISTANCE', payload = {lockDistance = false}})
                                     playerStore:dispatch({type = 'ATTACH_OBJECT', payload = {objectId = objectId}})
                                 end
+
+                                -- Stop searching for other objects
+                                break
                             end
                         end
                     end
@@ -241,8 +251,6 @@ function onTick()
                 features.swapBiped()
             elseif (player.actionKey and player.crouchHold and server_type == 'local') then
                 cspawn_object('bipd', constants.bipeds.spartan, player.x, player.y, player.z)
-            elseif (player.crouchHold) then
-                features.openMenu(constants.widgetDefinitions.loadingMenu)
             end
         end
     end
@@ -296,7 +304,7 @@ function onTick()
     hook.attach('maps_menu', menu.stopUpdate, constants.widgetDefinitions.mapsList)
     hook.attach('forge_menu', menu.stopUpdate, constants.widgetDefinitions.forgeList)
     hook.attach('forge_menu_close', menu.stopClose, constants.widgetDefinitions.forgeMenu)
-    hook.attach('forge_menu_close', menu.stopClose, constants.widgetDefinitions.loadingMenu)
+    hook.attach('loading_menu_close', menu.stopClose, constants.widgetDefinitions.loadingMenu)
 end
 
 function onMapLoad()
@@ -479,6 +487,7 @@ function onMapLoad()
     end
 end
 
+--[[
 -- Create a request for an object action
 ---@param composedObject number
 ---@param requestType string
@@ -514,57 +523,7 @@ function createRequest(composedObject, requestType)
         return objectData
     end
     return nil
-end
-
--- Send a request to the server throug rcon
----@param data table
----@return boolean success
----@return string request
-function sendRequest(data)
-    cprint(inspect(data))
-    cprint('-> [ Sending request ]')
-    local requestType = constants.requestTypes[data.requestType]
-    if (requestType) then
-        cprint('Type: ' .. requestType, 'category')
-        local compressionFormat = constants.compressionFormats[requestType]
-
-        if (not compressionFormat) then
-            cprint('There is no format compression for this request!!!!', 'error')
-            return false
-        end
-
-        cprint('Compression: ' .. inspect(compressionFormat))
-
-        local requestObject = maethrillian.compressObject(data, compressionFormat, true)
-
-        local requestOrder = constants.requestFormats[requestType]
-        local request = maethrillian.convertObjectToRequest(requestObject, requestOrder)
-
-        request = "rcon forge '" .. request .. "'"
-
-        cprint('Request: ' .. request)
-        if (server_type == 'local') then
-            -- We need to mockup the server response in local mode
-            local mockedResponse = string.gsub(string.gsub(request, "rcon forge '", ''), "'", '')
-            cprint('Local Request: ' .. mockedResponse)
-            onRcon(mockedResponse)
-            return true, mockedResponse
-        elseif (server_type == 'dedicated') then
-            -- Player is connected to a server
-            cprint('Dedicated Request: ' .. request)
-            execute_script(request)
-            return true, request
-        elseif (server_type == 'sapp') then
-            local fixedResponse = string.gsub(request, "rcon forge '", '')
-            cprint('Server Request: ' .. fixedResponse)
-            broadcastRequest(fixedResponse)
-            return true, fixedResponse
-        end
-    end
-    cprint('Error at trying to send request!!!!', 'error')
-    return false
-end
-
+end]]
 function onRcon(message)
     cprint('Incoming rcon message:', 'warning')
     cprint(message)
@@ -654,17 +613,17 @@ function onCommand(command)
             end
             return false
         elseif (forgeCommand == 'fsave') then
-            local mapName = splitCommand[2]
+            local mapName = forgeStore:getState().currentMap.name
             if (mapName) then
-                saveForgeMap(mapName)
+                core.saveForgeMap(mapName)
             else
                 console_out('You must specify a name for your forge map.')
             end
             return false
         elseif (forgeCommand == 'fload') then
-            local mapName = splitCommand[2]
+            local mapName = table.concat(glue.shift(splitCommand, 1, -1), ' ')
             if (mapName) then
-                loadForgeMap(mapName)
+                core.loadForgeMap(mapName)
             else
                 console_out('You must specify a forge map name.')
             end

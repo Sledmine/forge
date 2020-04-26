@@ -134,7 +134,8 @@ function features.isPlayerMonitor()
 end
 
 function features.unhighlightAll()
-    for objectId = 0, #get_objects() do
+    local forgeObjects = eventsStore:getState().forgeObjects
+    for objectId, composedObject in pairs(forgeObjects) do
         local tempObject = blam.object(get_object(objectId))
         -- Object exists
         if (tempObject) then
@@ -149,7 +150,6 @@ end
 ---@param objectId number
 ---@param transparency number | "0.1" | "0.5" | "1"
 function features.highlightObject(objectId, transparency)
-    features.unhighlightAll()
     -- Highlight object
     blam.object(get_object(objectId), {health = transparency})
 end

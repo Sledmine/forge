@@ -31,6 +31,7 @@ maethrillian = require 'maethrillian'
 constants = require 'forge.constants'
 features = require 'forge.features'
 tests = require 'forge.tests'
+core = require 'forge.core'
 
 -- Default debug mode state
 debugMode = true
@@ -137,8 +138,8 @@ function OnScriptLoad()
         '#u',
         '#l',
         '#b',
-        'smap',
-        'lmap'
+        'fload',
+        'fsave'
     }
     for k, v in pairs(forgeCommands) do
         execute_command('lua_call rcon_bypass submitCommand ' .. v)
@@ -186,116 +187,13 @@ function onPlayerJoin(playerIndex)
     if (objectCount > 0) then
         local composedObject = {}
         composedObject.objectCount = objectCount
-        local response = createRequest(composedObject, constants.requestTypes.LOAD_MAP_SCREEN)
-        sendRequest(response, playerIndex)
+        local response = core.createRequest(composedObject, constants.requestTypes.LOAD_MAP_SCREEN)
+        core.sendRequest(response, playerIndex)
         for objectId, composedObject in pairs(forgeObjects) do
-            local response = createRequest(composedObject, constants.requestTypes.SPAWN_OBJECT)
-            sendRequest(response, playerIndex)
+            local response = core.createRequest(composedObject, constants.requestTypes.SPAWN_OBJECT)
+            core.sendRequest(response, playerIndex)
         end
     end
-end
-
--- Create a request for an object action
----@param composedObject number
----@param requestType string
-function createRequest(composedObject, requestType)
-    local objectData = {}
-    if (composedObject) then
-        objectData.requestType = requestType
-        if (requestType == constants.requestTypes.SPAWN_OBJECT) then
-            objectData.tagId = composedObject.object.tagId
-            if (server_type == 'sapp') then
-                objectData.remoteId = composedObject.remoteId
-            end
-        elseif (requestType == constants.requestTypes.UPDATE_OBJECT) then
-            composedObject.object = blam.object(get_object(composedObject.objectId))
-            if (server_type ~= 'sapp') then
-                objectData.objectId = composedObject.remoteId
-            else
-                objectData.objectId = composedObject.objectId
-            end
-        elseif (requestType == constants.requestTypes.DELETE_OBJECT) then
-            if (server_type ~= 'sapp') then
-                objectData.objectId = composedObject.remoteId
-            else
-                objectData.objectId = composedObject.objectId
-            end
-            return objectData
-        elseif (requestType == constants.requestTypes.LOAD_MAP_SCREEN) then
-            objectData.objectCount = composedObject.objectCount
-            return objectData
-        end
-        objectData.x = composedObject.object.x
-        objectData.y = composedObject.object.y
-        objectData.z = composedObject.object.z
-        objectData.yaw = composedObject.yaw
-        objectData.pitch = composedObject.pitch
-        objectData.roll = composedObject.roll
-        return objectData
-    end
-    return nil
-end
-
--- Send a request to the server throug rcon
----@param data table
----@param playerIndex number
----@return boolean success
----@return string request
-function sendRequest(data, playerIndex)
-    cprint('Request data: ')
-    cprint(inspect(data))
-    cprint('-> [ Sending request ]')
-    local requestType = constants.requestTypes[data.requestType]
-    if (requestType) then
-        cprint('Type: ' .. requestType, 'category')
-        local compressionFormat = constants.compressionFormats[requestType]
-
-        if (not compressionFormat) then
-            cprint('There is no format compression for this request!!!!', 'error')
-            return false
-        end
-
-        cprint('Compression: ' .. inspect(compressionFormat))
-
-        local requestObject = maethrillian.compressObject(data, compressionFormat, true)
-
-        local requestOrder = constants.requestFormats[requestType]
-        local request = maethrillian.convertObjectToRequest(requestObject, requestOrder)
-
-        request = "rcon forge '" .. request .. "'"
-
-        cprint('Request: ' .. request)
-        if (server_type == 'local') then
-            -- We need to mockup the server response in local mode
-            local mockedResponse = string.gsub(string.gsub(request, "rcon forge '", ''), "'", '')
-            cprint('Local Request: ' .. mockedResponse)
-            onRcon(mockedResponse)
-            return true, mockedResponse
-        elseif (server_type == 'dedicated') then
-            -- Player is connected to a server
-            cprint('Dedicated Request: ' .. request)
-            execute_script(request)
-            return true, request
-        elseif (server_type == 'sapp') then
-            local fixedResponse = string.gsub(request, "rcon forge '", '')
-            cprint('Server Request: ' .. fixedResponse)
-
-            -- We want to broadcast to every player in the server
-            if (not playerIndex) then
-                for i = 1, 16 do
-                    if (player_present(i)) then
-                        rprint(i, fixedResponse)
-                    end
-                end
-            else
-                -- We are looking to send data to a specific player
-                rprint(playerIndex, fixedResponse)
-            end
-            return true, fixedResponse
-        end
-    end
-    cprint('Error at trying to send request!!!!', 'error')
-    return false
 end
 
 function onRcon(playerIndex, message, environment, rconPassword)
@@ -352,6 +250,13 @@ function onRcon(playerIndex, message, environment, rconPassword)
                     end
                     delete_object(playerObjectId)
                 end
+            end
+        elseif (command == 'fload') then
+            local mapName = splitData[2]
+            if (mapName) then
+                core.loadForgeMap(mapName)
+            else
+                console_out('You must specify a forge map name.')
             end
         end
     end
