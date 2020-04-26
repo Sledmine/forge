@@ -33,6 +33,8 @@ features = require 'forge.features'
 tests = require 'forge.tests'
 core = require 'forge.core'
 
+local forgeMap
+
 -- Default debug mode state
 debugMode = true
 
@@ -120,7 +122,8 @@ function OnScriptLoad()
     register_callback(cb['EVENT_COMMAND'], 'onRcon')
     register_callback(cb['EVENT_OBJECT_SPAWN'], 'onObjectSpawn')
     register_callback(cb['EVENT_JOIN'], 'onPlayerJoin')
-    --register_callback(cb['EVENT_GAME_END'], 'flushScript')
+    register_callback(cb['EVENT_GAME_START'], 'onGameStart')
+    register_callback(cb['EVENT_GAME_END'], 'onGameEnd')
     register_callback(cb['EVENT_PRESPAWN'], 'onPlayerSpawn')
 end
 
@@ -226,13 +229,30 @@ function onRcon(playerIndex, message, environment, rconPassword)
             end
         elseif (command == 'fload') then
             local mapName = splitData[2]
+            local gameType = splitData[3]
             if (mapName) then
-                core.loadForgeMap(mapName)
+                local forgeObjects = eventsStore:getState().forgeObjects
+                if (#glue.keys(forgeObjects) > 0) then
+                    forgeMap = mapName
+                    execute_script('sv_map forge_island ' .. gameType)
+                else
+                    core.loadForgeMap(mapName)
+                end
             else
                 console_out('You must specify a forge map name.')
             end
         end
     end
+end
+
+function onGameStart()
+    if (forgeMap) then
+        core.loadForgeMap(forgeMap)
+    end
+end
+
+function onGameEnd()
+    eventsStore:dispatch({type = constants.actionTypes.FLUSH_FORGE})
 end
 
 function OnScriptUnload()

@@ -9,9 +9,22 @@ local function modifyPlayerSpawnPoint(tagPath, composedObject, disable)
 
     -- Get spawn info from tag name
     if (tagPath:find('ctf')) then
+        cprint('CTF')
         gameType = 1
     elseif (tagPath:find('slayer')) then
+        cprint('SLAYER')
         gameType = 2
+    elseif (tagPath:find('generic')) then
+        cprint('GENERIC')
+        gameType = 12
+    end
+
+    if (tagPath:find('red')) then
+        cprint('RED TEAM')
+        teamIndex = 0
+    elseif (tagPath:find('blue')) then
+        cprint('BLUE TEAM')
+        teamIndex = 1
     end
 
     -- SAPP and Chimera can't substract scenario tag in the same way
@@ -31,6 +44,7 @@ local function modifyPlayerSpawnPoint(tagPath, composedObject, disable)
     -- Object is not already reflecting a spawn point
     if (not composedObject.reflectionId) then
         for spawnId = 1, #mapSpawnPoints do
+            -- If this spawn point is disabled
             if (mapSpawnPoints[spawnId].type == 0) then
                 -- Replace spawn point values
                 mapSpawnPoints[spawnId].x = composedObject.x
@@ -47,6 +61,7 @@ local function modifyPlayerSpawnPoint(tagPath, composedObject, disable)
             end
         end
     else
+        cprint(composedObject.reflectionId)
         if (disable) then
             -- Disable or "delete" spawn point by setting type as 0
             mapSpawnPoints[composedObject.reflectionId].type = 0
@@ -88,7 +103,8 @@ function eventsReducer(state, action)
         local objectsBeforeSpawn = get_objects()
 
         -- Spawn object in the game
-        local localObjectId, x, y, z = core.cspawn_object('scen', tagPath, requestObject.x, requestObject.y, requestObject.z)
+        local localObjectId, x, y, z =
+            core.cspawn_object('scen', tagPath, requestObject.x, requestObject.y, requestObject.z)
 
         -- The core.cspawn_object function returns modifications made to initial object coordinates
         requestObject.x = x
@@ -131,7 +147,6 @@ function eventsReducer(state, action)
 
                 -- Make needed modifications to game spawn points
                 modifyPlayerSpawnPoint(tagPath, composedObject)
-
             elseif (tagPath:find('vehicles')) then
             end
         end
@@ -145,7 +160,7 @@ function eventsReducer(state, action)
         -- Store the object in our state
         state.forgeObjects[localObjectId] = composedObject
 
-        forgeStore:dispatch({type = 'UPDATE_OBJECT_INFO'})
+        forgeStore:dispatch({type = 'UPDATE_OBJECT_INFO', payload = {currentLoadingObjectPath = tagPath}})
 
         return state
     elseif (action.type == constants.actionTypes.UPDATE_OBJECT) then
@@ -172,10 +187,16 @@ function eventsReducer(state, action)
             )
 
             if (composedObject.reflectionId) then
-                cprint('REFLECTEEEEEEEEEEEEEEED THING')
                 local tagPath = get_tag_path(composedObject.object.tagId)
-                -- Make needed modifications to game spawn points
-                modifyPlayerSpawnPoint(tagPath, composedObject)
+                if (tagPath:find('spawning')) then
+                    cprint('-> [Reflecting Spawn]', 'warning')
+                    if (tagPath:find('players')) then
+                        cprint('PLAYER_SPAWN', 'category')
+                        -- Make needed modifications to game spawn points
+                        modifyPlayerSpawnPoint(tagPath, composedObject)
+                    end
+                elseif (tagPath:find('vehicles')) then
+                end
             end
 
             if (server_type == 'sapp') then
@@ -192,13 +213,19 @@ function eventsReducer(state, action)
         local composedObject = state.forgeObjects[getObjectIdByRemoteId(state.forgeObjects, requestObject.objectId)]
 
         if (composedObject) then
-            
             if (composedObject.reflectionId) then
-                cprint('REFLECTEEEEEEEEEEEEEEED THING DELETE')
                 local tagPath = get_tag_path(composedObject.object.tagId)
-                -- Make needed modifications to game spawn points
-                modifyPlayerSpawnPoint(tagPath, composedObject, true)
+                if (tagPath:find('spawning')) then
+                    cprint('-> [Reflecting Spawn]', 'warning')
+                    if (tagPath:find('players')) then
+                        cprint('PLAYER_SPAWN', 'category')
+                        -- Make needed modifications to game spawn points
+                        modifyPlayerSpawnPoint(tagPath, composedObject)
+                    end
+                elseif (tagPath:find('vehicles')) then
+                end
             end
+
             cprint('Deleting object from store...', 'warning')
             delete_object(composedObject.objectId)
             state.forgeObjects[getObjectIdByRemoteId(state.forgeObjects, requestObject.objectId)] = nil
@@ -219,6 +246,9 @@ function eventsReducer(state, action)
         features.openMenu(constants.widgetDefinitions.loadingMenu)
         return state
     elseif (action.type == constants.actionTypes.FLUSH_FORGE) then
+        state = {
+            forgeObjects = {}
+        }
         return state
     else
         if (action.type == '@@lua-redux/INIT') then

@@ -110,12 +110,41 @@ function core.createRequest(composedObject, requestType)
     return nil
 end
 
+function core.resetSpawnPoints()
+    local scenarioAddress
+    if (server_type ~= 'sapp') then
+        scenarioAddress = get_tag(0)
+    else
+        scenarioAddress = get_tag('scnr', constants.scenarioPath)
+    end
+    local scenario = blam.scenario(scenarioAddress)
+
+    local mapSpawnCount = scenario.spawnLocationCount
+    local vehicleLocationCount = scenario.vehicleLocationCount
+
+    cprint('Found ' .. mapSpawnCount .. ' stock player starting points!')
+    cprint('Found ' .. vehicleLocationCount .. ' stock vehicle location points!')
+    local mapSpawnPoints = scenario.spawnLocationList
+    -- Reset any spawn point, except the first one
+    for i = 1, mapSpawnCount do
+        -- Disable them by setting type to 0
+        mapSpawnPoints[i].type = 0
+    end
+    local vehicleLocationList = scenario.vehicleLocationList
+    for i = 2, vehicleLocationCount do
+        vehicleLocationList[i].type = 65535
+        execute_script('object_destroy v' .. vehicleLocationList[i].nameIndex)
+    end
+    blam.scenario(scenarioAddress, {spawnLocationList = mapSpawnPoints, vehicleLocationList = vehicleLocationList})
+end
+
 function core.loadForgeMap(mapName)
     local fmapContent = glue.readfile(forgeMapsFolder .. '\\' .. mapName .. '.fmap', 't')
     if (fmapContent) then
         cprint('Loading forge map...')
         local forgeMap = json.decode(fmapContent)
         if (forgeMap and forgeMap.objects and #forgeMap.objects > 0) then
+            forgeStore:dispatch({type = 'SET_MAP_NAME', payload = {mapName = forgeMap.name}})
             if (server_type == 'sapp') then
                 local composedObject = {}
                 composedObject.objectCount = #forgeMap.objects
@@ -130,7 +159,10 @@ function core.loadForgeMap(mapName)
                 if (composedObject.tagId) then
                     composedObject.tagPath = nil
                     eventsStore:dispatch(
-                        {type = constants.actionTypes.SPAWN_OBJECT, payload = {requestObject = composedObject}}
+                        {
+                            type = constants.actionTypes.SPAWN_OBJECT,
+                            payload = {requestObject = composedObject}
+                        }
                     )
                 else
                     cprint("WARNING!! Object with path '" .. composedObject.tagPath .. "' can't be spawn...", 'warning')
@@ -175,6 +207,7 @@ function core.saveForgeMap(mapName)
         -- Remove all the unimportant data
         fmapComposedObject.object = nil
         fmapComposedObject.objectId = nil
+        fmapComposedObject.reflectionId = nil
         fmapComposedObject.remoteId = nil
 
         -- Add tag path property
@@ -201,34 +234,6 @@ function core.saveForgeMap(mapName)
     else
         cprint("ERROR!! At saving '" .. mapName .. "' as a forge map...", 'error')
     end
-end
-
-function core.resetSpawnPoints()
-    local scenarioAddress
-    if (server_type ~= 'sapp') then
-        scenarioAddress = get_tag(0)
-    else
-        scenarioAddress = get_tag('scnr', constants.scenarioPath)
-    end
-    local scenario = blam.scenario(scenarioAddress)
-
-    local mapSpawnCount = scenario.spawnLocationCount
-    local vehicleLocationCount = scenario.vehicleLocationCount
-
-    cprint('Found ' .. mapSpawnCount .. ' stock player starting points!')
-    cprint('Found ' .. vehicleLocationCount .. ' stock vehicle location points!')
-    local mapSpawnPoints = scenario.spawnLocationList
-    -- Reset any spawn point, except the first one
-    for i = 1, mapSpawnCount do
-        -- Disable them by setting type to 0
-        mapSpawnPoints[i].type = 0
-    end
-    local vehicleLocationList = scenario.vehicleLocationList
-    for i = 2, vehicleLocationCount do
-        vehicleLocationList[i].type = 65535
-        execute_script('object_destroy v' .. vehicleLocationList[i].nameIndex)
-    end
-    blam.scenario(scenarioAddress, {spawnLocationList = mapSpawnPoints, vehicleLocationList = vehicleLocationList})
 end
 
 -- Super function for debug printing and accurate spawning

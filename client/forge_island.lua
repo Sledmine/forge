@@ -294,7 +294,6 @@ function onMapLoad()
     for i = 1, #scenario.sceneryPaletteList do -- Iterate over all the sceneries available in the map scenario
         local sceneryPath = get_tag_path(scenario.sceneryPaletteList[i])
         local sceneriesSplit = glue.string.split('\\', sceneryPath)
-        -- Make a tree iteration to append sceneries
         --[[ Example:
 
 			[shm]\halo_4\scenery\structures\natural\tree small\tree small
@@ -317,6 +316,8 @@ function onMapLoad()
         forgeState.forgeMenu.objectsDatabase[sceneriesSplit[#sceneriesSplit]] = sceneryPath
         -- Set first level as the root of available current objects
         -- THIS IS CALLED BY REFERENCE TO MODIFY availableObjects
+
+        -- Make a tree iteration to append sceneries
         local treePosition = forgeState.forgeMenu.objectsList.root
         for k, v in pairs(sceneriesSplit) do
             if (not treePosition[v]) then
@@ -430,7 +431,7 @@ function onMapLoad()
                         forgeState.currentMap.name,
                         forgeState.currentMap.author,
                         forgeState.currentMap.version,
-                        forgeState.currentMap.description
+                        forgeState.currentMap.description,
                     }
                 }
             )

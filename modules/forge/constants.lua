@@ -9,7 +9,7 @@ local constants = {}
 
 constants.maximumProgressBarSize = 171
 constants.maximumLoadingProgressBarSize = 422
-constants.maximumBudget = 1024
+constants.maximumBudget = 900
 constants.minimumZSpawnPoint = -18.69
 constants.maximumSidebarSize = 249
 constants.minimumSidebarSize = 40
