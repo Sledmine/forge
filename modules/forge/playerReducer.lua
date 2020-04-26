@@ -24,14 +24,14 @@ function playerReducer(state, action)
             if (get_object(state.attachedObjectId)) then
                 delete_object(state.attachedObjectId)
                 state.attachedObjectId =
-                    cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
+                    core.cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
             else
                 state.attachedObjectId =
-                    cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
+                    core.cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
             end
         else
             state.attachedObjectId =
-                cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
+                core.cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
         end
         rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
         return state
@@ -51,7 +51,7 @@ function playerReducer(state, action)
         end
         return state
     elseif (action.type == 'DETACH_OBJECT') then -- Update request if needed
-        if (state.attachedObjectId) then
+        if (state.attachedObjectId and get_object(state.attachedObjectId)) then
             local forgeObjects = eventsStore:getState().forgeObjects
             local composedObject = forgeObjects[state.attachedObjectId]
             if (composedObject) then
@@ -77,7 +77,7 @@ function playerReducer(state, action)
         end
         return state
     elseif (action.type == 'DESTROY_OBJECT') then -- Delete request if needed
-        if (state.attachedObjectId) then
+        if (state.attachedObjectId and get_object(state.attachedObjectId)) then
             local forgeObjects = eventsStore:getState().forgeObjects
             local composedObject = forgeObjects[state.attachedObjectId]
             if (composedObject) then

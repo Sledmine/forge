@@ -89,7 +89,7 @@ test_Objects = {}
 function test_Objects:test_Objects_Spawn()
     local objectResult = false
     for k, v in pairs(forgeStore:getState().forgeMenu.objectsDatabase) do
-        local objectId = cspawn_object('scen', v, 233, 41, constants.minimumZSpawnPoint)
+        local objectId = core.cspawn_object('scen', v, 233, 41, constants.minimumZSpawnPoint)
         if (objectId) then
             delete_object(objectId)
         end

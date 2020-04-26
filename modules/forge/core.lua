@@ -116,6 +116,12 @@ function core.loadForgeMap(mapName)
         cprint('Loading forge map...')
         local forgeMap = json.decode(fmapContent)
         if (forgeMap and forgeMap.objects and #forgeMap.objects > 0) then
+            if (server_type == 'sapp') then
+                local composedObject = {}
+                composedObject.objectCount = #forgeMap.objects
+                local response = core.createRequest(composedObject, constants.requestTypes.LOAD_MAP_SCREEN)
+                core.sendRequest(response)
+            end
             core.resetSpawnPoints()
             -- TO DO: Create flush system or features to load objects on map load
             --flushForge()
@@ -127,7 +133,7 @@ function core.loadForgeMap(mapName)
                         {type = constants.actionTypes.SPAWN_OBJECT, payload = {requestObject = composedObject}}
                     )
                 else
-                    cprint("WARNING!! Object with path '" .. mapName .. "' can't be spawn...", 'warning')
+                    cprint("WARNING!! Object with path '" .. composedObject.tagPath .. "' can't be spawn...", 'warning')
                 end
             end
             cprint("Succesfully loaded '" .. mapName .. "' fmap!")
@@ -199,10 +205,10 @@ end
 
 function core.resetSpawnPoints()
     local scenarioAddress
-    if (server_type == 'sapp') then
-        scenarioAddress = get_tag('scnr', constants.scenarioPath)
-    else
+    if (server_type ~= 'sapp') then
         scenarioAddress = get_tag(0)
+    else
+        scenarioAddress = get_tag('scnr', constants.scenarioPath)
     end
     local scenario = blam.scenario(scenarioAddress)
 
@@ -222,7 +228,33 @@ function core.resetSpawnPoints()
         vehicleLocationList[i].type = 65535
         execute_script('object_destroy v' .. vehicleLocationList[i].nameIndex)
     end
-    blam.scenario(get_tag(0), {spawnLocationList = mapSpawnPoints, vehicleLocationList = vehicleLocationList})
+    blam.scenario(scenarioAddress, {spawnLocationList = mapSpawnPoints, vehicleLocationList = vehicleLocationList})
+end
+
+-- Super function for debug printing and accurate spawning
+---@param type string | "'scen'" | '"bipd"'
+---@param tagPath string
+---@param x number @param y number @param Z number
+---@return number | nil objectId
+function core.cspawn_object(type, tagPath, x, y, z)
+    cprint(' -> [ Object Spawning ]')
+    cprint('Type:', 'category')
+    cprint(type)
+    cprint('Tag  Path:', 'category')
+    cprint(tagPath)
+    cprint('Trying to spawn object...', 'warning')
+    -- Prevent objects from phantom spawning!
+    -- local variables are accesed first than parameter variables
+    if (z < constants.minimumZSpawnPoint) then
+        z = constants.minimumZSpawnPoint
+    end
+    local objectId = spawn_object(type, tagPath, x, y, z)
+    if (objectId) then
+        cprint('-> Object: ' .. objectId .. ' succesfully spawned!!!', 'success')
+        return objectId, x, y, z
+    end
+    cprint('Error at trying to spawn object!!!!', 'error')
+    return nil
 end
 
 return core

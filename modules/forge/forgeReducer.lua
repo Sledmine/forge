@@ -137,13 +137,13 @@ function forgeReducer(state, action)
                 state.forgeMenu.currentBudget = tostring(currentObjects)
 
                 local expectedObjects = state.loadingMenu.expectedObjects
-                cprint(expectedObjects)
+                --cprint(expectedObjects)
                 local newBarSize = currentObjects * constants.maximumLoadingProgressBarSize / expectedObjects
                 state.loadingMenu.currentBarSize = glue.floor(newBarSize)
                 if (state.loadingMenu.currentBarSize >= constants.maximumLoadingProgressBarSize) then
                     menu.close(constants.widgetDefinitions.loadingMenu)
                 end
-                cprint('size: ' .. state.loadingMenu.currentBarSize)
+                --cprint('size: ' .. state.loadingMenu.currentBarSize)
             end
         end
         return state

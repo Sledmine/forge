@@ -88,9 +88,9 @@ function eventsReducer(state, action)
         local objectsBeforeSpawn = get_objects()
 
         -- Spawn object in the game
-        local localObjectId, x, y, z = cspawn_object('scen', tagPath, requestObject.x, requestObject.y, requestObject.z)
+        local localObjectId, x, y, z = core.cspawn_object('scen', tagPath, requestObject.x, requestObject.y, requestObject.z)
 
-        -- The cspawn_object function returns modifications made to initial object coordinates
+        -- The core.cspawn_object function returns modifications made to initial object coordinates
         requestObject.x = x
         requestObject.y = y
         requestObject.z = z

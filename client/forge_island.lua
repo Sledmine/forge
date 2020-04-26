@@ -52,32 +52,6 @@ function cprint(message, color)
     end
 end
 
--- Super function for debug printing and accurate spawning
----@param type string | "'scen'" | '"bipd"'
----@param tagPath string
----@param x number @param y number @param Z number
----@return number | nil objectId
-function cspawn_object(type, tagPath, x, y, z)
-    cprint(' -> [ Object Spawning ]')
-    cprint('Type:', 'category')
-    cprint(type)
-    cprint('Tag  Path:', 'category')
-    cprint(tagPath)
-    cprint('Trying to spawn object...', 'warning')
-    -- Prevent objects from phantom spawning!
-    -- local variables are accesed first than parameter variables
-    if (z < constants.minimumZSpawnPoint) then
-        z = constants.minimumZSpawnPoint
-    end
-    local objectId = spawn_object(type, tagPath, x, y, z)
-    if (objectId) then
-        cprint('-> Object: ' .. objectId .. ' succesfully spawned!!!', 'success')
-        return objectId, x, y, z
-    end
-    cprint('Error at trying to spawn object!!!!', 'error')
-    return nil
-end
-
 -- Rotate object into desired degrees
 function rotateObject(objectId, yaw, pitch, roll)
     local rotation = features.convertDegrees(yaw, pitch, roll)
@@ -219,7 +193,7 @@ function onTick()
                     if (composedObject) then
                         local tagType = get_tag_type(composedObject.object.tagId)
                         if (tagType == 'scen') then
-                            local isPlayerLookingAt = features.playerIsLookingAt(objectId, 0.06, 0)
+                            local isPlayerLookingAt = features.playerIsLookingAt(objectId, 0.047, 0)
                             if (isPlayerLookingAt) then
                                 -- Update crosshair state
                                 if (features.setCrosshairState) then
@@ -250,7 +224,7 @@ function onTick()
             if (player.flashlightKey) then
                 features.swapBiped()
             elseif (player.actionKey and player.crouchHold and server_type == 'local') then
-                cspawn_object('bipd', constants.bipeds.spartan, player.x, player.y, player.z)
+                core.cspawn_object('bipd', constants.bipeds.spartan, player.x, player.y, player.z)
             end
         end
     end
