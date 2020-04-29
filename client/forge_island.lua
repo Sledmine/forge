@@ -113,7 +113,7 @@ function onTick()
                 if (player.flashlightKey) then
                     playerStore:dispatch({type = 'CHANGE_ROTATION_ANGLE'})
                     hud_message('Rotating in: ' .. playerState.currentAngle)
-                elseif (player.actionKeyHold) then
+                elseif (player.actionKeyHold or player.actionKey) then
                     -- Convert into spartan
                     playerStore:dispatch({type = 'STEP_ROTATION_DEGREE'})
                     hud_message(playerState.currentAngle .. ': ' .. playerState[playerState.currentAngle])
@@ -174,8 +174,8 @@ function onTick()
                     cprint('Opening Forge menu...')
                     features.openMenu(constants.widgetDefinitions.forgeMenu)
                 elseif (player.crouchHold) then
-                    playerStore:dispatch({type = 'DETACH_OBJECT'})
                     features.swapBiped()
+                    playerStore:dispatch({type = 'DETACH_OBJECT'})
                 end
 
                 -- Set crosshair to not selected states
@@ -210,6 +210,22 @@ function onTick()
                                     -- Set lock distance to true, this will help to take the object from persepective
                                     playerStore:dispatch({type = 'SET_LOCK_DISTANCE', payload = {lockDistance = false}})
                                     playerStore:dispatch({type = 'ATTACH_OBJECT', payload = {objectId = objectId}})
+                                elseif (player.actionKey) then
+                                    playerStore:dispatch({type = 'SET_LOCK_DISTANCE', payload = {lockDistance = false}})
+                                    playerStore:dispatch(
+                                        {
+                                            type = 'SET_ROTATION_DEGREES',
+                                            payload = {
+                                                yaw = composedObject.yaw,
+                                                pitch = composedObject.pitch,
+                                                roll = composedObject.roll
+                                            }
+                                        }
+                                    )
+                                    local tagId = composedObject.object.tagId
+                                    playerStore:dispatch(
+                                        {type = 'CREATE_AND_ATTACH_OBJECT', payload = {path = get_tag_path(tagId)}}
+                                    )
                                 end
 
                                 -- Stop searching for other objects
@@ -225,6 +241,8 @@ function onTick()
                 features.swapBiped()
             elseif (player.actionKey and player.crouchHold and server_type == 'local') then
                 core.cspawn_object('bipd', constants.bipeds.spartan, player.x, player.y, player.z)
+            elseif (player.crouchHold) then
+            --features.openMenu(constants.widgetDefinitions.loadingMenu)
             end
         end
     end
@@ -431,7 +449,7 @@ function onMapLoad()
                         forgeState.currentMap.name,
                         forgeState.currentMap.author,
                         forgeState.currentMap.version,
-                        forgeState.currentMap.description,
+                        forgeState.currentMap.description
                     }
                 }
             )
@@ -462,43 +480,6 @@ function onMapLoad()
     end
 end
 
---[[
--- Create a request for an object action
----@param composedObject number
----@param requestType string
-function createRequest(composedObject, requestType)
-    local objectData = {}
-    if (composedObject) then
-        objectData.requestType = requestType
-        if (requestType == constants.requestTypes.SPAWN_OBJECT) then
-            objectData.tagId = composedObject.object.tagId
-            if (server_type == 'sapp') then
-                objectData.remoteId = composedObject.remoteId
-            end
-        elseif (requestType == constants.requestTypes.UPDATE_OBJECT) then
-            if (server_type ~= 'sapp') then
-                objectData.objectId = composedObject.remoteId
-            else
-                objectData.objectId = composedObject.objectId
-            end
-        elseif (requestType == constants.requestTypes.DELETE_OBJECT) then
-            if (server_type ~= 'sapp') then
-                objectData.objectId = composedObject.remoteId
-            else
-                objectData.objectId = composedObject.objectId
-            end
-            return objectData
-        end
-        objectData.x = composedObject.object.x
-        objectData.y = composedObject.object.y
-        objectData.z = composedObject.object.z
-        objectData.yaw = composedObject.yaw
-        objectData.pitch = composedObject.pitch
-        objectData.roll = composedObject.roll
-        return objectData
-    end
-    return nil
-end]]
 function onRcon(message)
     cprint('Incoming rcon message:', 'warning')
     cprint(message)
@@ -569,9 +550,9 @@ function onCommand(command)
             local newRotationStep = tonumber(splitCommand[2])
             if (newRotationStep) then
                 hud_message('Rotation step now is ' .. newRotationStep .. ' degrees.')
-                rotationStep = glue.round(newRotationStep)
+                playerStore:dispatch({type = 'SET_ROTATION_STEP', payload = {step = newRotationStep}})
             else
-                rotationStep = 3
+                playerStore:dispatch({type = 'SET_ROTATION_STEP', payload = {step = 3}})
             end
             return false
         elseif (forgeCommand == 'fdis' or forgeCommand == 'fdistance') then
@@ -620,7 +601,8 @@ function onCommand(command)
         elseif (forgeCommand == 'fprint') then
             -- Testing rcon communication
             cprint('[Game Objects]', 'category')
-            cprint(inspect(get_objects()))
+            local objects = get_objects()
+            cprint(inspect(objects))
             cprint('[Objects Store]', 'category')
             cprint(inspect(glue.keys(eventsStore:getState().forgeObjects)))
             return false

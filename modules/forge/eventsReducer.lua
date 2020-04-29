@@ -82,6 +82,101 @@ local function modifyPlayerSpawnPoint(tagPath, composedObject, disable)
     blam.scenario(scenarioAddress, {spawnLocationList = mapSpawnPoints})
 end
 
+-- Must be called after adding scenery object to the store!!
+-- @return true if found an available spawn
+local function modifyVehicleSpawn(tagPath, composedObject, disable)
+    if (server_type ~= 'sapp') then
+        return true
+    end
+    local vehicleType = 0
+    -- Get spawn info from tag name
+    if (tagPath:find('banshee')) then
+        cprint('banshee')
+        vehicleType = 0
+    elseif (tagPath:find('hog')) then
+        cprint('hog')
+        vehicleType = 1
+    elseif (tagPath:find('ghost')) then
+        cprint('ghost')
+        vehicleType = 2
+    elseif (tagPath:find('scorpion')) then
+        cprint('scorpion')
+        vehicleType = 3
+    elseif (tagPath:find('turret spawn')) then
+        cprint('turret')
+        vehicleType = 4
+    elseif (tagPath:find('ball spawn')) then
+        cprint('ball')
+        vehicleType = 5
+    end
+
+    -- SAPP and Chimera can't substract scenario tag in the same way
+    local scenarioAddress
+    if (server_type == 'sapp') then
+        scenarioAddress = get_tag('scnr', constants.scenarioPath)
+    else
+        scenarioAddress = get_tag(0)
+    end
+
+    -- Get scenario data
+    local scenario = blam.scenario(scenarioAddress)
+
+    local vehicleLocationCount = scenario.vehicleLocationCount
+    cprint('Maximum count of vehicle spawn points: ' .. vehicleLocationCount)
+
+    local vehicleLocationList = scenario.vehicleLocationList
+    
+    -- Object exists, it's synced
+    if (not composedObject.reflectionId) then
+        for spawnId = 2, #vehicleLocationList do
+            if (vehicleLocationList[spawnId].type == 65535) then
+                -- Replace spawn point values
+                vehicleLocationList[spawnId].x = composedObject.x
+                vehicleLocationList[spawnId].y = composedObject.y
+                vehicleLocationList[spawnId].z = composedObject.z
+
+                -- REMINDER!!! Check vehicle rotation
+
+                vehicleLocationList[spawnId].type = vehicleType
+
+                -- Debug spawn index
+                cprint('Creating spawn replacing index: ' .. spawnId)
+                composedObject.reflectionId = spawnId
+
+                -- Update spawn point list
+                blam.scenario(scenarioAddress, {vehicleLocationList = vehicleLocationList})
+                cprint('object_create_anew v' .. vehicleLocationList[spawnId].nameIndex)
+                execute_script('object_create_anew v' .. vehicleLocationList[spawnId].nameIndex)
+                -- Stop looking for "available" spawn slots
+                break
+            end
+        end
+    else
+        cprint(composedObject.reflectionId)
+        if (disable) then
+            -- Disable or "delete" spawn point by setting type as 65535
+            vehicleLocationList[composedObject.reflectionId].type = 65535
+            -- Update spawn point list
+            blam.scenario(scenarioAddress, {vehicleLocationList = vehicleLocationList})
+            cprint('object_create_anew v' .. vehicleLocationList[composedObject.reflectionId].nameIndex)
+            execute_script('object_destroy v' .. vehicleLocationList[composedObject.reflectionId].nameIndex)
+            return true
+        end
+        -- Replace spawn point values
+        vehicleLocationList[composedObject.reflectionId].x = composedObject.x
+        vehicleLocationList[composedObject.reflectionId].y = composedObject.y
+        vehicleLocationList[composedObject.reflectionId].z = composedObject.z
+
+        -- REMINDER!!! Check vehicle rotation
+
+        -- Debug spawn index
+        cprint('Updating spawn replacing index: ' .. composedObject.reflectionId)
+
+        -- Update spawn point list
+        blam.scenario(scenarioAddress, {vehicleLocationList = vehicleLocationList})
+    end
+end
+
 function eventsReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
@@ -147,7 +242,8 @@ function eventsReducer(state, action)
 
                 -- Make needed modifications to game spawn points
                 modifyPlayerSpawnPoint(tagPath, composedObject)
-            elseif (tagPath:find('vehicles')) then
+            elseif (tagPath:find('vehicles') or tagPath:find('objects')) then
+                modifyVehicleSpawn(tagPath, composedObject)
             end
         end
 
@@ -194,8 +290,9 @@ function eventsReducer(state, action)
                         cprint('PLAYER_SPAWN', 'category')
                         -- Make needed modifications to game spawn points
                         modifyPlayerSpawnPoint(tagPath, composedObject)
+                    elseif (tagPath:find('vehicles') or tagPath:find('objects')) then
+                        modifyVehicleSpawn(tagPath, composedObject)
                     end
-                elseif (tagPath:find('vehicles')) then
                 end
             end
 
@@ -220,9 +317,10 @@ function eventsReducer(state, action)
                     if (tagPath:find('players')) then
                         cprint('PLAYER_SPAWN', 'category')
                         -- Make needed modifications to game spawn points
-                        modifyPlayerSpawnPoint(tagPath, composedObject)
+                        modifyPlayerSpawnPoint(tagPath, composedObject, true)
+                    elseif (tagPath:find('vehicles') or tagPath:find('objects')) then
+                        modifyVehicleSpawn(tagPath, composedObject, true)
                     end
-                elseif (tagPath:find('vehicles')) then
                 end
             end
 

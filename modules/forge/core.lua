@@ -168,6 +168,7 @@ function core.loadForgeMap(mapName)
                     cprint("WARNING!! Object with path '" .. composedObject.tagPath .. "' can't be spawn...", 'warning')
                 end
             end
+            execute_script('sv_map_reset')
             cprint("Succesfully loaded '" .. mapName .. "' fmap!")
         else
             cprint("ERROR!! At decoding data from '" .. mapName .. "' forge map...", 'error')

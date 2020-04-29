@@ -130,17 +130,17 @@ function playerReducer(state, action)
             state.yaw = action.payload.yaw
         end
         if (action.payload.pitch) then
-            state.yaw = action.payload.pitch
+            state.pitch = action.payload.pitch
         end
         if (action.payload.roll) then
-            state.yaw = action.payload.roll
+            state.roll = action.payload.roll
         end
         return state
     elseif (action.type == 'RESET_ROTATION') then
         state.yaw = 0
         state.pitch = 0
         state.roll = 0
-        state.currentAngle = 'yaw'
+        --state.currentAngle = 'yaw'
         return state
     else
         return state
