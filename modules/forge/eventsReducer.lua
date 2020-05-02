@@ -85,7 +85,7 @@ end
 -- Must be called after adding scenery object to the store!!
 -- @return true if found an available spawn
 local function modifyVehicleSpawn(tagPath, composedObject, disable)
-    if (server_type ~= 'sapp') then
+    if (server_type == 'dedicated') then
         return true
     end
     local vehicleType = 0
@@ -134,8 +134,9 @@ local function modifyVehicleSpawn(tagPath, composedObject, disable)
                 vehicleLocationList[spawnId].x = composedObject.x
                 vehicleLocationList[spawnId].y = composedObject.y
                 vehicleLocationList[spawnId].z = composedObject.z
-
-                -- REMINDER!!! Check vehicle rotation
+                vehicleLocationList[spawnId].yaw = math.rad(composedObject.yaw)
+                vehicleLocationList[spawnId].pitch = math.rad(composedObject.pitch)
+                vehicleLocationList[spawnId].roll = math.rad(composedObject.roll)
 
                 vehicleLocationList[spawnId].type = vehicleType
 

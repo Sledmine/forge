@@ -82,7 +82,7 @@ end
 
 -- Prepare event callbacks
 set_callback('map load', 'onMapLoad') -- Thanks Jerry to add this callback!
-set_callback('unload', 'onScriptUnload')
+set_callback('unload', 'flushForge')
 
 ---@return boolean
 function validateMapName()
@@ -256,6 +256,13 @@ function onTick()
         elseif (mapsMenuPressedButton == 10) then
             -- Dispatch an event to decrement current page
             forgeStore:dispatch({type = 'INCREMENT_MAPS_MENU_PAGE'})
+        else
+            local mapName =
+                blam.unicodeStringList(get_tag('unicode_string_list', constants.unicodeStrings.mapsList)).stringList[
+                mapsMenuPressedButton
+            ]
+            cprint(mapName)
+            core.loadForgeMap(mapName:gsub('.fmap', ''))
         end
         cprint('Maps menu:')
         cprint('Button ' .. mapsMenuPressedButton .. ' was pressed!', 'category')
@@ -608,7 +615,7 @@ function onCommand(command)
             return false
         elseif (forgeCommand == 'freset') then
             execute_script('object_destroy_all')
-            flushScript()
+            flushForge()
             return false
         elseif (forgeCommand == 'fname') then
             local mapName = table.concat(glue.shift(splitCommand, 1, -1), ' ')
@@ -623,8 +630,9 @@ function onCommand(command)
     end
 end
 
-function onScriptUnload()
-    if (#get_objects() > 0) then
+function flushForge()
+    local forgeObjects = eventsStore:getState().forgeObjects
+    if (#glue.keys(forgeObjects) > 0 and #get_objects() > 0) then
         --saveForgeMap('unsaved')
         execute_script('object_destroy_all')
     end

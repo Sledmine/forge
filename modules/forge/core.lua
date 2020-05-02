@@ -139,6 +139,10 @@ function core.resetSpawnPoints()
 end
 
 function core.loadForgeMap(mapName)
+    if (server_type == 'dedicated') then
+        console_out("You can not load a map while connected to a server!'")
+        return false
+    end
     local fmapContent = glue.readfile(forgeMapsFolder .. '\\' .. mapName .. '.fmap', 't')
     if (fmapContent) then
         cprint('Loading forge map...')
@@ -153,7 +157,10 @@ function core.loadForgeMap(mapName)
             end
             core.resetSpawnPoints()
             -- TO DO: Create flush system or features to load objects on map load
-            --flushForge()
+            if (server_type == 'local') then
+                execute_script('menu_blur_off')
+                flushForge()
+            end
             for objectIndex, composedObject in pairs(forgeMap.objects) do
                 composedObject.tagId = get_tag_id('scen', composedObject.tagPath)
                 if (composedObject.tagId) then
@@ -170,12 +177,14 @@ function core.loadForgeMap(mapName)
             end
             execute_script('sv_map_reset')
             cprint("Succesfully loaded '" .. mapName .. "' fmap!")
+            return true
         else
             cprint("ERROR!! At decoding data from '" .. mapName .. "' forge map...", 'error')
         end
     else
         cprint("ERROR!! At trying to load '" .. mapName .. "' as a forge map...", 'error')
     end
+    return false
 end
 
 function core.saveForgeMap(mapName)
