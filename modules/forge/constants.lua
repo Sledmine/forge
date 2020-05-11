@@ -4,7 +4,6 @@
 -- Version: 1.0
 -- Constants values
 ------------------------------------------------------------------------------
-
 local constants = {}
 
 constants.maximumProgressBarSize = 171
@@ -31,6 +30,7 @@ constants.requestTypes = {
     ['DELETE_OBJECT'] = '#d',
     ['LOAD_MAP_SCREEN'] = '#l',
     -- We have to provide reverse typing for fast coding
+    -- Ok.. never mind, TODO: reverse function, check glue lib
     ['#s'] = 'SPAWN_OBJECT',
     ['#u'] = 'UPDATE_OBJECT',
     ['#d'] = 'DELETE_OBJECT',
@@ -39,22 +39,34 @@ constants.requestTypes = {
 }
 
 constants.requestFormats = {
-    ['SPAWN_OBJECT'] = {'requestType', 'tagId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll', 'remoteId'},
-    ['UPDATE_OBJECT'] = {'requestType', 'objectId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll'},
+    ['SPAWN_OBJECT'] = {
+        'requestType', 'tagId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll',
+        'remoteId'
+    },
+    ['UPDATE_OBJECT'] = {
+        'requestType', 'objectId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll'
+    },
     ['DELETE_OBJECT'] = {'requestType', 'objectId'},
-    ['LOAD_MAP_SCREEN'] = {'requestType', 'objectCount'},
+    ['LOAD_MAP_SCREEN'] = {'requestType', 'objectCount', 'mapName'},
     ['FLUSH_FORGE'] = {'requestType'}
 }
 
 constants.compressionFormats = {
-    ['SPAWN_OBJECT'] = {tagId = 'I4', x = 'f', y = 'f', z = 'f', remoteId = 'I4'},
+    ['SPAWN_OBJECT'] = {
+        tagId = 'I4',
+        x = 'f',
+        y = 'f',
+        z = 'f',
+        remoteId = 'I4'
+    },
     ['UPDATE_OBJECT'] = {x = 'f', y = 'f', z = 'f'},
     ['DELETE_OBJECT'] = {},
     ['LOAD_MAP_SCREEN'] = {},
     ['FLUSH_FORGE'] = {}
 }
 
-constants.testObjectPath = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\scorpion spawn\\scorpion spawn'
+constants.testObjectPath =
+    '[shm]\\halo_4\\scenery\\spawning\\vehicles\\scorpion spawn\\scorpion spawn'
 
 -- Biped tag definitions
 constants.bipeds = {

@@ -123,14 +123,22 @@ function forgeReducer(state, action)
     elseif (action.type == 'SET_MAP_NAME') then
         state.currentMap.name = action.payload.mapName
         return state
-    elseif (action.type == 'UPDATE_OBJECT_INFO') then
+    elseif (action.type == 'UPDATE_MAP_INFO') then
         if (action.payload) then
-            if (action.payload.expectedObjects) then
-                state.loadingMenu.expectedObjects = action.payload.expectedObjects
+            --cprint(inspect(action.payload))
+            local expectedObjects = action.payload.expectedObjects
+            local mapName = action.payload.mapName
+            if (expectedObjects) then
+                state.loadingMenu.expectedObjects = expectedObjects
             end
-            if (action.payload.currentLoadingObjectPath) then
+
+            if (mapName) then
+                state.currentMap.name = mapName
+            end
+            
+            --[[if (action.payload.currentLoadingObjectPath) then
                 state.loadingMenu.currentLoadingObjectPath = action.payload.currentLoadingObjectPath
-            end
+            end]]
         end
         if (server_type ~= 'sapp') then
             if (eventsStore) then

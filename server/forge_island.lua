@@ -4,7 +4,6 @@
 -- Version: 4.0
 -- Script server side for Forge Island
 ------------------------------------------------------------------------------
-
 -- Declare SAPP API Version before importing libraries
 -- This is usefull for SAPP detection
 api_version = '1.12.0.0'
@@ -46,7 +45,7 @@ debugMode = true
 local oldCprint = cprint
 function cprint(message, color)
     if (debugMode) then
-        --console_out(message)
+        -- console_out(message)
         if (color == 'category') then
             oldCprint(message)
         elseif (color == 'warning') then
@@ -64,17 +63,14 @@ end
 -- Rotate object into desired degrees
 function rotateObject(objectId, yaw, pitch, roll)
     local rotation = features.convertDegrees(yaw, pitch, roll)
-    blam.object(
-        get_object(objectId),
-        {
-            pitch = rotation[1],
-            yaw = rotation[2],
-            roll = rotation[3],
-            xScale = rotation[4],
-            yScale = rotation[5],
-            zScale = rotation[6]
-        }
-    )
+    blam.object(get_object(objectId), {
+        pitch = rotation[1],
+        yaw = rotation[2],
+        roll = rotation[3],
+        xScale = rotation[4],
+        yScale = rotation[5],
+        zScale = rotation[6]
+    })
 end
 
 local playersObjectIds = {}
@@ -97,15 +93,7 @@ function OnScriptLoad()
     execute_command('lua_call rcon_bypass submitRcon ' .. 'forge')
 
     -- Add forge commands for interception
-    local forgeCommands = {
-        '#s',
-        '#d',
-        '#u',
-        '#l',
-        '#b',
-        'fload',
-        'fsave'
-    }
+    local forgeCommands = {'#s', '#d', '#u', '#l', '#b', 'fload', 'fsave'}
     for k, v in pairs(forgeCommands) do
         execute_command('lua_call rcon_bypass submitCommand ' .. v)
     end
@@ -117,16 +105,14 @@ function OnScriptLoad()
     register_callback(cb['EVENT_PRESPAWN'], 'onPlayerSpawn')
 end
 
-function loadForgeMapsList()
-end
+function loadForgeMapsList() end
 
 -- Change biped tag id from players and store their object ids
 function onObjectSpawn(playerIndex, tagId, parentId, objectId)
     if (not player_present(playerIndex)) then
         return true
-    elseif
-        (tagId == get_tag_id('bipd', constants.bipeds.spartan) or tagId == get_tag_id('bipd', constants.bipeds.monitor))
-     then
+    elseif (tagId == get_tag_id('bipd', constants.bipeds.spartan) or tagId ==
+        get_tag_id('bipd', constants.bipeds.monitor)) then
         playersObjectIds[playerIndex] = objectId
         if (bipedChangeRequest[playerIndex]) then
             local requestedBiped = bipedChangeRequest[playerIndex]
@@ -140,31 +126,43 @@ end
 function onPlayerSpawn(playerIndex)
     local pos = playerObjectTempPos[playerIndex]
     if (pos) then
-        blam.object(get_dynamic_player(playerIndex), {x = pos[1], y = pos[2], z = pos[3]})
+        blam.object(get_dynamic_player(playerIndex),
+                    {x = pos[1], y = pos[2], z = pos[3]})
         playerObjectTempPos[playerIndex] = nil
     end
 end
 
 -- Sync preoviosly forged stuff for upcoming players
 function onPlayerJoin(playerIndex)
-    cprint('Sending sync responses for: ' .. playerIndex)
+    local forgeState = forgeStore:getState()
     local forgeObjects = eventsStore:getState().forgeObjects
     local objectCount = #glue.keys(forgeObjects)
+
     if (objectCount > 0) then
-        local composedObject = {}
-        composedObject.objectCount = objectCount
-        local response = core.createRequest(composedObject, constants.requestTypes.LOAD_MAP_SCREEN)
+        cprint('Sending sync responses for: ' .. playerIndex)
+
+        -- Create a temporal composed object like
+        local tempObject = {}
+        tempObject.objectCount = objectCount
+        tempObject.mapName = forgeState.currentMap.name
+
+        local response = core.createRequest(tempObject, constants.requestTypes
+                                                .LOAD_MAP_SCREEN)
         core.sendRequest(response, playerIndex)
+
         for objectId, composedObject in pairs(forgeObjects) do
-            local response = core.createRequest(composedObject, constants.requestTypes.SPAWN_OBJECT)
+            local response = core.createRequest(composedObject,
+                                                constants.requestTypes
+                                                    .SPAWN_OBJECT)
             core.sendRequest(response, playerIndex)
         end
     end
+
 end
 
 function onRcon(playerIndex, message, environment, rconPassword)
     -- TO DO: Check rcon environment
-    if (true) then
+    if (environment) then
         cprint('Triggering rcon...')
         -- TO DO: Check if we have to avoid returning true or false
         cprint('Incoming rcon message:', 'warning')
@@ -176,7 +174,8 @@ function onRcon(playerIndex, message, environment, rconPassword)
         if (requestType) then
             cprint('Decoding incoming ' .. requestType .. ' ...', 'warning')
 
-            local requestObject = maethrillian.convertRequestToObject(request, constants.requestFormats[requestType])
+            local requestObject = maethrillian.convertRequestToObject(request,
+                                                                      constants.requestFormats[requestType])
 
             if (requestObject) then
                 cprint('Done.', 'success')
@@ -187,7 +186,8 @@ function onRcon(playerIndex, message, environment, rconPassword)
 
             cprint('Decompressing ...', 'warning')
             local compressionFormat = constants.compressionFormats[requestType]
-            requestObject = maethrillian.decompressObject(requestObject, compressionFormat)
+            requestObject = maethrillian.decompressObject(requestObject,
+                                                          compressionFormat)
 
             if (requestObject) then
                 cprint('Done.', 'success')
@@ -197,7 +197,10 @@ function onRcon(playerIndex, message, environment, rconPassword)
             end
             cprint('Error at decompressing request.', 'error')
             if (not ftestingMode) then
-                eventsStore:dispatch({type = requestType, payload = {requestObject = requestObject}})
+                eventsStore:dispatch({
+                    type = requestType,
+                    payload = {requestObject = requestObject}
+                })
             end
             return false, requestObject
         elseif (command == '#b') then
@@ -208,8 +211,10 @@ function onRcon(playerIndex, message, environment, rconPassword)
                 local player = blam.object(get_object(playerObjectId))
                 if (player) then
                     cprint('lua-blam rocks!!!')
-                    playerObjectTempPos[playerIndex] = {player.x, player.y, player.z}
-                    if (player.tagId == get_tag_id('bipd', constants.bipeds.monitor)) then
+                    playerObjectTempPos[playerIndex] =
+                        {player.x, player.y, player.z}
+                    if (player.tagId ==
+                        get_tag_id('bipd', constants.bipeds.monitor)) then
                         bipedChangeRequest[playerIndex] = 'spartan'
                     else
                         bipedChangeRequest[playerIndex] = 'monitor'
@@ -235,15 +240,10 @@ function onRcon(playerIndex, message, environment, rconPassword)
     end
 end
 
-function onGameStart()
-    if (forgeMap) then
-        core.loadForgeMap(forgeMap)
-    end
-end
+function onGameStart() if (forgeMap) then core.loadForgeMap(forgeMap) end end
 
 function onGameEnd()
     eventsStore:dispatch({type = constants.actionTypes.FLUSH_FORGE})
 end
 
-function OnScriptUnload()
-end
+function OnScriptUnload() end

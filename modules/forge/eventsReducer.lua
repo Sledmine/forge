@@ -269,7 +269,7 @@ function eventsReducer(state, action)
         state.forgeObjects[localObjectId] = composedObject
 
         forgeStore:dispatch({
-            type = 'UPDATE_OBJECT_INFO',
+            type = 'UPDATE_MAP_INFO',
             payload = {currentLoadingObjectPath = tagPath}
         })
 
@@ -349,7 +349,7 @@ function eventsReducer(state, action)
             cprint('Deleting object from store...', 'warning')
             delete_object(composedObject.objectId)
             state.forgeObjects[core.getObjectIdByRemoteId(state.forgeObjects,
-                                                     requestObject.objectId)] =
+                                                          requestObject.objectId)] =
                 nil
             cprint('Done.', 'success')
             if (server_type == 'sapp') then
@@ -362,17 +362,28 @@ function eventsReducer(state, action)
             cprint('ERROR!!! The required object with Id: ' ..
                        requestObject.objectId .. 'does not exist.', 'error')
         end
-        forgeStore:dispatch({type = 'UPDATE_OBJECT_INFO'})
+        forgeStore:dispatch({type = 'UPDATE_MAP_INFO'})
         return state
     elseif (action.type == constants.actionTypes.LOAD_MAP_SCREEN) then
+        -- TO DO: This is not ok, this must be split in different reducers
         local requestObject = action.payload.requestObject
-        state.expectedObjects = requestObject.objectCount
+
+        local expectedObjects = requestObject.objectCount
+        local mapName = requestObject.mapName
+        
         forgeStore:dispatch({
-            type = 'UPDATE_OBJECT_INFO',
-            payload = {expectedObjects = state.expectedObjects}
+            type = 'UPDATE_MAP_INFO',
+            payload = {
+                expectedObjects = expectedObjects,
+                mapName = mapName
+            }
         })
+
+        -- TO DO: This does not end after finishing map loading
         set_timer(140, 'forgeAnimation')
+
         features.openMenu(constants.widgetDefinitions.loadingMenu)
+
         return state
     elseif (action.type == constants.actionTypes.FLUSH_FORGE) then
         state = {forgeObjects = {}}

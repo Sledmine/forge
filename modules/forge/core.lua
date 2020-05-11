@@ -103,6 +103,7 @@ function core.createRequest(composedObject, requestType)
             return objectData
         elseif (requestType == constants.requestTypes.LOAD_MAP_SCREEN) then
             objectData.objectCount = composedObject.objectCount
+            objectData.mapName = composedObject.mapName
             return objectData
         end
         objectData.x = composedObject.object.x
@@ -175,9 +176,10 @@ function core.loadForgeMap(mapName)
                 payload = {mapName = forgeMap.name}
             })
             if (server_type == 'sapp') then
-                local composedObject = {}
-                composedObject.objectCount = #forgeMap.objects
-                local response = core.createRequest(composedObject,
+                local tempObject = {}
+                tempObject.objectCount = #forgeMap.objects
+                tempObject.mapName = forgeMap.name
+                local response = core.createRequest(tempObject,
                                                     constants.requestTypes
                                                         .LOAD_MAP_SCREEN)
                 core.sendRequest(response)
@@ -191,6 +193,7 @@ function core.loadForgeMap(mapName)
                 execute_script('menu_blur_off')
                 core.flushForge()
             end
+
             for objectIndex, composedObject in pairs(forgeMap.objects) do
                 composedObject.tagId =
                     get_tag_id('scen', composedObject.tagPath)
@@ -207,8 +210,10 @@ function core.loadForgeMap(mapName)
                            'warning')
                 end
             end
+
             execute_script('sv_map_reset')
             cprint("Succesfully loaded '" .. mapName .. "' fmap!")
+
             return true
         else
             cprint("ERROR!! At decoding data from '" .. mapName ..

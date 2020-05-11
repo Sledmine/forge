@@ -669,7 +669,9 @@ function onCommand(command)
             return false
         elseif (forgeCommand == 'fdump') then
             glue.writefile('forge_dump.json',
-                           inspect(eventsStore:getState().forgeObjects), '')
+                           inspect(forgeStore:getState()), 't')
+            glue.writefile('events_dump.json',
+                           inspect(eventsStore:getState().forgeObjects), 't')
             return false
         elseif (forgeCommand == 'fprint') then
             -- Testing rcon communication
