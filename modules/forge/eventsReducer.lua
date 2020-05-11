@@ -73,7 +73,8 @@ local function modifyPlayerSpawnPoint(tagPath, composedObject, disable)
         mapSpawnPoints[composedObject.reflectionId].x = composedObject.x
         mapSpawnPoints[composedObject.reflectionId].y = composedObject.y
         mapSpawnPoints[composedObject.reflectionId].z = composedObject.z
-        mapSpawnPoints[composedObject.reflectionId].rotation = math.rad(composedObject.yaw)
+        mapSpawnPoints[composedObject.reflectionId].rotation =
+            math.rad(composedObject.yaw)
         cprint(mapSpawnPoints[composedObject.reflectionId].type)
         -- Debug spawn index
         cprint('Updating spawn replacing index: ' .. composedObject.reflectionId)
@@ -85,9 +86,7 @@ end
 -- Must be called after adding scenery object to the store!!
 -- @return true if found an available spawn
 local function modifyVehicleSpawn(tagPath, composedObject, disable)
-    if (server_type == 'dedicated') then
-        return true
-    end
+    if (server_type == 'dedicated') then return true end
     local vehicleType = 0
     -- Get spawn info from tag name
     if (tagPath:find('banshee')) then
@@ -125,7 +124,7 @@ local function modifyVehicleSpawn(tagPath, composedObject, disable)
     cprint('Maximum count of vehicle spawn points: ' .. vehicleLocationCount)
 
     local vehicleLocationList = scenario.vehicleLocationList
-    
+
     -- Object exists, it's synced
     if (not composedObject.reflectionId) then
         for spawnId = 2, #vehicleLocationList do
@@ -135,8 +134,10 @@ local function modifyVehicleSpawn(tagPath, composedObject, disable)
                 vehicleLocationList[spawnId].y = composedObject.y
                 vehicleLocationList[spawnId].z = composedObject.z
                 vehicleLocationList[spawnId].yaw = math.rad(composedObject.yaw)
-                vehicleLocationList[spawnId].pitch = math.rad(composedObject.pitch)
-                vehicleLocationList[spawnId].roll = math.rad(composedObject.roll)
+                vehicleLocationList[spawnId].pitch =
+                    math.rad(composedObject.pitch)
+                vehicleLocationList[spawnId].roll =
+                    math.rad(composedObject.roll)
 
                 vehicleLocationList[spawnId].type = vehicleType
 
@@ -145,9 +146,12 @@ local function modifyVehicleSpawn(tagPath, composedObject, disable)
                 composedObject.reflectionId = spawnId
 
                 -- Update spawn point list
-                blam.scenario(scenarioAddress, {vehicleLocationList = vehicleLocationList})
-                cprint('object_create_anew v' .. vehicleLocationList[spawnId].nameIndex)
-                execute_script('object_create_anew v' .. vehicleLocationList[spawnId].nameIndex)
+                blam.scenario(scenarioAddress,
+                              {vehicleLocationList = vehicleLocationList})
+                cprint('object_create_anew v' ..
+                           vehicleLocationList[spawnId].nameIndex)
+                execute_script('object_create_anew v' ..
+                                   vehicleLocationList[spawnId].nameIndex)
                 -- Stop looking for "available" spawn slots
                 break
             end
@@ -158,9 +162,14 @@ local function modifyVehicleSpawn(tagPath, composedObject, disable)
             -- Disable or "delete" spawn point by setting type as 65535
             vehicleLocationList[composedObject.reflectionId].type = 65535
             -- Update spawn point list
-            blam.scenario(scenarioAddress, {vehicleLocationList = vehicleLocationList})
-            cprint('object_create_anew v' .. vehicleLocationList[composedObject.reflectionId].nameIndex)
-            execute_script('object_destroy v' .. vehicleLocationList[composedObject.reflectionId].nameIndex)
+            blam.scenario(scenarioAddress,
+                          {vehicleLocationList = vehicleLocationList})
+            cprint('object_create_anew v' ..
+                       vehicleLocationList[composedObject.reflectionId]
+                           .nameIndex)
+            execute_script('object_destroy v' ..
+                               vehicleLocationList[composedObject.reflectionId]
+                                   .nameIndex)
             return true
         end
         -- Replace spawn point values
@@ -174,17 +183,14 @@ local function modifyVehicleSpawn(tagPath, composedObject, disable)
         cprint('Updating spawn replacing index: ' .. composedObject.reflectionId)
 
         -- Update spawn point list
-        blam.scenario(scenarioAddress, {vehicleLocationList = vehicleLocationList})
+        blam.scenario(scenarioAddress,
+                      {vehicleLocationList = vehicleLocationList})
     end
 end
 
 function eventsReducer(state, action)
     -- Create default state if it does not exist
-    if (not state) then
-        state = {
-            forgeObjects = {}
-        }
-    end
+    if (not state) then state = {forgeObjects = {}} end
     if (action.type) then
         cprint('-> [Objects Store]')
         cprint(action.type, 'category')
@@ -199,8 +205,10 @@ function eventsReducer(state, action)
         local objectsBeforeSpawn = get_objects()
 
         -- Spawn object in the game
-        local localObjectId, x, y, z =
-            core.cspawn_object('scen', tagPath, requestObject.x, requestObject.y, requestObject.z)
+        local localObjectId, x, y, z = core.cspawn_object('scen', tagPath,
+                                                          requestObject.x,
+                                                          requestObject.y,
+                                                          requestObject.z)
 
         -- The core.cspawn_object function returns modifications made to initial object coordinates
         requestObject.x = x
@@ -217,7 +225,8 @@ function eventsReducer(state, action)
         end
 
         -- Set object rotation after creating the object
-        rotateObject(localObjectId, requestObject.yaw, requestObject.pitch, requestObject.roll)
+        rotateObject(localObjectId, requestObject.yaw, requestObject.pitch,
+                     requestObject.roll)
 
         -- Clean and prepare entity
         requestObject.object = luablam.object(get_object(localObjectId))
@@ -250,20 +259,26 @@ function eventsReducer(state, action)
 
         -- As a server we have to send back a response/request to every player
         if (server_type == 'sapp') then
-            local response = core.createRequest(composedObject, constants.requestTypes.SPAWN_OBJECT)
+            local response = core.createRequest(composedObject,
+                                                constants.requestTypes
+                                                    .SPAWN_OBJECT)
             core.sendRequest(response)
         end
 
         -- Store the object in our state
         state.forgeObjects[localObjectId] = composedObject
 
-        forgeStore:dispatch({type = 'UPDATE_OBJECT_INFO', payload = {currentLoadingObjectPath = tagPath}})
+        forgeStore:dispatch({
+            type = 'UPDATE_OBJECT_INFO',
+            payload = {currentLoadingObjectPath = tagPath}
+        })
 
         return state
     elseif (action.type == constants.actionTypes.UPDATE_OBJECT) then
         local requestObject = action.payload.requestObject
 
-        local composedObject = state.forgeObjects[getObjectIdByRemoteId(state.forgeObjects, requestObject.objectId)]
+        local composedObject = state.forgeObjects[core.getObjectIdByRemoteId(
+                                   state.forgeObjects, requestObject.objectId)]
 
         if (composedObject) then
             cprint('UPDATING object from store...', 'warning')
@@ -277,11 +292,13 @@ function eventsReducer(state, action)
                 composedObject.z = constants.minimumZSpawnPoint
             end
             -- Update object rotation after creating the object
-            rotateObject(composedObject.objectId, composedObject.yaw, composedObject.pitch, composedObject.roll)
-            blam.object(
-                get_object(composedObject.objectId),
-                {x = composedObject.x, y = composedObject.y, z = composedObject.z}
-            )
+            rotateObject(composedObject.objectId, composedObject.yaw,
+                         composedObject.pitch, composedObject.roll)
+            blam.object(get_object(composedObject.objectId), {
+                x = composedObject.x,
+                y = composedObject.y,
+                z = composedObject.z
+            })
 
             if (composedObject.reflectionId) then
                 local tagPath = get_tag_path(composedObject.object.tagId)
@@ -298,17 +315,21 @@ function eventsReducer(state, action)
             end
 
             if (server_type == 'sapp') then
-                local response = core.createRequest(composedObject, constants.requestTypes.UPDATE_OBJECT)
+                local response = core.createRequest(composedObject,
+                                                    constants.requestTypes
+                                                        .UPDATE_OBJECT)
                 core.sendRequest(response)
             end
         else
-            cprint('ERROR!!! The required object with Id: ' .. requestObject.objectId .. 'does not exist.', 'error')
+            cprint('ERROR!!! The required object with Id: ' ..
+                       requestObject.objectId .. 'does not exist.', 'error')
         end
         return state
     elseif (action.type == constants.actionTypes.DELETE_OBJECT) then
         local requestObject = action.payload.requestObject
 
-        local composedObject = state.forgeObjects[getObjectIdByRemoteId(state.forgeObjects, requestObject.objectId)]
+        local composedObject = state.forgeObjects[core.getObjectIdByRemoteId(
+                                   state.forgeObjects, requestObject.objectId)]
 
         if (composedObject) then
             if (composedObject.reflectionId) then
@@ -327,27 +348,34 @@ function eventsReducer(state, action)
 
             cprint('Deleting object from store...', 'warning')
             delete_object(composedObject.objectId)
-            state.forgeObjects[getObjectIdByRemoteId(state.forgeObjects, requestObject.objectId)] = nil
+            state.forgeObjects[core.getObjectIdByRemoteId(state.forgeObjects,
+                                                     requestObject.objectId)] =
+                nil
             cprint('Done.', 'success')
             if (server_type == 'sapp') then
-                local response = core.createRequest(composedObject, constants.requestTypes.DELETE_OBJECT)
+                local response = core.createRequest(composedObject,
+                                                    constants.requestTypes
+                                                        .DELETE_OBJECT)
                 core.sendRequest(response)
             end
         else
-            cprint('ERROR!!! The required object with Id: ' .. requestObject.objectId .. 'does not exist.', 'error')
+            cprint('ERROR!!! The required object with Id: ' ..
+                       requestObject.objectId .. 'does not exist.', 'error')
         end
         forgeStore:dispatch({type = 'UPDATE_OBJECT_INFO'})
         return state
     elseif (action.type == constants.actionTypes.LOAD_MAP_SCREEN) then
         local requestObject = action.payload.requestObject
         state.expectedObjects = requestObject.objectCount
-        forgeStore:dispatch({type = 'UPDATE_OBJECT_INFO', payload = {expectedObjects = state.expectedObjects}})
+        forgeStore:dispatch({
+            type = 'UPDATE_OBJECT_INFO',
+            payload = {expectedObjects = state.expectedObjects}
+        })
+        set_timer(140, 'forgeAnimation')
         features.openMenu(constants.widgetDefinitions.loadingMenu)
         return state
     elseif (action.type == constants.actionTypes.FLUSH_FORGE) then
-        state = {
-            forgeObjects = {}
-        }
+        state = {forgeObjects = {}}
         return state
     else
         if (action.type == '@@lua-redux/INIT') then

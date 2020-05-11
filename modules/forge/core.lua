@@ -4,7 +4,6 @@
 -- Version: 1.0
 -- Core functionality for Forge
 ------------------------------------------------------------------------------
-
 local core = {}
 
 -- Send a request to the server throug rcon
@@ -22,23 +21,29 @@ function core.sendRequest(data, playerIndex)
         local compressionFormat = constants.compressionFormats[requestType]
 
         if (not compressionFormat) then
-            cprint('There is no format compression for this request!!!!', 'error')
+            cprint('There is no format compression for this request!!!!',
+                   'error')
             return false
         end
 
         cprint('Compression: ' .. inspect(compressionFormat))
 
-        local requestObject = maethrillian.compressObject(data, compressionFormat, true)
+        local requestObject = maethrillian.compressObject(data,
+                                                          compressionFormat,
+                                                          true)
 
         local requestOrder = constants.requestFormats[requestType]
-        local request = maethrillian.convertObjectToRequest(requestObject, requestOrder)
+        local request = maethrillian.convertObjectToRequest(requestObject,
+                                                            requestOrder)
 
         request = "rcon forge '" .. request .. "'"
 
         cprint('Request: ' .. request)
         if (server_type == 'local') then
             -- We need to mockup the server response in local mode
-            local mockedResponse = string.gsub(string.gsub(request, "rcon forge '", ''), "'", '')
+            local mockedResponse = string.gsub(
+                                       string.gsub(request, "rcon forge '", ''),
+                                       "'", '')
             cprint('Local Request: ' .. mockedResponse)
             onRcon(mockedResponse)
             return true, mockedResponse
@@ -82,7 +87,8 @@ function core.createRequest(composedObject, requestType)
                 objectData.remoteId = composedObject.remoteId
             end
         elseif (requestType == constants.requestTypes.UPDATE_OBJECT) then
-            composedObject.object = blam.object(get_object(composedObject.objectId))
+            composedObject.object = blam.object(
+                                        get_object(composedObject.objectId))
             if (server_type ~= 'sapp') then
                 objectData.objectId = composedObject.remoteId
             else
@@ -135,7 +141,22 @@ function core.resetSpawnPoints()
         vehicleLocationList[i].type = 65535
         execute_script('object_destroy v' .. vehicleLocationList[i].nameIndex)
     end
-    blam.scenario(scenarioAddress, {spawnLocationList = mapSpawnPoints, vehicleLocationList = vehicleLocationList})
+    blam.scenario(scenarioAddress, {
+        spawnLocationList = mapSpawnPoints,
+        vehicleLocationList = vehicleLocationList
+    })
+end
+
+function core.flushForge()
+    local forgeObjects = eventsStore:getState().forgeObjects
+    if (#glue.keys(forgeObjects) > 0 and #get_objects() > 0) then
+        -- saveForgeMap('unsaved')
+        -- execute_script('object_destroy_all')
+        for objectId, composedObject in pairs(forgeObjects) do
+            delete_object(objectId)
+        end
+        eventsStore:dispatch({type = constants.actionTypes.FLUSH_FORGE})
+    end
 end
 
 function core.loadForgeMap(mapName)
@@ -143,46 +164,60 @@ function core.loadForgeMap(mapName)
         console_out("You can not load a map while connected to a server!'")
         return false
     end
-    local fmapContent = glue.readfile(forgeMapsFolder .. '\\' .. mapName .. '.fmap', 't')
+    local fmapContent = glue.readfile(forgeMapsFolder .. '\\' .. mapName ..
+                                          '.fmap', 't')
     if (fmapContent) then
         cprint('Loading forge map...')
         local forgeMap = json.decode(fmapContent)
         if (forgeMap and forgeMap.objects and #forgeMap.objects > 0) then
-            forgeStore:dispatch({type = 'SET_MAP_NAME', payload = {mapName = forgeMap.name}})
+            forgeStore:dispatch({
+                type = 'SET_MAP_NAME',
+                payload = {mapName = forgeMap.name}
+            })
             if (server_type == 'sapp') then
                 local composedObject = {}
                 composedObject.objectCount = #forgeMap.objects
-                local response = core.createRequest(composedObject, constants.requestTypes.LOAD_MAP_SCREEN)
+                local response = core.createRequest(composedObject,
+                                                    constants.requestTypes
+                                                        .LOAD_MAP_SCREEN)
                 core.sendRequest(response)
             end
-            core.resetSpawnPoints()
+
             -- TO DO: Create flush system or features to load objects on map load
+            core.resetSpawnPoints()
+
+            -- Remove blur after reloading server on local mode
             if (server_type == 'local') then
                 execute_script('menu_blur_off')
-                flushForge()
+                core.flushForge()
             end
             for objectIndex, composedObject in pairs(forgeMap.objects) do
-                composedObject.tagId = get_tag_id('scen', composedObject.tagPath)
+                composedObject.tagId =
+                    get_tag_id('scen', composedObject.tagPath)
                 if (composedObject.tagId) then
                     composedObject.tagPath = nil
                     eventsStore:dispatch(
                         {
                             type = constants.actionTypes.SPAWN_OBJECT,
                             payload = {requestObject = composedObject}
-                        }
-                    )
+                        })
                 else
-                    cprint("WARNING!! Object with path '" .. composedObject.tagPath .. "' can't be spawn...", 'warning')
+                    cprint("WARNING!! Object with path '" ..
+                               composedObject.tagPath .. "' can't be spawn...",
+                           'warning')
                 end
             end
             execute_script('sv_map_reset')
             cprint("Succesfully loaded '" .. mapName .. "' fmap!")
             return true
         else
-            cprint("ERROR!! At decoding data from '" .. mapName .. "' forge map...", 'error')
+            cprint("ERROR!! At decoding data from '" .. mapName ..
+                       "' forge map...", 'error')
         end
     else
-        cprint("ERROR!! At trying to load '" .. mapName .. "' as a forge map...", 'error')
+        cprint(
+            "ERROR!! At trying to load '" .. mapName .. "' as a forge map...",
+            'error')
     end
     return false
 end
@@ -210,9 +245,7 @@ function core.saveForgeMap(mapName)
 
         -- Create a copy of the composed object in the store to avoid replacing useful values
         local fmapComposedObject = {}
-        for k, v in pairs(composedObject) do
-            fmapComposedObject[k] = v
-        end
+        for k, v in pairs(composedObject) do fmapComposedObject[k] = v end
 
         -- Remove all the unimportant data
         fmapComposedObject.object = nil
@@ -233,16 +266,19 @@ function core.saveForgeMap(mapName)
     -- Update map name
     mapName = string.gsub(mapName, ' ', '_')
 
-    local forgeMapFile = glue.writefile(forgeMapsFolder .. '\\' .. mapName .. '.fmap', fmapContent, 't')
+    local forgeMapFile = glue.writefile(forgeMapsFolder .. '\\' .. mapName ..
+                                            '.fmap', fmapContent, 't')
 
     -- Check if file was created
     if (forgeMapFile) then
-        cprint("Forge map '" .. mapName .. "' has been succesfully saved!", 'success')
+        cprint("Forge map '" .. mapName .. "' has been succesfully saved!",
+               'success')
 
         -- Reload forge maps list
         loadForgeMapsList()
     else
-        cprint("ERROR!! At saving '" .. mapName .. "' as a forge map...", 'error')
+        cprint("ERROR!! At saving '" .. mapName .. "' as a forge map...",
+               'error')
     end
 end
 
@@ -269,6 +305,11 @@ function core.cspawn_object(type, tagPath, x, y, z)
         return objectId, x, y, z
     end
     cprint('Error at trying to spawn object!!!!', 'error')
+    return nil
+end
+
+function core.getObjectIdByRemoteId(state, remoteId)
+    for k, v in pairs(state) do if (v.remoteId == remoteId) then return k end end
     return nil
 end
 

@@ -1,12 +1,14 @@
 ------------------------------------------------------------------------------
--- Forge Triggers
+-- Triggers
 -- Author: Sledmine
 -- Version: 1.0
 -- Menu triggers
 ------------------------------------------------------------------------------
-
 local triggers = {}
 
+---@param triggerName string
+---@param triggersNumber number
+---@return number
 function triggers.get(triggerName, triggersNumber)
     local restoreTriggersState = (function()
         for i = 1, triggersNumber do

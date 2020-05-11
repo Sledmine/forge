@@ -4,7 +4,6 @@
 -- Version: 1.0
 -- Couple of tests for Forge functionality
 ------------------------------------------------------------------------------
-
 local lu = require 'luaunit'
 local constants = require 'forge.constants'
 
@@ -12,7 +11,7 @@ local constants = require 'forge.constants'
 local function tprint(message, ...)
     if (message) then
         if (message:find('Starting')) then
-            console_out_warning(message)
+            console_out(message)
             return
         end
         console_out(message)
@@ -26,10 +25,7 @@ test_Rcon = {}
 
 function test_Rcon:setUp()
     -- Patch function if does not exist due to chimera blocking function thing
-    if (not onRcon) then
-        onRcon = function()
-        end
-    end
+    if (not onRcon) then onRcon = function() end end
     self.expectedDecodeResultSpawn = {
         pitch = 360,
         requestType = '#s',
@@ -53,10 +49,7 @@ function test_Rcon:setUp()
         z = 3
     }
 
-    self.expectedDecodeResultDelete = {
-        requestType = '#d',
-        objectId = 1234
-    }
+    self.expectedDecodeResultDelete = {requestType = '#d', objectId = 1234}
 end
 
 function test_Rcon:test_Callback()
@@ -65,13 +58,15 @@ function test_Rcon:test_Callback()
 end
 
 function test_Rcon:test_Decode_Spawn()
-    local decodeResult, decodeData = onRcon("'#s,d2040000,0000803f,00000040,00004040,360,360,360,d2040000'")
+    local decodeResult, decodeData = onRcon(
+                                         "'#s,d2040000,0000803f,00000040,00004040,360,360,360,d2040000'")
     lu.assertEquals(decodeResult, false)
     lu.assertEquals(decodeData, self.expectedDecodeResultSpawn)
 end
 
 function test_Rcon:test_Decode_Update()
-    local decodeResult, decodeData = onRcon("'#u,1234,0000803f,00000040,00004040,360,360,360'")
+    local decodeResult, decodeData = onRcon(
+                                         "'#u,1234,0000803f,00000040,00004040,360,360,360'")
     lu.assertEquals(decodeResult, false)
     lu.assertEquals(decodeData, self.expectedDecodeResultUpdate)
 end
@@ -88,12 +83,14 @@ test_Objects = {}
 
 function test_Objects:test_Objects_Spawn()
     local objectResult = false
-    for k, v in pairs(forgeStore:getState().forgeMenu.objectsDatabase) do
-        local objectId = core.cspawn_object('scen', v, 233, 41, constants.minimumZSpawnPoint)
-        if (objectId) then
-            delete_object(objectId)
-        end
+    for index, tagPath in pairs(forgeStore:getState().forgeMenu.objectsDatabase) do
+        local objectId = core.cspawn_object('scen', tagPath, 233, 41,
+                                            constants.minimumZSpawnPoint)
         lu.assertNotIsNil(objectId)
+        if (objectId) then delete_object(objectId) end
+        local deletionResult = get_object(objectId)
+        lu.prettystr(tagPath)
+        lu.assertIsNil(deletionResult)
     end
 end
 
@@ -102,8 +99,10 @@ end
 test_Request = {}
 
 function test_Request:setUp()
-    self.expectedEncodeSpawnResult = '#s,d2040000,0000803f,00000040,00004040,360,360,360'
-    self.expectedEncodeUpdateResult = '#u,1234,0000803f,00000040,00004040,360,360,360'
+    self.expectedEncodeSpawnResult =
+        '#s,d2040000,0000803f,00000040,00004040,360,360,360'
+    self.expectedEncodeUpdateResult =
+        '#u,1234,0000803f,00000040,00004040,360,360,360'
     self.expectedEncodeDeleteResult = '#d,1234'
 end
 
@@ -118,7 +117,7 @@ function test_Request:test_Encode_Spawn()
         pitch = '360',
         roll = '360'
     }
-    local result, request = sendRequest(objectExample)
+    local result, request = core.sendRequest(objectExample)
     lu.assertEquals(result, true)
     lu.assertEquals(request, self.expectedEncodeSpawnResult)
 end
@@ -134,17 +133,14 @@ function test_Request:test_Encode_Update()
         pitch = '360',
         roll = '360'
     }
-    local result, request = sendRequest(objectExample)
+    local result, request = core.sendRequest(objectExample)
     lu.assertEquals(result, true)
     lu.assertEquals(request, self.expectedEncodeUpdateResult)
 end
 
 function test_Request:test_Encode_Spawn()
-    local objectExample = {
-        requestType = '#d',
-        objectId = '1234'
-    }
-    local result, request = sendRequest(objectExample)
+    local objectExample = {requestType = '#d', objectId = '1234'}
+    local result, request = core.sendRequest(objectExample)
     lu.assertEquals(result, true)
     lu.assertEquals(request, self.expectedEncodeDeleteResult)
 end
@@ -154,9 +150,7 @@ end
 function tests.run(output)
     ftestingMode = true
     local runner = lu.LuaUnit.new()
-    if (output) then
-        runner:setOutputType('junit', 'forge_tests_results')
-    end
+    if (output) then runner:setOutputType('junit', 'forge_tests_results') end
     runner:runSuite()
     --[[if (bprint) then
         print = bprint
@@ -167,7 +161,7 @@ end
 -- Mocked arguments and executions for standalone execution and in game execution
 if (not arg) then
     arg = {'-v'}
-    --bprint = print
+    -- bprint = print
     print = tprint
 else
     tests.run()

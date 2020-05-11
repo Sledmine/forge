@@ -77,16 +77,6 @@ function rotateObject(objectId, yaw, pitch, roll)
     )
 end
 
--- Return object remote id from local id
-function getObjectIdByRemoteId(state, remoteId)
-    for k, v in pairs(state) do
-        if (v.remoteId == remoteId) then
-            return k
-        end
-    end
-    return nil
-end
-
 local playersObjectIds = {}
 local bipedChangeRequest = {}
 local playerObjectTempPos = {}

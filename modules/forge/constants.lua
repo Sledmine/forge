@@ -40,7 +40,7 @@ constants.requestTypes = {
 
 constants.requestFormats = {
     ['SPAWN_OBJECT'] = {'requestType', 'tagId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll', 'remoteId'},
-    ['UPDATE_OBJECT'] = {'requestType','objectId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll'},
+    ['UPDATE_OBJECT'] = {'requestType', 'objectId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll'},
     ['DELETE_OBJECT'] = {'requestType', 'objectId'},
     ['LOAD_MAP_SCREEN'] = {'requestType', 'objectCount'},
     ['FLUSH_FORGE'] = {'requestType'}
@@ -76,14 +76,20 @@ constants.unicodeStrings = {
     pauseGameStrings = '[shm]\\halo_4\\ui\\shell\\pause_game\\strings\\titles_and_headers'
 }
 
+constants.bitmaps = {
+    forgeLoadingProgress0 = '[shm]\\halo_4\\ui\\shell\\loading_menu\\bitmaps\\forge_loading_progress0',
+    forgeLoadingProgress1 = '[shm]\\halo_4\\ui\\shell\\loading_menu\\bitmaps\\forge_loading_progress1'
+}
+
 -- UI widget definitions
 constants.widgetDefinitions = {
     forgeMenu = '[shm]\\halo_4\\ui\\shell\\forge_menu\\forge_menu',
     forgeList = '[shm]\\halo_4\\ui\\shell\\forge_menu\\category_menu\\category_list',
     amountBar = '[shm]\\halo_4\\ui\\shell\\forge_menu\\budget_dialog\\budget_progress_bar',
-    loadingMenu ='[shm]\\halo_4\\ui\\shell\\loading_menu\\loading_menu',
-    loadingProgress ='[shm]\\halo_4\\ui\\shell\\loading_menu\\loading_progress_bar',
-    loadoutMenu ='[shm]\\halo_4\\ui\\shell\\loadout_menu\\loadout_menu_no_background',
+    loadingMenu = '[shm]\\halo_4\\ui\\shell\\loading_menu\\loading_menu',
+    loadingAnimation = '[shm]\\halo_4\\ui\\shell\\loading_menu\\loading_menu_progress_animation',
+    loadingProgress = '[shm]\\halo_4\\ui\\shell\\loading_menu\\loading_progress_bar',
+    loadoutMenu = '[shm]\\halo_4\\ui\\shell\\loadout_menu\\loadout_menu_no_background',
     mapsList = '[shm]\\halo_4\\ui\\shell\\pause_game\\forge_options_menu\\maps_list\\maps_list',
     sidebar = '[shm]\\halo_4\\ui\\shell\\pause_game\\forge_options_menu\\forge_map_list_sidebar_bar',
     errorNonmodalFullscreen = 'ui\\shell\\error\\error_nonmodal_fullscreen'
