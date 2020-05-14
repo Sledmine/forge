@@ -36,8 +36,8 @@ function forgeReducer(state, action)
         }
     end
     if (action.type) then
-        cprint('Forge Store, dispatched event:')
-        cprint(action.type, 'category')
+        dprint('Forge Store, dispatched event:')
+        dprint(action.type, 'category')
     end
     if (action.type == 'UPDATE_MAP_LIST') then
         state.mapsMenu.mapsList = action.payload.mapsList
@@ -54,7 +54,7 @@ function forgeReducer(state, action)
             state.mapsMenu.sidebar.overflow = fullSize - constants.maximumSidebarSize
             state.mapsMenu.sidebar.height = sidebarHeight - state.mapsMenu.sidebar.overflow
         end
-        cprint(inspect(state.mapsMenu))
+        dprint(inspect(state.mapsMenu))
         return state
     elseif (action.type == 'INCREMENT_MAPS_MENU_PAGE') then
         if (state.mapsMenu.currentPage < #state.mapsMenu.currentMapsList) then
@@ -70,7 +70,7 @@ function forgeReducer(state, action)
             state.mapsMenu.sidebar.height = newHeight
             state.mapsMenu.sidebar.position = newPosition
         end
-        cprint(state.mapsMenu.currentPage)
+        dprint(state.mapsMenu.currentPage)
         return state
     elseif (action.type == 'DECREMENT_MAPS_MENU_PAGE') then
         if (state.mapsMenu.currentPage > 1) then
@@ -86,22 +86,22 @@ function forgeReducer(state, action)
             state.mapsMenu.sidebar.height = newHeight
             state.mapsMenu.sidebar.position = newPosition
         end
-        cprint(state.mapsMenu.currentPage)
+        dprint(state.mapsMenu.currentPage)
         return state
     elseif (action.type == 'UPDATE_FORGE_OBJECTS_LIST') then
         state.forgeMenu = action.payload.forgeMenu
         local objectsList = glue.childsByParent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
         state.forgeMenu.currentObjectsList = glue.chunks(glue.keys(objectsList), 6)
-        cprint(inspect(state.forgeMenu))
+        dprint(inspect(state.forgeMenu))
         return state
     elseif (action.type == 'INCREMENT_FORGE_MENU_PAGE') then
-        cprint('Page:' .. inspect(state.forgeMenu.currentPage))
+        dprint('Page:' .. inspect(state.forgeMenu.currentPage))
         if (state.forgeMenu.currentPage < #state.forgeMenu.currentObjectsList) then
             state.forgeMenu.currentPage = state.forgeMenu.currentPage + 1
         end
         return state
     elseif (action.type == 'DECREMENT_FORGE_MENU_PAGE') then
-        cprint('Page:' .. inspect(state.forgeMenu.currentPage))
+        dprint('Page:' .. inspect(state.forgeMenu.currentPage))
         if (state.forgeMenu.currentPage > 1) then
             state.forgeMenu.currentPage = state.forgeMenu.currentPage - 1
         end
@@ -111,21 +111,21 @@ function forgeReducer(state, action)
         state.forgeMenu.desiredElement = action.payload.desiredElement
         local objectsList = glue.childsByParent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
         state.forgeMenu.currentObjectsList = glue.chunks(glue.keys(objectsList), 6)
-        cprint(inspect(state.forgeMenu))
+        dprint(inspect(state.forgeMenu))
         return state
     elseif (action.type == 'UPWARD_NAV_FORGE_MENU') then
         state.forgeMenu.currentPage = 1
         state.forgeMenu.desiredElement = glue.parentByChild(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
         local objectsList = glue.childsByParent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
         state.forgeMenu.currentObjectsList = glue.chunks(glue.keys(objectsList), 6)
-        cprint(inspect(state.forgeMenu))
+        dprint(inspect(state.forgeMenu))
         return state
     elseif (action.type == 'SET_MAP_NAME') then
         state.currentMap.name = action.payload.mapName
         return state
     elseif (action.type == 'UPDATE_MAP_INFO') then
         if (action.payload) then
-            --cprint(inspect(action.payload))
+            --dprint(inspect(action.payload))
             local expectedObjects = action.payload.expectedObjects
             local mapName = action.payload.mapName
             if (expectedObjects) then
@@ -161,9 +161,9 @@ function forgeReducer(state, action)
         return state
     else
         if (action.type == '@@lua-redux/INIT') then
-            cprint('Default state has been created!')
+            dprint('Default state has been created!')
         else
-            cprint('ERROR!!! The dispatched event does not exist:', 'error')
+            dprint('ERROR!!! The dispatched event does not exist:', 'error')
         end
         return state
     end

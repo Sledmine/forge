@@ -31,12 +31,11 @@ debugMode = glue.readfile('forge_debug_mode.dbg', 't')
 
 -- Internal functions
 
--- Super function to keep compatibility with SAPP and printing debug messages if needed
+--- Function to send debug messages to console output
 ---@param message string
 ---@param color string | "'category'" | "'warning'" | "'error'" | "'success'"
-function cprint(message, color)
+function dprint(message, color)
     if (debugMode) then
-        -- console_out(message)
         if (color == 'category') then
             console_out(message, 0.31, 0.631, 0.976)
         elseif (color == 'warning') then
@@ -51,20 +50,8 @@ function cprint(message, color)
     end
 end
 
--- Rotate object into desired degrees
-function rotateObject(objectId, yaw, pitch, roll)
-    local rotation = features.convertDegrees(yaw, pitch, roll)
-    blam.object(get_object(objectId), {
-        pitch = rotation[1],
-        yaw = rotation[2],
-        roll = rotation[3],
-        xScale = rotation[4],
-        yScale = rotation[5],
-        zScale = rotation[6]
-    })
-end
-
 -- Forge flusing mapping
+-- Needed to map callback to this module function
 flushForge = core.flushForge
 
 -- Prepare event callbacks
@@ -89,7 +76,7 @@ function onTick()
     local playerState = playerStore:getState()
     if (player) then
         player.isMonitor = features.isPlayerMonitor()
-        -- cprint(player.x .. ' ' .. player.y .. ' ' .. player.z)
+        -- dprint(player.x .. ' ' .. player.y .. ' ' .. player.z)
         if (player.isMonitor) then
             -- Calculate player point of view
             playerStore:dispatch({
@@ -168,7 +155,7 @@ function onTick()
             else
                 -- Open Forge menu by pressing 'Q'
                 if (player.flashlightKey) then
-                    cprint('Opening Forge menu...')
+                    dprint('Opening Forge menu...')
                     features.openMenu(constants.widgetDefinitions.forgeMenu)
                 elseif (player.crouchHold) then
                     features.swapBiped()
@@ -255,10 +242,11 @@ function onTick()
                 features.swapBiped()
             elseif (player.actionKey and player.crouchHold and server_type ==
                 'local') then
-                core.cspawn_object('bipd', constants.bipeds.spartan, player.x,
-                                   player.y, player.z)
+                core.cspawn_object(tagClasses.scenario,
+                                   constants.bipeds.spartan, player.x, player.y,
+                                   player.z)
             elseif (player.crouchHold) then
-                -- cprint(features.openMenu(constants.widgetDefinitions.loadingMenu))
+                -- dprint(features.openMenu(constants.widgetDefinitions.loadingMenu))
             end
         end
     end
@@ -277,11 +265,11 @@ function onTick()
                                 get_tag('unicode_string_list',
                                         constants.unicodeStrings.mapsList))
                                 .stringList[mapsMenuPressedButton]
-            cprint(mapName)
+            dprint(mapName)
             core.loadForgeMap(mapName:gsub('.fmap', ''))
         end
-        cprint('Maps menu:')
-        cprint('Button ' .. mapsMenuPressedButton .. ' was pressed!', 'category')
+        dprint('Maps menu:')
+        dprint('Button ' .. mapsMenuPressedButton .. ' was pressed!', 'category')
     end
 
     local forgeMenuPressedButton = triggers.get('forge_menu', 9)
@@ -291,7 +279,7 @@ function onTick()
             if (forgeState.forgeMenu.desiredElement ~= 'root') then
                 forgeStore:dispatch({type = 'UPWARD_NAV_FORGE_MENU'})
             else
-                cprint('Closing Forge menu...')
+                dprint('Closing Forge menu...')
                 menu.close(constants.widgetDefinitions.forgeMenu)
             end
         elseif (forgeMenuPressedButton == 8) then
@@ -306,7 +294,7 @@ function onTick()
             local sceneryPath =
                 forgeState.forgeMenu.objectsDatabase[desiredElement]
             if (sceneryPath) then
-                cprint(' -> [ Forge Menu ]')
+                dprint(' -> [ Forge Menu ]')
                 playerStore:dispatch({
                     type = 'CREATE_AND_ATTACH_OBJECT',
                     payload = {path = sceneryPath}
@@ -318,8 +306,8 @@ function onTick()
                 })
             end
         end
-        cprint(' -> [ Forge Menu ]')
-        cprint('Button ' .. forgeMenuPressedButton .. ' was pressed!',
+        dprint(' -> [ Forge Menu ]')
+        dprint('Button ' .. forgeMenuPressedButton .. ' was pressed!',
                'category')
     end
 
@@ -398,7 +386,7 @@ function onMapLoad()
             treePosition = treePosition[v]
         end
     end
-    cprint('Scenery database has ' ..
+    dprint('Scenery database has ' ..
                #glue.keys(forgeState.forgeMenu.objectsDatabase) .. ' objects.')
 
     -- Subscribed function to refresh forge state into the game!
@@ -414,7 +402,7 @@ function onMapLoad()
 
         -- Prevent errors objects does not exist
         if (not currentObjectsList) then
-            cprint('Current objects list is empty.', 'warning')
+            dprint('Current objects list is empty.', 'warning')
             currentObjectsList = {}
         end
 
@@ -467,7 +455,7 @@ function onMapLoad()
             forgeState.mapsMenu.currentMapsList[forgeState.mapsMenu.currentPage]
         -- Prevent errors when maps does not exist
         if (not currentMapsList) then
-            cprint('Current maps list is empty.')
+            dprint('Current maps list is empty.')
             currentMapsList = {}
         end
 
@@ -507,13 +495,13 @@ function onMapLoad()
 
     local isForgeMap = validateMapName()
     if (isForgeMap) then
-        cprint('Forge has been loaded!')
+        dprint('Forge has been loaded!')
 
         -- Forge maps folder creation
         forgeMapsFolder = hfs.currentdir() .. '\\fmaps'
         local alreadyForgeMapsFolder = not hfs.mkdir(forgeMapsFolder)
         if (not alreadyForgeMapsFolder) then
-            cprint('Forge maps folder has been created!')
+            dprint('Forge maps folder has been created!')
         end
 
         loadForgeMapsList()
@@ -527,33 +515,33 @@ function onMapLoad()
 end
 
 function onRcon(message)
-    cprint('Incoming rcon message:', 'warning')
-    cprint(message)
+    dprint('Incoming rcon message:', 'warning')
+    dprint(message)
     local request = string.gsub(message, "'", '')
     local splitData = glue.string.split(',', request)
     local requestType = constants.requestTypes[splitData[1]]
     if (requestType) then
-        cprint('Decoding incoming ' .. requestType .. ' ...', 'warning')
+        dprint('Decoding incoming ' .. requestType .. ' ...', 'warning')
 
         local requestObject = maethrillian.convertRequestToObject(request,
                                                                   constants.requestFormats[requestType])
 
         if (requestObject) then
-            cprint('Done.', 'success')
+            dprint('Done.', 'success')
         else
-            cprint('Error at converting request.', 'error')
+            dprint('Error at converting request.', 'error')
             return false, nil
         end
 
-        cprint('Decompressing ...', 'warning')
+        dprint('Decompressing ...', 'warning')
         local compressionFormat = constants.compressionFormats[requestType]
         requestObject = maethrillian.decompressObject(requestObject,
                                                       compressionFormat)
 
         if (requestObject) then
-            cprint('Done.', 'success')
+            dprint('Done.', 'success')
         else
-            cprint('Error at decompressing request.', 'error')
+            dprint('Error at decompressing request.', 'error')
             return false, nil
         end
 
@@ -668,32 +656,32 @@ function onCommand(command)
             if (eraseConfirm) then delete_object(objectId) end
             return false
         elseif (forgeCommand == 'fdump') then
-            glue.writefile('forge_dump.json',
-                           inspect(forgeStore:getState()), 't')
+            glue.writefile('forge_dump.json', inspect(forgeStore:getState()),
+                           't')
             glue.writefile('events_dump.json',
                            inspect(eventsStore:getState().forgeObjects), 't')
             return false
         elseif (forgeCommand == 'fprint') then
             -- Testing rcon communication
-            cprint('[Game Objects]', 'category')
+            dprint('[Game Objects]', 'category')
 
             local objects = get_objects()
 
             -- Debug in game objects count
-            cprint('Count: ' .. #objects)
+            dprint('Count: ' .. #objects)
 
             -- Debug list of all the in game objects
-            cprint(inspect(objects))
+            dprint(inspect(objects))
 
-            cprint('[Objects Store]', 'category')
+            dprint('[Objects Store]', 'category')
 
             local storeObjects = glue.keys(eventsStore:getState().forgeObjects)
 
             -- Debug store objects count
-            cprint('Count: ' .. #storeObjects)
+            dprint('Count: ' .. #storeObjects)
 
             -- Debug list of all the store objects
-            cprint(inspect(storeObjects))
+            dprint(inspect(storeObjects))
 
             return false
         elseif (forgeCommand == 'fname') then

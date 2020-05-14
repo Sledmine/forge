@@ -11,6 +11,7 @@ local constants = require 'forge.constants'
 local features = {}
 
 -- Credits to Devieth and IceCrow14
+--- Check if player is looking at object main frame
 ---@param target number
 ---@param sensitivity number
 ---@param zOffset number
@@ -51,6 +52,7 @@ function features.playerIsLookingAt(target, sensitivity, zOffset)
     return false
 end
 
+-- Internal functions for rotation calculation
 local function rotate(X, Y, alpha)
     local c, s = math.cos(math.rad(alpha)), math.sin(math.rad(alpha))
     local t1, t2, t3 = X[1] * s, X[2] * s, X[3] * s
@@ -58,6 +60,7 @@ local function rotate(X, Y, alpha)
     Y[1], Y[2], Y[3] = Y[1] * c - t1, Y[2] * c - t2, Y[3] * c - t3
 end
 
+-- Internal functions for rotation calculation
 function features.convertDegrees(Yaw, Pitch, Roll)
     local F, L, T = {1, 0, 0}, {0, 1, 0}, {0, 0, 1}
     rotate(F, L, Yaw)
@@ -66,7 +69,7 @@ function features.convertDegrees(Yaw, Pitch, Roll)
     return {F[1], -L[1], -T[1], -F[3], L[3], T[3]}
 end
 
--- Changes default crosshair values
+--- Changes default crosshair values
 ---@param state number
 function features.setCrosshairState(state)
     local forgeCrosshairAddress = get_tag('weapon_hud_interface', constants.weaponHudInterfaces.forgeCrosshair)
@@ -123,7 +126,7 @@ function features.setCrosshairState(state)
     end
 end
 
--- Check if current player is using a monitor biped
+--- Check if current player is using a monitor biped
 ---@return boolean
 function features.isPlayerMonitor()
     local tempObject = blam.object(get_dynamic_player())
@@ -177,11 +180,14 @@ function features.swapBiped()
             end
         end
     else
-        cprint('Requesting monitor biped...')
+        dprint('Requesting monitor biped...')
         execute_script('rcon forge #b')
     end
 end
 
+--- Forces the game to open a widget given tag path
+---@param tagPath string
+---@return boolean result susccess
 function features.openMenu(tagPath)
     local newMenuTagId = get_tag_id('DeLa', tagPath)
     if (newMenuTagId) then
@@ -189,7 +195,7 @@ function features.openMenu(tagPath)
             get_tag('DeLa', constants.widgetDefinitions.errorNonmodalFullscreen),
             {tagReference = newMenuTagId}
         )
-        execute_script('multiplayer_map_name sledisawesome')
+        execute_script('multiplayer_map_name lua-blam-rocks')
         execute_script('multiplayer_map_name ' .. map)
         return true
     end

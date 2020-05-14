@@ -38,6 +38,7 @@ constants.requestTypes = {
     ['#ff'] = 'FLUSH_FORGE'
 }
 
+--- Request formats for rcon communication
 constants.requestFormats = {
     ['SPAWN_OBJECT'] = {
         'requestType', 'tagId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll',

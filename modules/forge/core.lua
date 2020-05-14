@@ -6,27 +6,44 @@
 ------------------------------------------------------------------------------
 local core = {}
 
--- Send a request to the server throug rcon
+--- Rotate object into desired degrees
+---@param objectId number
+---@param yaw number
+---@param pitch number
+---@param roll number
+function core.rotateObject(objectId, yaw, pitch, roll)
+    local rotation = features.convertDegrees(yaw, pitch, roll)
+    blam.object(get_object(objectId), {
+        pitch = rotation[1],
+        yaw = rotation[2],
+        roll = rotation[3],
+        xScale = rotation[4],
+        yScale = rotation[5],
+        zScale = rotation[6]
+    })
+end
+
+--- Send a request to the server throug rcon
 ---@param data table
 ---@param playerIndex number
 ---@return boolean success
 ---@return string request
 function core.sendRequest(data, playerIndex)
-    cprint('Request data: ')
-    cprint(inspect(data))
-    cprint('-> [ Sending request ]')
+    dprint('Request data: ')
+    dprint(inspect(data))
+    dprint('-> [ Sending request ]')
     local requestType = constants.requestTypes[data.requestType]
     if (requestType) then
-        cprint('Type: ' .. requestType, 'category')
+        dprint('Type: ' .. requestType, 'category')
         local compressionFormat = constants.compressionFormats[requestType]
 
         if (not compressionFormat) then
-            cprint('There is no format compression for this request!!!!',
+            dprint('There is no format compression for this request!!!!',
                    'error')
             return false
         end
 
-        cprint('Compression: ' .. inspect(compressionFormat))
+        dprint('Compression: ' .. inspect(compressionFormat))
 
         local requestObject = maethrillian.compressObject(data,
                                                           compressionFormat,
@@ -38,23 +55,23 @@ function core.sendRequest(data, playerIndex)
 
         request = "rcon forge '" .. request .. "'"
 
-        cprint('Request: ' .. request)
+        dprint('Request: ' .. request)
         if (server_type == 'local') then
             -- We need to mockup the server response in local mode
             local mockedResponse = string.gsub(
                                        string.gsub(request, "rcon forge '", ''),
                                        "'", '')
-            cprint('Local Request: ' .. mockedResponse)
+            dprint('Local Request: ' .. mockedResponse)
             onRcon(mockedResponse)
             return true, mockedResponse
         elseif (server_type == 'dedicated') then
             -- Player is connected to a server
-            cprint('Dedicated Request: ' .. request)
+            dprint('Dedicated Request: ' .. request)
             execute_script(request)
             return true, request
         elseif (server_type == 'sapp') then
             local fixedResponse = string.gsub(request, "rcon forge '", '')
-            cprint('Server Request: ' .. fixedResponse)
+            dprint('Server Request: ' .. fixedResponse)
 
             -- We want to broadcast to every player in the server
             if (not playerIndex) then
@@ -70,11 +87,11 @@ function core.sendRequest(data, playerIndex)
             return true, fixedResponse
         end
     end
-    cprint('Error at trying to send request!!!!', 'error')
+    dprint('Error at trying to send request!!!!', 'error')
     return false
 end
 
--- Create a request for an object action
+--- Create a request for an object action
 ---@param composedObject number
 ---@param requestType string
 function core.createRequest(composedObject, requestType)
@@ -129,8 +146,8 @@ function core.resetSpawnPoints()
     local mapSpawnCount = scenario.spawnLocationCount
     local vehicleLocationCount = scenario.vehicleLocationCount
 
-    cprint('Found ' .. mapSpawnCount .. ' stock player starting points!')
-    cprint('Found ' .. vehicleLocationCount .. ' stock vehicle location points!')
+    dprint('Found ' .. mapSpawnCount .. ' stock player starting points!')
+    dprint('Found ' .. vehicleLocationCount .. ' stock vehicle location points!')
     local mapSpawnPoints = scenario.spawnLocationList
     -- Reset any spawn point, except the first one
     for i = 1, mapSpawnCount do
@@ -168,7 +185,7 @@ function core.loadForgeMap(mapName)
     local fmapContent = glue.readfile(forgeMapsFolder .. '\\' .. mapName ..
                                           '.fmap', 't')
     if (fmapContent) then
-        cprint('Loading forge map...')
+        dprint('Loading forge map...')
         local forgeMap = json.decode(fmapContent)
         if (forgeMap and forgeMap.objects and #forgeMap.objects > 0) then
             forgeStore:dispatch({
@@ -205,22 +222,22 @@ function core.loadForgeMap(mapName)
                             payload = {requestObject = composedObject}
                         })
                 else
-                    cprint("WARNING!! Object with path '" ..
+                    dprint("WARNING!! Object with path '" ..
                                composedObject.tagPath .. "' can't be spawn...",
                            'warning')
                 end
             end
 
             execute_script('sv_map_reset')
-            cprint("Succesfully loaded '" .. mapName .. "' fmap!")
+            dprint("Succesfully loaded '" .. mapName .. "' fmap!")
 
             return true
         else
-            cprint("ERROR!! At decoding data from '" .. mapName ..
+            dprint("ERROR!! At decoding data from '" .. mapName ..
                        "' forge map...", 'error')
         end
     else
-        cprint(
+        dprint(
             "ERROR!! At trying to load '" .. mapName .. "' as a forge map...",
             'error')
     end
@@ -228,7 +245,7 @@ function core.loadForgeMap(mapName)
 end
 
 function core.saveForgeMap(mapName)
-    cprint('Saving forge map...')
+    dprint('Saving forge map...')
 
     -- List used to store data of every object in the forge map
     local forgeMap = {
@@ -246,7 +263,7 @@ function core.saveForgeMap(mapName)
     for objectId, composedObject in pairs(objectsState) do
         -- Get scenery tag path to keep compatibility between versions
         local sceneryPath = get_tag_path(composedObject.object.tagId)
-        cprint(sceneryPath)
+        dprint(sceneryPath)
 
         -- Create a copy of the composed object in the store to avoid replacing useful values
         local fmapComposedObject = {}
@@ -276,29 +293,28 @@ function core.saveForgeMap(mapName)
 
     -- Check if file was created
     if (forgeMapFile) then
-        cprint("Forge map '" .. mapName .. "' has been succesfully saved!",
+        dprint("Forge map '" .. mapName .. "' has been succesfully saved!",
                'success')
 
         -- Reload forge maps list
         loadForgeMapsList()
     else
-        cprint("ERROR!! At saving '" .. mapName .. "' as a forge map...",
+        dprint("ERROR!! At saving '" .. mapName .. "' as a forge map...",
                'error')
     end
 end
 
--- Super function for debug printing and accurate spawning
----@param type string | "'scen'" | '"bipd"'
+--- Super function for debug printing and non self blocking spawning
 ---@param tagPath string
 ---@param x number @param y number @param Z number
 ---@return number | nil objectId
 function core.cspawn_object(type, tagPath, x, y, z)
-    cprint(' -> [ Object Spawning ]')
-    cprint('Type:', 'category')
-    cprint(type)
-    cprint('Tag  Path:', 'category')
-    cprint(tagPath)
-    cprint('Trying to spawn object...', 'warning')
+    dprint(' -> [ Object Spawning ]')
+    dprint('Type:', 'category')
+    dprint(type)
+    dprint('Tag  Path:', 'category')
+    dprint(tagPath)
+    dprint('Trying to spawn object...', 'warning')
     -- Prevent objects from phantom spawning!
     -- local variables are accesed first than parameter variables
     if (z < constants.minimumZSpawnPoint) then
@@ -306,10 +322,10 @@ function core.cspawn_object(type, tagPath, x, y, z)
     end
     local objectId = spawn_object(type, tagPath, x, y, z)
     if (objectId) then
-        cprint('-> Object: ' .. objectId .. ' succesfully spawned!!!', 'success')
+        dprint('-> Object: ' .. objectId .. ' succesfully spawned!!!', 'success')
         return objectId, x, y, z
     end
-    cprint('Error at trying to spawn object!!!!', 'error')
+    dprint('Error at trying to spawn object!!!!', 'error')
     return nil
 end
 

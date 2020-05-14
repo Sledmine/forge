@@ -39,29 +39,27 @@ debugMode = true
 
 -- Internal functions
 
--- Super function to keep compatibility with SAPP and printing debug messages if needed
+--- Function to send debug messages to console output
 ---@param message string
 ---@param color string | "'category'" | "'warning'" | "'error'" | "'success'"
-local oldCprint = cprint
-function cprint(message, color)
+function dprint(message, color)
     if (debugMode) then
-        -- console_out(message)
         if (color == 'category') then
-            oldCprint(message)
+            console_out(message, 0.31, 0.631, 0.976)
         elseif (color == 'warning') then
-            oldCprint(message)
+            console_out(message)
         elseif (color == 'error') then
-            oldCprint(message)
+            console_out(message)
         elseif (color == 'success') then
-            oldCprint(message)
+            console_out(message, 0.235, 0.82, 0)
         else
-            oldCprint(message)
+            console_out(message)
         end
     end
 end
 
 -- Rotate object into desired degrees
-function rotateObject(objectId, yaw, pitch, roll)
+function core.rotateObject(objectId, yaw, pitch, roll)
     local rotation = features.convertDegrees(yaw, pitch, roll)
     blam.object(get_object(objectId), {
         pitch = rotation[1],
@@ -139,7 +137,7 @@ function onPlayerJoin(playerIndex)
     local objectCount = #glue.keys(forgeObjects)
 
     if (objectCount > 0) then
-        cprint('Sending sync responses for: ' .. playerIndex)
+        dprint('Sending sync responses for: ' .. playerIndex)
 
         -- Create a temporal composed object like
         local tempObject = {}
@@ -163,39 +161,39 @@ end
 function onRcon(playerIndex, message, environment, rconPassword)
     -- TO DO: Check rcon environment
     if (environment) then
-        cprint('Triggering rcon...')
+        dprint('Triggering rcon...')
         -- TO DO: Check if we have to avoid returning true or false
-        cprint('Incoming rcon message:', 'warning')
-        cprint(message)
+        dprint('Incoming rcon message:', 'warning')
+        dprint(message)
         local request = string.gsub(message, "'", '')
         local splitData = glue.string.split(',', request)
         local command = splitData[1]
         local requestType = constants.requestTypes[command]
         if (requestType) then
-            cprint('Decoding incoming ' .. requestType .. ' ...', 'warning')
+            dprint('Decoding incoming ' .. requestType .. ' ...', 'warning')
 
             local requestObject = maethrillian.convertRequestToObject(request,
                                                                       constants.requestFormats[requestType])
 
             if (requestObject) then
-                cprint('Done.', 'success')
+                dprint('Done.', 'success')
             else
-                cprint('Error at converting request.', 'error')
+                dprint('Error at converting request.', 'error')
                 return false, nil
             end
 
-            cprint('Decompressing ...', 'warning')
+            dprint('Decompressing ...', 'warning')
             local compressionFormat = constants.compressionFormats[requestType]
             requestObject = maethrillian.decompressObject(requestObject,
                                                           compressionFormat)
 
             if (requestObject) then
-                cprint('Done.', 'success')
+                dprint('Done.', 'success')
             else
-                cprint('Error at decompressing request.', 'error')
+                dprint('Error at decompressing request.', 'error')
                 return false, nil
             end
-            cprint('Error at decompressing request.', 'error')
+            dprint('Error at decompressing request.', 'error')
             if (not ftestingMode) then
                 eventsStore:dispatch({
                     type = requestType,
@@ -204,13 +202,13 @@ function onRcon(playerIndex, message, environment, rconPassword)
             end
             return false, requestObject
         elseif (command == '#b') then
-            cprint('Trying to process a biped swap request...')
+            dprint('Trying to process a biped swap request...')
             if (playersObjectIds[playerIndex]) then
                 local playerObjectId = playersObjectIds[playerIndex]
-                cprint('playerObjectId: ' .. tostring(playerObjectId))
+                dprint('playerObjectId: ' .. tostring(playerObjectId))
                 local player = blam.object(get_object(playerObjectId))
                 if (player) then
-                    cprint('lua-blam rocks!!!')
+                    dprint('lua-blam rocks!!!')
                     playerObjectTempPos[playerIndex] =
                         {player.x, player.y, player.z}
                     if (player.tagId ==

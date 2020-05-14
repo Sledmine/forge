@@ -33,7 +33,7 @@ function playerReducer(state, action)
             state.attachedObjectId =
                 core.cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
         end
-        rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
+        core.rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
         return state
     elseif (action.type == 'ATTACH_OBJECT') then
         state.attachedObjectId = action.payload.objectId
@@ -47,7 +47,7 @@ function playerReducer(state, action)
         return state
     elseif (action.type == 'ROTATE_OBJECT') then
         if (state.attachedObjectId and get_object(state.attachedObjectId)) then
-            rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
+            core.rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
         end
         return state
     elseif (action.type == 'DETACH_OBJECT') then -- Update request if needed
