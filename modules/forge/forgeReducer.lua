@@ -41,6 +41,10 @@ function forgeReducer(state, action)
     end
     if (action.type == 'UPDATE_MAP_LIST') then
         state.mapsMenu.mapsList = action.payload.mapsList
+
+        -- Sort maps list by alphabetical order
+        table.sort(state.mapsMenu.mapsList, function(a, b) return a:lower() < b:lower() end)
+        
         state.mapsMenu.currentMapsList = glue.chunks(state.mapsMenu.mapsList, 8)
         local totalPages = #state.mapsMenu.currentMapsList
         if (totalPages > 1) then
@@ -91,7 +95,14 @@ function forgeReducer(state, action)
     elseif (action.type == 'UPDATE_FORGE_OBJECTS_LIST') then
         state.forgeMenu = action.payload.forgeMenu
         local objectsList = glue.childsByParent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
-        state.forgeMenu.currentObjectsList = glue.chunks(glue.keys(objectsList), 6)
+
+        -- Sort and prepare object list in alphabetic order
+        local keysList = glue.keys(objectsList)
+        table.sort(keysList, function(a, b) return a:lower() < b:lower() end)
+
+        -- Create list pagination
+        state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
+        
         dprint(inspect(state.forgeMenu))
         return state
     elseif (action.type == 'INCREMENT_FORGE_MENU_PAGE') then
@@ -110,14 +121,28 @@ function forgeReducer(state, action)
         state.forgeMenu.currentPage = 1
         state.forgeMenu.desiredElement = action.payload.desiredElement
         local objectsList = glue.childsByParent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
-        state.forgeMenu.currentObjectsList = glue.chunks(glue.keys(objectsList), 6)
+
+        -- Sort and prepare object list in alphabetic order
+        local keysList = glue.keys(objectsList)
+        table.sort(keysList, function(a, b) return a:lower() < b:lower() end)
+
+        -- Create list pagination
+        state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
+
         dprint(inspect(state.forgeMenu))
         return state
     elseif (action.type == 'UPWARD_NAV_FORGE_MENU') then
         state.forgeMenu.currentPage = 1
         state.forgeMenu.desiredElement = glue.parentByChild(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
         local objectsList = glue.childsByParent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
-        state.forgeMenu.currentObjectsList = glue.chunks(glue.keys(objectsList), 6)
+
+        -- Sort and prepare object list in alphabetic order
+        local keysList = glue.keys(objectsList)
+        table.sort(keysList, function(a, b) return a:lower() < b:lower() end)
+
+        -- Create list pagination
+        state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
+
         dprint(inspect(state.forgeMenu))
         return state
     elseif (action.type == 'SET_MAP_NAME') then

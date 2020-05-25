@@ -84,13 +84,21 @@ test_Objects = {}
 function test_Objects:test_Objects_Spawn()
     local objectResult = false
     for index, tagPath in pairs(forgeStore:getState().forgeMenu.objectsDatabase) do
-        local objectId = core.cspawn_object('scen', tagPath, 233, 41,
-                                            constants.minimumZSpawnPoint)
+
+        -- Spawn object in the game
+        local objectId = core.cspawn_object('scen', tagPath, 233, 41, constants.minimumZSpawnPoint + 1)
+        
+        -- Check the object has been spawned
         lu.assertNotIsNil(objectId)
-        if (objectId) then delete_object(objectId) end
-        local deletionResult = get_object(objectId)
-        lu.prettystr(tagPath)
-        lu.assertIsNil(deletionResult)
+
+        -- Clean up object
+        if (objectId) then 
+            dprint(objectId)
+            dprint('Erasing object:' .. tagPath)    
+            delete_object(objectId)
+        end
+        --local deletionResult = get_object(objectId)
+        --lu.assertIsNil(deletionResult)
     end
 end
 

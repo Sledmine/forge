@@ -30,11 +30,13 @@ core = require 'forge.core'
 debugMode = glue.readfile('forge_debug_mode.dbg', 't')
 
 -- Internal functions
+local debugBuffer = ''
 
 --- Function to send debug messages to console output
 ---@param message string
 ---@param color string | "'category'" | "'warning'" | "'error'" | "'success'"
 function dprint(message, color)
+    debugBuffer = debugBuffer .. message .. '\n'
     if (debugMode) then
         if (color == 'category') then
             console_out(message, 0.31, 0.631, 0.976)
@@ -78,6 +80,12 @@ function onTick()
         player.isMonitor = features.isPlayerMonitor()
         -- dprint(player.x .. ' ' .. player.y .. ' ' .. player.z)
         if (player.isMonitor) then
+
+            -- Provide better movement to monitors
+            if (not player.ignoreCollision) then
+                blam.biped(get_dynamic_player(), {ignoreCollision = true})
+            end
+
             -- Calculate player point of view
             playerStore:dispatch({
                 type = 'UPDATE_OFFSETS',
@@ -132,10 +140,11 @@ function onTick()
                 -- Update crosshair
                 features.setCrosshairState(2)
 
-                if (playerState.zOffset < constants.minimumZSpawnPoint) then
+                -- This was disabled because now every object can be spawned everywhere!
+                --[[if (playerState.zOffset < constants.minimumZSpawnPoint) then
                     -- Set crosshair to not allowed
                     features.setCrosshairState(3)
-                end
+                end]]
 
                 -- Update object position
                 blam.object(get_object(attachedObjectId), {
@@ -172,7 +181,6 @@ function onTick()
 
                 -- Get if player is looking at some object
                 for objectId, composedObject in pairs(forgeObjects) do
-                    -- local tempObject = blam.object(get_object(objectId))
                     -- Object exists
                     if (composedObject) then
                         local tagType =
@@ -181,6 +189,7 @@ function onTick()
                             local isPlayerLookingAt =
                                 features.playerIsLookingAt(objectId, 0.047, 0)
                             if (isPlayerLookingAt) then
+                                --dprint(get_tag_path(composedObject.object.tagId))
                                 -- Update crosshair state
                                 if (features.setCrosshairState) then
                                     features.setCrosshairState(1)
@@ -242,7 +251,7 @@ function onTick()
                 features.swapBiped()
             elseif (player.actionKey and player.crouchHold and server_type ==
                 'local') then
-                core.cspawn_object(tagClasses.scenario,
+                core.cspawn_object(tagClasses.biped,
                                    constants.bipeds.spartan, player.x, player.y,
                                    player.z)
             elseif (player.crouchHold) then
@@ -406,9 +415,6 @@ function onMapLoad()
             currentObjectsList = {}
         end
 
-        -- Sort all the elements in alphabetic order
-        table.sort(currentObjectsList, function(a, b) return a < b end)
-
         -- Forge Menu
         blam.unicodeStringList(get_tag('unicode_string_list',
                                        constants.unicodeStrings.forgeList),
@@ -453,6 +459,7 @@ function onMapLoad()
 
         local currentMapsList =
             forgeState.mapsMenu.currentMapsList[forgeState.mapsMenu.currentPage]
+            
         -- Prevent errors when maps does not exist
         if (not currentMapsList) then
             dprint('Current maps list is empty.')
@@ -660,6 +667,7 @@ function onCommand(command)
                            't')
             glue.writefile('events_dump.json',
                            inspect(eventsStore:getState().forgeObjects), 't')
+            glue.writefile('debug_dump.txt', debugBuffer, 't')
             return false
         elseif (forgeCommand == 'fprint') then
             -- Testing rcon communication

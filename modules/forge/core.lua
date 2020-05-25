@@ -317,11 +317,27 @@ function core.cspawn_object(type, tagPath, x, y, z)
     dprint('Trying to spawn object...', 'warning')
     -- Prevent objects from phantom spawning!
     -- local variables are accesed first than parameter variables
-    if (z < constants.minimumZSpawnPoint) then
-        z = constants.minimumZSpawnPoint
-    end
     local objectId = spawn_object(type, tagPath, x, y, z)
     if (objectId) then
+        local tempObject = blam.object(get_object(objectId))
+        if (tempObject.isOutSideMap) then
+            dprint('-> Object: ' .. objectId .. ' is INSIDE map!!!', 'warning')
+            console_out('INSIDE BSP!!!!!!!!!!!!!!!!')
+
+            -- Erase object to spawn it later in a safe place
+            delete_object(objectId)
+
+            -- Create new object but now in a safe place
+            objectId = spawn_object(type, tagPath, x, y,
+                                    constants.minimumZSpawnPoint)
+
+            if (objectId) then
+                -- Update new object position to match the original
+                blam.object(get_object(objectId), {x = x, y = y, z = z})
+            end
+
+        end
+        
         dprint('-> Object: ' .. objectId .. ' succesfully spawned!!!', 'success')
         return objectId, x, y, z
     end

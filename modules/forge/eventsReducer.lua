@@ -203,12 +203,15 @@ function eventsReducer(state, action)
 
         -- Get all the existent objects in the game before object spawn
         local objectsBeforeSpawn = get_objects()
+        dprint('Objects before spawn:')
+        dprint(inspect(objectsBeforeSpawn))
 
         -- Spawn object in the game
         local localObjectId, x, y, z = core.cspawn_object('scen', tagPath,
                                                           requestObject.x,
                                                           requestObject.y,
                                                           requestObject.z)
+        dprint('DISPATCHED OBJECT ID: ' .. localObjectId)                                                          
 
         -- The core.cspawn_object function returns modifications made to initial object coordinates
         requestObject.x = x
@@ -217,12 +220,17 @@ function eventsReducer(state, action)
 
         -- Get all the existent objects in the game after object spawn
         local objectsAfterSpawn = get_objects()
+        dprint('Objects after spawn:')
+        dprint(inspect(objectsAfterSpawn))
 
         -- Tricky way to get object local id, due to Chimera 581 API returning a pointer instead of id
         -- Remember objectId is local to this server
         if (server_type ~= 'sapp') then
-            localObjectId = glue.arraynv(objectsBeforeSpawn, objectsAfterSpawn)
+            local newObjects = glue.arraynv(objectsBeforeSpawn, objectsAfterSpawn)
+            localObjectId = newObjects[#newObjects]
         end
+        dprint('Calculated new object simple id:' .. localObjectId)
+
 
         -- Set object rotation after creating the object
         core.rotateObject(localObjectId, requestObject.yaw, requestObject.pitch,
@@ -288,9 +296,6 @@ function eventsReducer(state, action)
             composedObject.yaw = requestObject.yaw
             composedObject.pitch = requestObject.pitch
             composedObject.roll = requestObject.roll
-            if (composedObject.z < constants.minimumZSpawnPoint) then
-                composedObject.z = constants.minimumZSpawnPoint
-            end
             -- Update object rotation after creating the object
             core.rotateObject(composedObject.objectId, composedObject.yaw,
                          composedObject.pitch, composedObject.roll)
