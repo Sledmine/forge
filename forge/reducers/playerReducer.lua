@@ -1,3 +1,12 @@
+
+
+-- Halo Custom Edtion libraries
+local blam = require 'lua-blam'
+
+-- Forge libraries
+local core = require 'forge.core'
+local constants = require 'forge.constants'
+
 function playerReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then

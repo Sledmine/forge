@@ -7,24 +7,29 @@
 clua_version = 2.042
 
 -- Lua libraries
-inspect = require 'inspect'
-json = require 'json'
-glue = require 'glue'
-redux = require 'lua-redux'
+local redux = require 'lua-redux'
+local glue = require 'glue'
 
--- Specific Halo Custom Edition libraries
-blam = require 'lua-blam'
-maethrillian = require 'maethrillian'
-hfs = require 'hcefs'
+-- Halo Custom Edition libraries
+local blam = require 'lua-blam'
+local maethrillian = require 'maethrillian'
+local hfs = require 'hcefs'
+
+-- Global Halo Custom Edition libraries
+local constants = require 'forge.constants'
+local core = require 'forge.core'
 
 -- Forge modules
-triggers = require 'forge.triggers'
-hook = require 'forge.hook'
-constants = require 'forge.constants'
-menu = require 'forge.menu'
-features = require 'forge.features'
-tests = require 'forge.tests'
-core = require 'forge.core'
+local triggers = require 'forge.triggers'
+local hook = require 'forge.hook'
+local menu = require 'forge.menu'
+local features = require 'forge.features'
+local commands = require 'forge.commands'
+
+-- Reducers importation
+local playerReducer = require 'forge.reducers.playerReducer'
+local eventsReducer = require 'forge.reducers.eventsReducer'
+local forgeReducer = require 'forge.reducers.forgeReducer'
 
 -- Default debug mode state
 debugMode = glue.readfile('forge_debug_mode.dbg', 't')
@@ -66,11 +71,6 @@ function validateMapName()
                'forge_island_beta'
 end
 
--- Reducers importation
-require 'forge.playerReducer'
-require 'forge.eventsReducer'
-require 'forge.forgeReducer'
-
 -- Update internal state along the time
 function onTick()
     -- Get player object
@@ -98,11 +98,11 @@ function onTick()
                 -- Change rotation angle
                 if (player.flashlightKey) then
                     playerStore:dispatch({type = 'CHANGE_ROTATION_ANGLE'})
-                    hud_message('Rotating in: ' .. playerState.currentAngle)
+                    features.printHUD('Rotating in ' .. playerState.currentAngle)
                 elseif (player.actionKeyHold or player.actionKey) then
                     -- Convert into spartan
                     playerStore:dispatch({type = 'STEP_ROTATION_DEGREE'})
-                    hud_message(playerState.currentAngle .. ': ' ..
+                    features.printHUD(playerState.currentAngle .. ': ' ..
                                     playerState[playerState.currentAngle])
 
                     playerStore:dispatch({type = 'ROTATE_OBJECT'})
@@ -117,13 +117,13 @@ function onTick()
                                 lockDistance = not playerState.lockDistance
                             }
                         })
-                    hud_message('Distance from object is ' ..
+                        features.printHUD('Distance from object is ' ..
                                     tostring(glue.round(playerState.distance)) ..
                                     ' units.')
                     if (playerState.lockDistance) then
-                        hud_message('Push n pull.')
+                        features.printHUD('Push n pull.')
                     else
-                        hud_message('Closer or further.')
+                        features.printHUD('Closer or further.')
                     end
                 end
 
@@ -189,7 +189,13 @@ function onTick()
                             local isPlayerLookingAt =
                                 features.playerIsLookingAt(objectId, 0.047, 0)
                             if (isPlayerLookingAt) then
-                                --dprint(get_tag_path(composedObject.object.tagId))
+
+                                -- Get and parse object name
+                                local objectPath = glue.string.split('\\', get_tag_path(composedObject.object.tagId))
+                                local objectName = objectPath[#objectPath - 1]
+                                local objectCategory = objectPath[#objectPath - 2]
+                                features.printHUD("Name: " .. objectName, "Category: " .. objectCategory)
+
                                 -- Update crosshair state
                                 if (features.setCrosshairState) then
                                     features.setCrosshairState(1)
@@ -202,7 +208,7 @@ function onTick()
 
                                 -- Player is taking the object
                                 if (player.weaponPTH) then
-                                    -- Set lock distance to true, this will help to take the object from persepective
+                                    -- Set lock distance to true, this will help to take the object from perspective
                                     playerStore:dispatch(
                                         {
                                             type = 'SET_LOCK_DISTANCE',
@@ -579,126 +585,5 @@ end
 if (server_type == 'local') then onMapLoad() end
 
 function onCommand(command)
-    if (command == 'fdebug') then
-        debugMode = not debugMode
-        console_out('Debug Forge: ' .. tostring(debugMode))
-        return false
-    else
-        -- Split all the data in the command input
-        local splitCommand = glue.string.split(' ', command)
-
-        -- Substract first console command
-        local forgeCommand = splitCommand[1]
-
-        if (forgeCommand == 'fstep') then
-            local newRotationStep = tonumber(splitCommand[2])
-            if (newRotationStep) then
-                hud_message('Rotation step now is ' .. newRotationStep ..
-                                ' degrees.')
-                playerStore:dispatch({
-                    type = 'SET_ROTATION_STEP',
-                    payload = {step = newRotationStep}
-                })
-            else
-                playerStore:dispatch({
-                    type = 'SET_ROTATION_STEP',
-                    payload = {step = 3}
-                })
-            end
-            return false
-        elseif (forgeCommand == 'fdis' or forgeCommand == 'fdistance') then
-            local newDistance = tonumber(splitCommand[2])
-            if (newDistance) then
-                hud_message('Distance from object has been set to ' ..
-                                newDistance .. ' units.')
-                -- Force distance object update
-                playerStore:dispatch({
-                    type = 'SET_LOCK_DISTANCE',
-                    payload = {lockDistance = true}
-                })
-                local distance = glue.round(newDistance)
-                playerStore:dispatch({
-                    type = 'SET_DISTANCE',
-                    payload = {distance = distance}
-                })
-            else
-                local distance = 3
-                playerStore:dispatch({
-                    type = 'SET_DISTANCE',
-                    payload = {distance = distance}
-                })
-            end
-            return false
-        elseif (forgeCommand == 'fsave') then
-            local mapName = forgeStore:getState().currentMap.name
-            if (mapName) then
-                core.saveForgeMap(mapName)
-            else
-                console_out('You must specify a name for your forge map.')
-            end
-            return false
-        elseif (forgeCommand == 'fload') then
-            local mapName = table.concat(glue.shift(splitCommand, 1, -1), ' ')
-            if (mapName) then
-                core.loadForgeMap(mapName)
-            else
-                console_out('You must specify a forge map name.')
-            end
-            return false
-        elseif (forgeCommand == 'flist') then
-            for file in hfs.dir(forgeMapsFolder) do
-                if (file ~= '.' and file ~= '..') then
-                    console_out(file)
-                end
-            end
-            return false
-        elseif (forgeCommand == 'ftest') then
-            -- Run unit testing
-            tests.run(true)
-            return false
-        elseif (forgeCommand == 'fobject') then
-            local objectId = tonumber(splitCommand[2])
-            console_out(tostring(get_object(objectId)))
-            local eraseConfirm = splitCommand[3]
-            if (eraseConfirm) then delete_object(objectId) end
-            return false
-        elseif (forgeCommand == 'fdump') then
-            glue.writefile('forge_dump.json', inspect(forgeStore:getState()),
-                           't')
-            glue.writefile('events_dump.json',
-                           inspect(eventsStore:getState().forgeObjects), 't')
-            glue.writefile('debug_dump.txt', debugBuffer, 't')
-            return false
-        elseif (forgeCommand == 'fprint') then
-            -- Testing rcon communication
-            dprint('[Game Objects]', 'category')
-
-            local objects = get_objects()
-
-            -- Debug in game objects count
-            dprint('Count: ' .. #objects)
-
-            -- Debug list of all the in game objects
-            dprint(inspect(objects))
-
-            dprint('[Objects Store]', 'category')
-
-            local storeObjects = glue.keys(eventsStore:getState().forgeObjects)
-
-            -- Debug store objects count
-            dprint('Count: ' .. #storeObjects)
-
-            -- Debug list of all the store objects
-            dprint(inspect(storeObjects))
-
-            return false
-        elseif (forgeCommand == 'fname') then
-            local mapName = table.concat(glue.shift(splitCommand, 1, -1), ' ')
-            forgeStore:dispatch({
-                type = 'SET_MAP_NAME',
-                payload = {mapName = mapName}
-            })
-            return false
-        end
-    end
+    return commands(command)
 end

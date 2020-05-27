@@ -5,6 +5,8 @@
 -- Couple of tests for Forge functionality
 ------------------------------------------------------------------------------
 local lu = require 'luaunit'
+
+local core = require 'forge.core'
 local constants = require 'forge.constants'
 
 -- Mocked function to redirect print calls to test print

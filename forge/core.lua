@@ -1,9 +1,23 @@
 ------------------------------------------------------------------------------
 -- Forge Core
 -- Author: Sledmine
--- Version: 1.0
+-- Version: 2.0
 -- Core functionality for Forge
 ------------------------------------------------------------------------------
+-- Lua libraries
+local inspect = require 'inspect'
+local json = require 'json'
+local glue = require 'glue'
+
+-- Halo libraries
+local blam = require 'lua-blam'
+local maethrillian = require 'maethrillian'
+
+-- Forge libraries
+local features = require 'forge.features'
+local constants = require 'forge.constants'
+
+-- Core module
 local core = {}
 
 --- Rotate object into desired degrees
@@ -189,8 +203,8 @@ function core.loadForgeMap(mapName)
         local forgeMap = json.decode(fmapContent)
         if (forgeMap and forgeMap.objects and #forgeMap.objects > 0) then
             forgeStore:dispatch({
-                type = 'SET_MAP_NAME',
-                payload = {mapName = forgeMap.name}
+                type = 'SET_MAP_DATA',
+                payload = {mapName = forgeMap.name, mapDescription = forgeMap.description}
             })
             if (server_type == 'sapp') then
                 local tempObject = {}
@@ -247,11 +261,16 @@ end
 function core.saveForgeMap(mapName)
     dprint('Saving forge map...')
 
+    local forgeState = forgeStore:getState()
+
+    local mapName = forgeState.currentMap.name
+    local mapDescription = forgeState.currentMap.description
+
     -- List used to store data of every object in the forge map
     local forgeMap = {
         name = mapName,
         author = '',
-        description = '',
+        description = mapDescription,
         version = '',
         objects = {}
     }
@@ -337,7 +356,7 @@ function core.cspawn_object(type, tagPath, x, y, z)
             end
 
         end
-        
+
         dprint('-> Object: ' .. objectId .. ' succesfully spawned!!!', 'success')
         return objectId, x, y, z
     end
@@ -345,9 +364,202 @@ function core.cspawn_object(type, tagPath, x, y, z)
     return nil
 end
 
+--- Apply needed modifications to scenario spawn points
+-- It's local to the reducer to avoid outside implementation
+---@param tagPath string
+---@param composedObject table
+---@param disable boolean
+function core.modifyPlayerSpawnPoint(tagPath, composedObject, disable)
+    local teamIndex = 0
+    local gameType = 0
+
+    -- Get spawn info from tag name
+    if (tagPath:find('ctf')) then
+        dprint('CTF')
+        gameType = 1
+    elseif (tagPath:find('slayer')) then
+        dprint('SLAYER')
+        gameType = 2
+    elseif (tagPath:find('generic')) then
+        dprint('GENERIC')
+        gameType = 12
+    end
+
+    if (tagPath:find('red')) then
+        dprint('RED TEAM')
+        teamIndex = 0
+    elseif (tagPath:find('blue')) then
+        dprint('BLUE TEAM')
+        teamIndex = 1
+    end
+
+    -- SAPP and Chimera can't substract scenario tag in the same way
+    local scenarioAddress
+    if (server_type == 'sapp') then
+        scenarioAddress = get_tag('scnr', constants.scenarioPath)
+    else
+        scenarioAddress = get_tag(0)
+    end
+
+    -- Get scenario data
+    local scenario = blam.scenario(scenarioAddress)
+
+    -- Get scenario player spawn points
+    local mapSpawnPoints = scenario.spawnLocationList
+
+    -- Object is not already reflecting a spawn point
+    if (not composedObject.reflectionId) then
+        for spawnId = 1, #mapSpawnPoints do
+            -- If this spawn point is disabled
+            if (mapSpawnPoints[spawnId].type == 0) then
+                -- Replace spawn point values
+                mapSpawnPoints[spawnId].x = composedObject.x
+                mapSpawnPoints[spawnId].y = composedObject.y
+                mapSpawnPoints[spawnId].z = composedObject.z
+                mapSpawnPoints[spawnId].rotation = math.rad(composedObject.yaw)
+                mapSpawnPoints[spawnId].teamIndex = teamIndex
+                mapSpawnPoints[spawnId].type = gameType
+
+                -- Debug spawn index
+                dprint('Creating spawn replacing index: ' .. spawnId, 'warning')
+                composedObject.reflectionId = spawnId
+                break
+            end
+        end
+    else
+        dprint(composedObject.reflectionId)
+        if (disable) then
+            -- Disable or "delete" spawn point by setting type as 0
+            mapSpawnPoints[composedObject.reflectionId].type = 0
+            -- Update spawn point list
+            blam.scenario(scenarioAddress, {spawnLocationList = mapSpawnPoints})
+            return true
+        end
+        -- Replace spawn point values
+        mapSpawnPoints[composedObject.reflectionId].x = composedObject.x
+        mapSpawnPoints[composedObject.reflectionId].y = composedObject.y
+        mapSpawnPoints[composedObject.reflectionId].z = composedObject.z
+        mapSpawnPoints[composedObject.reflectionId].rotation =
+            math.rad(composedObject.yaw)
+        dprint(mapSpawnPoints[composedObject.reflectionId].type)
+        -- Debug spawn index
+        dprint('Updating spawn replacing index: ' .. composedObject.reflectionId)
+    end
+    -- Update spawn point list
+    blam.scenario(scenarioAddress, {spawnLocationList = mapSpawnPoints})
+end
+
+--- Enable, update and disable vehicle spawns
+-- Must be called after adding scenery object to the store!!
+-- @return true if found an available spawn
+function core.modifyVehicleSpawn(tagPath, composedObject, disable)
+    if (server_type == 'dedicated') then return true end
+    local vehicleType = 0
+    -- Get spawn info from tag name
+    if (tagPath:find('banshee')) then
+        dprint('banshee')
+        vehicleType = 0
+    elseif (tagPath:find('hog')) then
+        dprint('hog')
+        vehicleType = 1
+    elseif (tagPath:find('ghost')) then
+        dprint('ghost')
+        vehicleType = 2
+    elseif (tagPath:find('scorpion')) then
+        dprint('scorpion')
+        vehicleType = 3
+    elseif (tagPath:find('turret spawn')) then
+        dprint('turret')
+        vehicleType = 4
+    elseif (tagPath:find('ball spawn')) then
+        dprint('ball')
+        vehicleType = 5
+    end
+
+    -- SAPP and Chimera can't substract scenario tag in the same way
+    local scenarioAddress
+    if (server_type == 'sapp') then
+        scenarioAddress = get_tag('scnr', constants.scenarioPath)
+    else
+        scenarioAddress = get_tag(0)
+    end
+
+    -- Get scenario data
+    local scenario = blam.scenario(scenarioAddress)
+
+    local vehicleLocationCount = scenario.vehicleLocationCount
+    dprint('Maximum count of vehicle spawn points: ' .. vehicleLocationCount)
+
+    local vehicleLocationList = scenario.vehicleLocationList
+
+    -- Object exists, it's synced
+    if (not composedObject.reflectionId) then
+        for spawnId = 2, #vehicleLocationList do
+            if (vehicleLocationList[spawnId].type == 65535) then
+                -- Replace spawn point values
+                vehicleLocationList[spawnId].x = composedObject.x
+                vehicleLocationList[spawnId].y = composedObject.y
+                vehicleLocationList[spawnId].z = composedObject.z
+                vehicleLocationList[spawnId].yaw = math.rad(composedObject.yaw)
+                vehicleLocationList[spawnId].pitch =
+                    math.rad(composedObject.pitch)
+                vehicleLocationList[spawnId].roll =
+                    math.rad(composedObject.roll)
+
+                vehicleLocationList[spawnId].type = vehicleType
+
+                -- Debug spawn index
+                dprint('Creating spawn replacing index: ' .. spawnId)
+                composedObject.reflectionId = spawnId
+
+                -- Update spawn point list
+                blam.scenario(scenarioAddress,
+                              {vehicleLocationList = vehicleLocationList})
+                dprint('object_create_anew v' ..
+                           vehicleLocationList[spawnId].nameIndex)
+                execute_script('object_create_anew v' ..
+                                   vehicleLocationList[spawnId].nameIndex)
+                -- Stop looking for "available" spawn slots
+                break
+            end
+        end
+    else
+        dprint(composedObject.reflectionId)
+        if (disable) then
+            -- Disable or "delete" spawn point by setting type as 65535
+            vehicleLocationList[composedObject.reflectionId].type = 65535
+            -- Update spawn point list
+            blam.scenario(scenarioAddress,
+                          {vehicleLocationList = vehicleLocationList})
+            dprint('object_create_anew v' ..
+                       vehicleLocationList[composedObject.reflectionId]
+                           .nameIndex)
+            execute_script('object_destroy v' ..
+                               vehicleLocationList[composedObject.reflectionId]
+                                   .nameIndex)
+            return true
+        end
+        -- Replace spawn point values
+        vehicleLocationList[composedObject.reflectionId].x = composedObject.x
+        vehicleLocationList[composedObject.reflectionId].y = composedObject.y
+        vehicleLocationList[composedObject.reflectionId].z = composedObject.z
+
+        -- REMINDER!!! Check vehicle rotation
+
+        -- Debug spawn index
+        dprint('Updating spawn replacing index: ' .. composedObject.reflectionId)
+
+        -- Update spawn point list
+        blam.scenario(scenarioAddress,
+                      {vehicleLocationList = vehicleLocationList})
+    end
+end
+
+
 function core.getObjectIdByRemoteId(state, remoteId)
     for k, v in pairs(state) do if (v.remoteId == remoteId) then return k end end
     return nil
 end
 
+-- Module export
 return core

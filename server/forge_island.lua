@@ -18,7 +18,6 @@ server_type = 'sapp'
 
 -- Lua libraries
 inspect = require 'inspect'
-json = require 'json'
 glue = require 'glue'
 redux = require 'lua-redux'
 
