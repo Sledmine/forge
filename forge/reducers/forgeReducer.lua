@@ -3,7 +3,7 @@
 local inspect = require 'inspect'
 local glue = require 'glue'
 
--- Forge libraries
+-- Forge modules
 local constants = require 'forge.constants'
 local menu = require 'forge.menu'
 
@@ -199,7 +199,7 @@ local function forgeReducer(state, action)
                 local newBarSize = currentObjects * constants.maximumLoadingProgressBarSize / expectedObjects
                 state.loadingMenu.currentBarSize = glue.floor(newBarSize)
                 if (state.loadingMenu.currentBarSize >= constants.maximumLoadingProgressBarSize) then
-                    menu.close(constants.widgetDefinitions.loadingMenu)
+                    menu.close(constants.uiWidgetDefinitions.loadingMenu)
                 end
             end
         end

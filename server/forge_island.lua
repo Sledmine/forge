@@ -22,7 +22,7 @@ glue = require 'glue'
 redux = require 'lua-redux'
 
 -- Specific Halo Custom Edition libraries
-blam = require 'lua-blam'
+local blam = require 'lua-blam'
 maethrillian = require 'maethrillian'
 
 -- Forge modules

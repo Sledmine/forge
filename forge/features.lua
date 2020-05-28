@@ -157,7 +157,7 @@ function features.swapBiped()
             globalsTagData + 0x9BC + 0xC
         local currentGlobalsBipedTagId =
             read_dword(globalsTagMultiplayerBipedTagIdAddress)
-        for i = 0, 1023 do
+        for i = 0, 2043 do
             local tempObject = blam.object(get_object(i))
             if (tempObject and tempObject.tagId ==
                 get_tag_id('bipd', constants.bipeds.spartan)) then
@@ -183,7 +183,7 @@ end
 function features.openMenu(tagPath)
     local newMenuTagId = get_tag_id('DeLa', tagPath)
     if (newMenuTagId) then
-        blam.uiWidgetDefinition(get_tag('DeLa', constants.widgetDefinitions
+        blam.uiWidgetDefinition(get_tag('DeLa', constants.uiWidgetDefinitions
                                             .errorNonmodalFullscreen),
                                 {tagReference = newMenuTagId})
         execute_script('multiplayer_map_name lua-blam-rocks')
@@ -200,8 +200,8 @@ function features.printHUD(message, optional)
     local cleanLimit = 3
     if (optional) then cleanLimit = 2 end
     for i = 1, cleanLimit do hud_message('') end
-    hud_message("         " .. message)
-    if (optional) then hud_message("         " .. optional) end
+    hud_message(message)
+    if (optional) then hud_message(optional) end
 end
 
 return features

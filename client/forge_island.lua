@@ -35,7 +35,7 @@ local forgeReducer = require 'forge.reducers.forgeReducer'
 debugMode = glue.readfile('forge_debug_mode.dbg', 't')
 
 -- Internal functions
-local debugBuffer = ''
+debugBuffer = ''
 
 --- Function to send debug messages to console output
 ---@param message string
@@ -103,7 +103,7 @@ function onTick()
                     -- Convert into spartan
                     playerStore:dispatch({type = 'STEP_ROTATION_DEGREE'})
                     features.printHUD(playerState.currentAngle .. ': ' ..
-                                    playerState[playerState.currentAngle])
+                                          playerState[playerState.currentAngle])
 
                     playerStore:dispatch({type = 'ROTATE_OBJECT'})
                 elseif (player.crouchHold) then
@@ -117,9 +117,10 @@ function onTick()
                                 lockDistance = not playerState.lockDistance
                             }
                         })
-                        features.printHUD('Distance from object is ' ..
-                                    tostring(glue.round(playerState.distance)) ..
-                                    ' units.')
+                    features.printHUD('Distance from object is ' ..
+                                          tostring(
+                                              glue.round(playerState.distance)) ..
+                                          ' units.')
                     if (playerState.lockDistance) then
                         features.printHUD('Push n pull.')
                     else
@@ -165,7 +166,7 @@ function onTick()
                 -- Open Forge menu by pressing 'Q'
                 if (player.flashlightKey) then
                     dprint('Opening Forge menu...')
-                    features.openMenu(constants.widgetDefinitions.forgeMenu)
+                    features.openMenu(constants.uiWidgetDefinitions.forgeMenu)
                 elseif (player.crouchHold) then
                     features.swapBiped()
                     playerStore:dispatch({type = 'DETACH_OBJECT'})
@@ -191,10 +192,13 @@ function onTick()
                             if (isPlayerLookingAt) then
 
                                 -- Get and parse object name
-                                local objectPath = glue.string.split('\\', get_tag_path(composedObject.object.tagId))
+                                local objectPath =
+                                    glue.string.split('\\', get_tag_path(
+                                                          composedObject.object
+                                                              .tagId))
                                 local objectName = objectPath[#objectPath - 1]
                                 local objectCategory = objectPath[#objectPath - 2]
-                                features.printHUD("Name: " .. objectName, "Category: " .. objectCategory)
+                                features.printHUD("NAME:  " .. objectName, "CATEGORY:  " .. objectCategory)
 
                                 -- Update crosshair state
                                 if (features.setCrosshairState) then
@@ -208,7 +212,7 @@ function onTick()
 
                                 -- Player is taking the object
                                 if (player.weaponPTH) then
-                                    -- Set lock distance to true, this will help to take the object from perspective
+                                    -- Set lock distance to true, to take object from perspective
                                     playerStore:dispatch(
                                         {
                                             type = 'SET_LOCK_DISTANCE',
@@ -257,11 +261,10 @@ function onTick()
                 features.swapBiped()
             elseif (player.actionKey and player.crouchHold and server_type ==
                 'local') then
-                core.cspawn_object(tagClasses.biped,
-                                   constants.bipeds.spartan, player.x, player.y,
-                                   player.z)
+                core.cspawn_object(tagClasses.biped, constants.bipeds.spartan,
+                                   player.x, player.y, player.z)
             elseif (player.crouchHold) then
-                -- dprint(features.openMenu(constants.widgetDefinitions.loadingMenu))
+                -- dprint(features.openMenu(constants.uiWidgetDefinitions.loadingMenu))
             end
         end
     end
@@ -295,7 +298,7 @@ function onTick()
                 forgeStore:dispatch({type = 'UPWARD_NAV_FORGE_MENU'})
             else
                 dprint('Closing Forge menu...')
-                menu.close(constants.widgetDefinitions.forgeMenu)
+                menu.close(constants.uiWidgetDefinitions.forgeMenu)
             end
         elseif (forgeMenuPressedButton == 8) then
             forgeStore:dispatch({type = 'INCREMENT_FORGE_MENU_PAGE'})
@@ -328,13 +331,13 @@ function onTick()
 
     -- Attach respective hooks!
     hook.attach('maps_menu', menu.stopUpdate,
-                constants.widgetDefinitions.mapsList)
+                constants.uiWidgetDefinitions.mapsList)
     hook.attach('forge_menu', menu.stopUpdate,
-                constants.widgetDefinitions.forgeList)
+                constants.uiWidgetDefinitions.forgeList)
     hook.attach('forge_menu_close', menu.stopClose,
-                constants.widgetDefinitions.forgeMenu)
+                constants.uiWidgetDefinitions.forgeMenu)
     hook.attach('loading_menu_close', menu.stopClose,
-                constants.widgetDefinitions.loadingMenu)
+                constants.uiWidgetDefinitions.loadingMenu)
 end
 
 function forgeAnimation()
@@ -350,7 +353,7 @@ function forgeAnimation()
 
     -- Animate forge logo
     blam.uiWidgetDefinition(get_tag('ui_widget_definition',
-                                    constants.widgetDefinitions.loadingAnimation),
+                                    constants.uiWidgetDefinitions.loadingAnimation),
                             {
         backgroundBitmap = get_tag_id('bitm',
                                       constants.bitmaps['forgeLoadingProgress' ..
@@ -369,7 +372,8 @@ function onMapLoad()
     local scenario = blam.scenario(get_tag(0))
 
     -- TO DO: Refactor this entire loop, has been implemented from the old script!!!
-    for i = 1, #scenario.sceneryPaletteList do -- Iterate over all the sceneries available in the map scenario
+    -- Iterate over all the sceneries available in the map scenario
+    for i = 1, #scenario.sceneryPaletteList do
         local sceneryPath = get_tag_path(scenario.sceneryPaletteList[i])
         local sceneriesSplit = glue.string.split('\\', sceneryPath)
         --[[ Example:
@@ -425,7 +429,7 @@ function onMapLoad()
         blam.unicodeStringList(get_tag('unicode_string_list',
                                        constants.unicodeStrings.forgeList),
                                {stringList = currentObjectsList})
-        menu.update(constants.widgetDefinitions.forgeList, #currentObjectsList)
+        menu.update(constants.uiWidgetDefinitions.forgeList, #currentObjectsList)
 
         local paginationTextAddress = get_tag('unicode_string_list',
                                               constants.unicodeStrings
@@ -454,18 +458,18 @@ function onMapLoad()
 
         -- Refresh budget bar status
         blam.uiWidgetDefinition(get_tag('ui_widget_definition',
-                                        constants.widgetDefinitions.amountBar),
+                                        constants.uiWidgetDefinitions.amountBar),
                                 {width = forgeState.forgeMenu.currentBarSize})
 
         -- Refresh loading bar size
         blam.uiWidgetDefinition(get_tag('ui_widget_definition',
-                                        constants.widgetDefinitions
+                                        constants.uiWidgetDefinitions
                                             .loadingProgress),
                                 {width = forgeState.loadingMenu.currentBarSize})
 
         local currentMapsList =
             forgeState.mapsMenu.currentMapsList[forgeState.mapsMenu.currentPage]
-            
+
         -- Prevent errors when maps does not exist
         if (not currentMapsList) then
             dprint('Current maps list is empty.')
@@ -478,11 +482,11 @@ function onMapLoad()
                                        constants.unicodeStrings.mapsList),
                                {stringList = currentMapsList})
         -- Wich ui widget will be updated and how many items it will show
-        menu.update(constants.widgetDefinitions.mapsList, #currentMapsList)
+        menu.update(constants.uiWidgetDefinitions.mapsList, #currentMapsList)
 
         -- Refresh fake sidebar in maps menu
         blam.uiWidgetDefinition(get_tag('ui_widget_definition',
-                                        constants.widgetDefinitions.sidebar), {
+                                        constants.uiWidgetDefinitions.sidebar), {
             height = forgeState.mapsMenu.sidebar.height,
             boundsY = forgeState.mapsMenu.sidebar.position
         })
@@ -584,6 +588,4 @@ end
 -- Allows the script to run by just reloading it
 if (server_type == 'local') then onMapLoad() end
 
-function onCommand(command)
-    return commands(command)
-end
+function onCommand(command) return commands(command) end

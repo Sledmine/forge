@@ -6,8 +6,13 @@
 ------------------------------------------------------------------------------
 local lu = require 'luaunit'
 
+-- Halo Custom Edition libraries
+local blam = require 'lua-blam'
+
+-- Forge modules
 local core = require 'forge.core'
 local constants = require 'forge.constants'
+local features = require 'forge.features'
 
 -- Mocked function to redirect print calls to test print
 local function tprint(message, ...)
@@ -88,19 +93,20 @@ function test_Objects:test_Objects_Spawn()
     for index, tagPath in pairs(forgeStore:getState().forgeMenu.objectsDatabase) do
 
         -- Spawn object in the game
-        local objectId = core.cspawn_object('scen', tagPath, 233, 41, constants.minimumZSpawnPoint + 1)
-        
+        local objectId = core.cspawn_object('scen', tagPath, 233, 41,
+                                            constants.minimumZSpawnPoint + 1)
+
         -- Check the object has been spawned
         lu.assertNotIsNil(objectId)
 
         -- Clean up object
-        if (objectId) then 
+        if (objectId) then
             dprint(objectId)
-            dprint('Erasing object:' .. tagPath)    
+            dprint('Erasing object:' .. tagPath)
             delete_object(objectId)
         end
-        --local deletionResult = get_object(objectId)
-        --lu.assertIsNil(deletionResult)
+        -- local deletionResult = get_object(objectId)
+        -- lu.assertIsNil(deletionResult)
     end
 end
 
@@ -155,16 +161,42 @@ function test_Request:test_Encode_Spawn()
     lu.assertEquals(request, self.expectedEncodeDeleteResult)
 end
 
-----------------------------------------------------
+----------------- Menus Tests -----------------------
+
+test_Menus = {}
+
+function test_Menus:setUp()
+    self.expectedTagId = 2897
+end
+
+function test_Menus:test_Forge_Menu()
+    
+    local menuTagPath = constants.uiWidgetDefinitions.forgeMenu
+    local bridgeWidget = get_tag('DeLa', constants.uiWidgetDefinitions
+                                     .errorNonmodalFullscreen)
+    features.openMenu(menuTagPath)
+    local bridgeWidgetData = blam.uiWidgetDefinition(bridgeWidget)
+    lu.assertEquals(bridgeWidgetData.tagReference, self.expectedTagId)
+end
+
+----------------------------------
 
 function tests.run(output)
     ftestingMode = true
+
+    -- Disable debug printing
+    debugMode = not debugMode
+
     local runner = lu.LuaUnit.new()
     if (output) then runner:setOutputType('junit', 'forge_tests_results') end
     runner:runSuite()
     --[[if (bprint) then
         print = bprint
     end]]
+
+    -- Restore debug printing
+    debugMode = not debugMode
+
     ftestingMode = false
 end
 

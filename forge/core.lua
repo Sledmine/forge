@@ -13,7 +13,7 @@ local glue = require 'glue'
 local blam = require 'lua-blam'
 local maethrillian = require 'maethrillian'
 
--- Forge libraries
+-- Forge modules
 local features = require 'forge.features'
 local constants = require 'forge.constants'
 

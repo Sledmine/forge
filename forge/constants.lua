@@ -95,7 +95,7 @@ constants.bitmaps = {
 }
 
 -- UI widget definitions
-constants.widgetDefinitions = {
+constants.uiWidgetDefinitions = {
     forgeMenu = '[shm]\\halo_4\\ui\\shell\\forge_menu\\forge_menu',
     forgeList = '[shm]\\halo_4\\ui\\shell\\forge_menu\\category_menu\\category_list',
     amountBar = '[shm]\\halo_4\\ui\\shell\\forge_menu\\budget_dialog\\budget_progress_bar',

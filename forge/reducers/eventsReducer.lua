@@ -6,7 +6,7 @@ local constants = require 'forge.constants'
 -- Halo Custom Edition libraries
 local blam = require 'lua-blam'
 
--- Forge libraries
+-- Forge modules
 local core = require 'forge.core'
 
 local function eventsReducer(state, action)
@@ -207,7 +207,7 @@ local function eventsReducer(state, action)
         -- TO DO: This does not end after finishing map loading
         set_timer(140, 'forgeAnimation')
 
-        features.openMenu(constants.widgetDefinitions.loadingMenu)
+        features.openMenu(constants.uiWidgetDefinitions.loadingMenu)
 
         return state
     elseif (action.type == constants.actionTypes.FLUSH_FORGE) then

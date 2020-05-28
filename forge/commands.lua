@@ -1,7 +1,9 @@
 local inspect = require 'inspect'
 local tests = require 'forge.tests'
 local glue = require 'glue'
+
 local core = require 'forge.core'
+local features = require 'forge.features'
 
 local function forgeCommands(command)
     if (command == 'fdebug') then

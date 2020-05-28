@@ -61,6 +61,17 @@ This project is part of something just much bigger than creating a map with Forg
 
 - Forge is now an open source project for anything your mind can create, with Forge came different concepts and libraries to help you to expand Halo Custom Edition (just took us like 15 years to reach this point of content lol).
 
+### Special thanks, credits etc
+
+- Visual Studio Code and his extensions for Lua
+- Kepler Project for the LuaFileSystem (https://github.com/keplerproject/luafilesystem)
+- Egor Skriptunoff for resolving the rotation function (https://stackoverflow.com/questions/30493826/yaw-pitch-and-roll-rotations-to-six-float-variables)
+- aLTis94 for providing rotation functions on his fake forge script
+- Jerry for back porting functionality from Chimera 1.0 to Chimera 581
+- Sled for creating all the Forge functionality, designment of the Forge menu, and hard reverse engineering functions and stuff for tools and libraries
+- MrChromed (todo lo que ha hecho para el proyecto, no creo poder listarlo todo xd)
+- Solink for porting and optimizing models for Forge, such as the bsp and almost all the objects of the project
+
 ### Libraries used in the project
 
 - LuaBlam: https://github.com/Sledmine/lua-blam

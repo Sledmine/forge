@@ -3,7 +3,7 @@
 -- Halo Custom Edtion libraries
 local blam = require 'lua-blam'
 
--- Forge libraries
+-- Forge modules
 local core = require 'forge.core'
 local constants = require 'forge.constants'
 
