@@ -15,7 +15,7 @@ function menu.update(widgetPath, widgetCount)
     blam.uiWidgetDefinition(
         get_tag('ui_widget_definition', widgetPath),
         {
-            childWidgetsCount = widgetCount + 2,
+            childWidgetsCount = widgetCount,
             -- Send new event type to force re render
             eventType = 33
         }
@@ -33,8 +33,9 @@ function menu.close(widgetPath)
     )
 end
 
+--- Stop the execution of a forced event
 ---@param widgetPath string
-function menu.stopClose(widgetPath)
+function menu.stop(widgetPath)
     blam.uiWidgetDefinition(
         get_tag('ui_widget_definition', widgetPath),
         {
@@ -44,15 +45,5 @@ function menu.stopClose(widgetPath)
     )
 end
 
----@param widgetPath string
-function menu.stopUpdate(widgetPath)
-    blam.uiWidgetDefinition(
-        get_tag('ui_widget_definition', widgetPath),
-        {
-            -- Stop forced re-render
-            eventType = 32
-        }
-    )
-end
 
 return menu

@@ -2,6 +2,8 @@ local inspect = require 'inspect'
 local tests = require 'forge.tests'
 local glue = require 'glue'
 
+local blam = require 'lua-blam'
+
 local core = require 'forge.core'
 local features = require 'forge.features'
 
@@ -21,7 +23,7 @@ local function forgeCommands(command)
             local newRotationStep = tonumber(splitCommand[2])
             if (newRotationStep) then
                 features.printHUD('Rotation step now is ' .. newRotationStep ..
-                                ' degrees.')
+                                      ' degrees.')
                 playerStore:dispatch({
                     type = 'SET_ROTATION_STEP',
                     payload = {step = newRotationStep}
@@ -37,7 +39,7 @@ local function forgeCommands(command)
             local newDistance = tonumber(splitCommand[2])
             if (newDistance) then
                 features.printHUD('Distance from object has been set to ' ..
-                                newDistance .. ' units.')
+                                      newDistance .. ' units.')
                 -- Force distance object update
                 playerStore:dispatch({
                     type = 'SET_LOCK_DISTANCE',
@@ -72,6 +74,63 @@ local function forgeCommands(command)
                 if (file ~= '.' and file ~= '..') then
                     console_out(file)
                 end
+            end
+            return false
+        elseif (forgeCommand == 'fname') then
+            local mapName = table.concat(glue.shift(splitCommand, 1, -1), ' ')
+            forgeStore:dispatch({
+                type = 'SET_MAP_NAME',
+                payload = {mapName = mapName}
+            })
+            return false
+
+        elseif (forgeCommand == 'fdesc') then
+            local mapDescription = table.concat(glue.shift(splitCommand, 1, -1),
+                                                ' ')
+            forgeStore:dispatch({
+                type = 'SET_MAP_DESCRIPTION',
+                payload = {mapDescription = mapDescription}
+            })
+            return false
+
+            -------------- DEBUGGING COMMANDS ONLY ---------------
+        elseif (forgeCommand == 'fmenu') then
+            features.openMenu("ui\\shell\\multiplayer_game\\pause_game\\2p_pause_game")
+            return false
+        elseif (forgeCommand == 'fweaps') then
+            for tagId = 0, get_tags_count() - 1 do
+                local tagType = get_tag_type(tagId)
+                if (tagType == tagClasses.weapon) then
+                    local tagPath = get_tag_path(tagId)
+                    console_out(tagPath)
+                end
+            end
+            return false
+        elseif (forgeCommand == 'fsize') then
+            dprint(collectgarbage("count")/1024)
+            return false
+        elseif (forgeCommand == 'fconfig') then
+            loadForgeConfiguration()
+            return false
+        elseif (forgeCommand == 'fweap') then
+            local weaponsList = {}
+            for tagId = 0, get_tags_count() - 1 do
+                local tagType = get_tag_type(tagId)
+                if (tagType == tagClasses.weapon) then
+                    local tagPath = get_tag_path(tagId)
+                    local splitPath = glue.string.split('\\', tagPath)
+                    local weaponTagName = splitPath[#splitPath]
+                    weaponsList[weaponTagName] = tagPath
+                end
+            end
+
+            local weaponName =
+                table.concat(glue.shift(splitCommand, 1, -1), ' ')
+            local player = blam.biped(get_dynamic_player())
+            local weaponResult = weaponsList[weaponName]
+            if (weaponResult) then
+                core.cspawn_object(tagClasses.weapon, weaponResult, player.x,
+                                   player.y, player.z)
             end
             return false
         elseif (forgeCommand == 'ftest') then
@@ -113,22 +172,6 @@ local function forgeCommands(command)
             -- Debug list of all the store objects
             dprint(inspect(storeObjects))
 
-            return false
-
-        elseif (forgeCommand == 'fname') then
-            local mapName = table.concat(glue.shift(splitCommand, 1, -1), ' ')
-            forgeStore:dispatch({
-                type = 'SET_MAP_NAME',
-                payload = {mapName = mapName}
-            })
-            return false
-
-        elseif (forgeCommand == 'fdesc') then
-            local mapDescription = table.concat(glue.shift(splitCommand, 1, -1), ' ')
-            forgeStore:dispatch({
-                type = 'SET_MAP_DESCRIPTION',
-                payload = {mapDescription = mapDescription}
-            })
             return false
         end
     end

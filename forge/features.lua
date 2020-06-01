@@ -180,14 +180,16 @@ end
 --- Forces the game to open a widget given tag path
 ---@param tagPath string
 ---@return boolean result susccess
-function features.openMenu(tagPath)
+function features.openMenu(tagPath, prevent)
     local newMenuTagId = get_tag_id('DeLa', tagPath)
     if (newMenuTagId) then
         blam.uiWidgetDefinition(get_tag('DeLa', constants.uiWidgetDefinitions
                                             .errorNonmodalFullscreen),
                                 {tagReference = newMenuTagId})
-        execute_script('multiplayer_map_name lua-blam-rocks')
-        execute_script('multiplayer_map_name ' .. map)
+        if (not prevent) then
+            execute_script('multiplayer_map_name lua-blam-rocks')
+            execute_script('multiplayer_map_name ' .. map)
+        end
         return true
     end
     return false

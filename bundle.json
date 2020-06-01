@@ -1,0 +1,31 @@
+{
+    "project": {
+        "name": "Forge Island",
+        "version": "3.0",
+        "include": [
+            "Your libraries path goes here!"
+        ],
+        "requires": [
+            "forge.core",
+            "forge.reducers.forgeReducers",
+            "forge.reducers.eventsReducer",
+            "forge.reducers.playerReducer",
+            "forge.commands",
+            "forge.tests",
+            "forge.features",
+            "forge.triggers",
+            "forge.hook",
+            "forge.constants",
+            "forge.menu",
+            "inspect",
+            "lua-redux",
+            "json",
+            "glue",
+            "luaunit",
+            "maethrillian",
+            "lua-blam",
+            "forge_island"
+        ],
+        "output": "forge_island"
+    }
+}

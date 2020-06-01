@@ -17,20 +17,21 @@ print('Compatibility with Lua 5.3 has been loaded!')
 server_type = 'sapp'
 
 -- Lua libraries
-inspect = require 'inspect'
-glue = require 'glue'
-redux = require 'lua-redux'
+local inspect = require 'inspect'
+local glue = require 'glue'
+local redux = require 'lua-redux'
 
 -- Specific Halo Custom Edition libraries
 local blam = require 'lua-blam'
-maethrillian = require 'maethrillian'
+local maethrillian = require 'maethrillian'
 
 -- Forge modules
-constants = require 'forge.constants'
-features = require 'forge.features'
-tests = require 'forge.tests'
-core = require 'forge.core'
+local constants = require 'forge.constants'
+local features = require 'forge.features'
+local tests = require 'forge.tests'
+local core = require 'forge.core'
 
+-- Variable used to store the current forge map in memory
 local forgeMap
 
 -- Default debug mode state
@@ -57,19 +58,6 @@ function dprint(message, color)
     end
 end
 
--- Rotate object into desired degrees
-function core.rotateObject(objectId, yaw, pitch, roll)
-    local rotation = features.convertDegrees(yaw, pitch, roll)
-    blam.object(get_object(objectId), {
-        pitch = rotation[1],
-        yaw = rotation[2],
-        roll = rotation[3],
-        xScale = rotation[4],
-        yScale = rotation[5],
-        zScale = rotation[6]
-    })
-end
-
 local playersObjectIds = {}
 local bipedChangeRequest = {}
 local playerObjectTempPos = {}
@@ -81,10 +69,6 @@ require 'forge.forgeReducer'
 function OnScriptLoad()
     forgeStore = redux.createStore(forgeReducer) -- Isolated store for all the Forge 'app' data
     eventsStore = redux.createStore(eventsReducer) -- Unique store for all the Forge Objects
-
-    -- Forge maps folder creation
-    forgeMapsFolder = '.\\fmaps'
-    loadForgeMapsList()
 
     -- Add forge rcon as not dangerous for command interception
     execute_command('lua_call rcon_bypass submitRcon ' .. 'forge')
@@ -102,18 +86,16 @@ function OnScriptLoad()
     register_callback(cb['EVENT_PRESPAWN'], 'onPlayerSpawn')
 end
 
-function loadForgeMapsList() end
-
 -- Change biped tag id from players and store their object ids
 function onObjectSpawn(playerIndex, tagId, parentId, objectId)
     if (not player_present(playerIndex)) then
         return true
-    elseif (tagId == get_tag_id('bipd', constants.bipeds.spartan) or tagId ==
-        get_tag_id('bipd', constants.bipeds.monitor)) then
+    elseif (tagId == get_tag_id(tagClasses.biped, constants.bipeds.spartan) or tagId ==
+        get_tag_id(tagClasses.biped, constants.bipeds.monitor)) then
         playersObjectIds[playerIndex] = objectId
         if (bipedChangeRequest[playerIndex]) then
             local requestedBiped = bipedChangeRequest[playerIndex]
-            return true, get_tag_id('bipd', constants.bipeds[requestedBiped])
+            return true, get_tag_id(tagClasses.biped, constants.bipeds[requestedBiped])
         end
     end
     return true

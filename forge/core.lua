@@ -339,9 +339,13 @@ function core.cspawn_object(type, tagPath, x, y, z)
     local objectId = spawn_object(type, tagPath, x, y, z)
     if (objectId) then
         local tempObject = blam.object(get_object(objectId))
+
+        -- Forces the object to render shadow
+        if (configuration.objectsCastShadow) then
+            blam.object(get_object(objectId), {isNotCastingShadow = false})
+        end
         if (tempObject.isOutSideMap) then
             dprint('-> Object: ' .. objectId .. ' is INSIDE map!!!', 'warning')
-            console_out('INSIDE BSP!!!!!!!!!!!!!!!!')
 
             -- Erase object to spawn it later in a safe place
             delete_object(objectId)
@@ -353,6 +357,11 @@ function core.cspawn_object(type, tagPath, x, y, z)
             if (objectId) then
                 -- Update new object position to match the original
                 blam.object(get_object(objectId), {x = x, y = y, z = z})
+
+                -- Forces the object to render shadow
+                if (configuration.objectsCastShadow) then
+                    blam.object(get_object(objectId), {isNotCastingShadow = false})
+                end
             end
 
         end
@@ -555,10 +564,24 @@ function core.modifyVehicleSpawn(tagPath, composedObject, disable)
     end
 end
 
-
+--- Find local object by server id
+---@param state table
+---@param remoteId number
+---@return number
 function core.getObjectIdByRemoteId(state, remoteId)
     for k, v in pairs(state) do if (v.remoteId == remoteId) then return k end end
     return nil
+end
+
+--- Calculate distance between 2 objects
+---@param baseObject table
+---@param targetObject table
+---@return number
+function core.calculateDistanceFromObject(baseObject, targetObject)
+    local calulcatedX = (targetObject.x - baseObject.x) ^ 2
+    local calculatedY = (targetObject.y - baseObject.y) ^ 2
+    local calculatedZ = (targetObject.z - baseObject.z) ^ 2
+    return  math.sqrt(calulcatedX + calculatedY + calculatedZ)
 end
 
 -- Module export

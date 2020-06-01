@@ -9,15 +9,12 @@ clua_version = 2.042
 -- Lua libraries
 local redux = require 'lua-redux'
 local glue = require 'glue'
+local json = require 'json'
 
 -- Halo Custom Edition libraries
 local blam = require 'lua-blam'
 local maethrillian = require 'maethrillian'
-local hfs = require 'hcefs'
-
--- Global Halo Custom Edition libraries
-local constants = require 'forge.constants'
-local core = require 'forge.core'
+hfs = require 'hcefs'
 
 -- Forge modules
 local triggers = require 'forge.triggers'
@@ -25,14 +22,23 @@ local hook = require 'forge.hook'
 local menu = require 'forge.menu'
 local features = require 'forge.features'
 local commands = require 'forge.commands'
+local constants = require 'forge.constants'
+local core = require 'forge.core'
 
 -- Reducers importation
 local playerReducer = require 'forge.reducers.playerReducer'
 local eventsReducer = require 'forge.reducers.eventsReducer'
 local forgeReducer = require 'forge.reducers.forgeReducer'
 
+-- Reflectors importation
+local forgeReflector = require 'forge.reflectors.forgeReflector'
+
 -- Default debug mode state
 debugMode = glue.readfile('forge_debug_mode.dbg', 't')
+
+-- Forge default configuration
+-- DO NOT MODIFY ON SCRIPT!! use json config file instead
+configuration = {snapMode = false, objectsCastShadow = false}
 
 -- Internal functions
 debugBuffer = ''
@@ -57,28 +63,122 @@ function dprint(message, color)
     end
 end
 
--- Forge flusing mapping
--- Needed to map callback to this module function
-flushForge = core.flushForge
-
--- Prepare event callbacks
-set_callback('map load', 'onMapLoad')
-set_callback('unload', 'flushForge')
-
 ---@return boolean
 function validateMapName()
     return map == 'forge_island_local' or map == 'forge_island' or map ==
                'forge_island_beta'
 end
 
--- Update internal state along the time
+function loadForgeConfiguration()
+    local configurationFile = glue.readfile(
+                                  configurationFolder .. "\\forge_island.json")
+    if (configurationFile) then
+        configuration = json.decode(configurationFile)
+    end
+end
+
+function loadForgeMaps()
+    local mapsList = {}
+    for file in hfs.dir(forgeMapsFolder) do
+        if (file ~= '.' and file ~= '..') then
+            local splitFileName = glue.string.split('.', file)
+            local extFile = splitFileName[#splitFileName]
+            -- Only load files with extension .fmap
+            if (extFile == "fmap") then
+                local mapName = string.gsub(file, '.fmap', '')
+
+                glue.append(mapsList, mapName)
+            end
+        end
+    end
+    -- Dispatch state modification!
+    local data = {mapsList = mapsList}
+    forgeStore:dispatch({type = 'UPDATE_MAP_LIST', payload = data})
+end
+
+function onMapLoad()
+    -- Like Redux we have some kind of store baby!! the rest is pure magic..
+    playerStore = redux.createStore(playerReducer)
+    forgeStore = redux.createStore(forgeReducer) -- Isolated store for all the Forge 'app' data
+    eventsStore = redux.createStore(eventsReducer) -- Unique store for all the Forge Objects
+
+    local forgeState = forgeStore:getState()
+    local scenario = blam.scenario(get_tag(0))
+
+    -- TO DO: Refactor this entire loop, has been implemented from the old script!!!
+    -- Iterate over all the sceneries available in the map scenario
+    for i = 1, #scenario.sceneryPaletteList do
+        local sceneryPath = get_tag_path(scenario.sceneryPaletteList[i])
+        local sceneriesSplit = glue.string.split('\\', sceneryPath)
+        local sceneryFolderIndex
+        for j, n in pairs(sceneriesSplit) do
+            if (n == 'scenery') then sceneryFolderIndex = j + 1 end
+        end
+        local fixedSplittedPath = {}
+        for l = sceneryFolderIndex, #sceneriesSplit do
+            fixedSplittedPath[#fixedSplittedPath + 1] = sceneriesSplit[l]
+        end
+        sceneriesSplit = fixedSplittedPath
+        forgeState.forgeMenu.objectsDatabase[sceneriesSplit[#sceneriesSplit]] =
+            sceneryPath
+        -- Set first level as the root of available current objects
+        -- Make a tree iteration to append sceneries
+        local treePosition = forgeState.forgeMenu.objectsList.root
+        for k, v in pairs(sceneriesSplit) do
+            if (not treePosition[v]) then treePosition[v] = {} end
+            treePosition = treePosition[v]
+        end
+    end
+
+    local availableForgeObjects = #glue.keys(
+                                      forgeState.forgeMenu.objectsDatabase)
+    dprint('Scenery database has ' .. availableForgeObjects .. ' objects.')
+
+    -- Subscribed function to refresh forge state into the game!
+    forgeStore:subscribe(forgeReflector)
+
+    -- Dispatch forge objects list update
+    forgeStore:dispatch({
+        type = 'UPDATE_FORGE_OBJECTS_LIST',
+        payload = {forgeMenu = forgeState.forgeMenu}
+    })
+
+    local isForgeMap = validateMapName()
+    if (isForgeMap) then
+
+        -- Forge folders creation
+        forgeMapsFolder = hfs.currentdir() .. '\\fmaps'
+        local alreadyForgeMapsFolder = not hfs.mkdir(forgeMapsFolder)
+        if (not alreadyForgeMapsFolder) then
+            dprint('Forge maps folder has been created!')
+        end
+
+        configurationFolder = hfs.currentdir() .. '\\config'
+        local alreadyConfigurationFolder = not hfs.mkdir(configurationFolder)
+        if (not alreadyConfigurationFolder) then
+            dprint('Configuratin folder has been created!')
+        end
+
+        loadForgeConfiguration()
+        loadForgeMaps()
+
+        set_callback('tick', 'onTick')
+        set_callback('rcon message', 'onRcon')
+        set_callback('command', 'onCommand')
+
+        console_out(tostring(configurationFile))
+    else
+        console_out('This is not a compatible Forge map!!!')
+    end
+end
+
+-- Where the magick happens, tiling!
 function onTick()
     -- Get player object
     local player = blam.biped(get_dynamic_player())
     local playerState = playerStore:getState()
     if (player) then
         player.isMonitor = features.isPlayerMonitor()
-        -- dprint(player.x .. ' ' .. player.y .. ' ' .. player.z)
         if (player.isMonitor) then
 
             -- Provide better movement to monitors
@@ -87,10 +187,7 @@ function onTick()
             end
 
             -- Calculate player point of view
-            playerStore:dispatch({
-                type = 'UPDATE_OFFSETS',
-                payload = {player = player}
-            })
+            playerStore:dispatch({type = 'UPDATE_OFFSETS'})
 
             -- Check if monitor has an object attached
             local attachedObjectId = playerState.attachedObjectId
@@ -100,10 +197,10 @@ function onTick()
                     playerStore:dispatch({type = 'CHANGE_ROTATION_ANGLE'})
                     features.printHUD('Rotating in ' .. playerState.currentAngle)
                 elseif (player.actionKeyHold or player.actionKey) then
-                    -- Convert into spartan
                     playerStore:dispatch({type = 'STEP_ROTATION_DEGREE'})
-                    features.printHUD(playerState.currentAngle .. ': ' ..
-                                          playerState[playerState.currentAngle])
+                    features.printHUD(
+                        playerState.currentAngle:upper() .. ': ' ..
+                            playerState[playerState.currentAngle])
 
                     playerStore:dispatch({type = 'ROTATE_OBJECT'})
                 elseif (player.crouchHold) then
@@ -129,10 +226,8 @@ function onTick()
                 end
 
                 if (not playerState.lockDistance) then
-                    playerStore:dispatch(
-                        {type = 'UPDATE_DISTANCE', payload = {player = player}})
-                    playerStore:dispatch(
-                        {type = 'UPDATE_OFFSETS', payload = {player = player}})
+                    playerStore:dispatch({type = 'UPDATE_DISTANCE', payload})
+                    playerStore:dispatch({type = 'UPDATE_OFFSETS', payload})
                 end
 
                 -- Unhighlight objects
@@ -197,8 +292,11 @@ function onTick()
                                                           composedObject.object
                                                               .tagId))
                                 local objectName = objectPath[#objectPath - 1]
-                                local objectCategory = objectPath[#objectPath - 2]
-                                features.printHUD("NAME:  " .. objectName, "CATEGORY:  " .. objectCategory)
+                                local objectCategory =
+                                    objectPath[#objectPath - 2]
+                                features.printHUD("NAME:  " .. objectName,
+                                                  "CATEGORY:  " ..
+                                                      objectCategory)
 
                                 -- Update crosshair state
                                 if (features.setCrosshairState) then
@@ -215,20 +313,13 @@ function onTick()
                                     -- Set lock distance to true, to take object from perspective
                                     playerStore:dispatch(
                                         {
-                                            type = 'SET_LOCK_DISTANCE',
-                                            payload = {lockDistance = false}
-                                        })
-                                    playerStore:dispatch(
-                                        {
                                             type = 'ATTACH_OBJECT',
-                                            payload = {objectId = objectId}
+                                            payload = {
+                                                objectId = objectId,
+                                                fromPerspective = true
+                                            }
                                         })
                                 elseif (player.actionKey) then
-                                    playerStore:dispatch(
-                                        {
-                                            type = 'SET_LOCK_DISTANCE',
-                                            payload = {lockDistance = false}
-                                        })
                                     playerStore:dispatch(
                                         {
                                             type = 'SET_ROTATION_DEGREES',
@@ -263,12 +354,11 @@ function onTick()
                 'local') then
                 core.cspawn_object(tagClasses.biped, constants.bipeds.spartan,
                                    player.x, player.y, player.z)
-            elseif (player.crouchHold) then
-                -- dprint(features.openMenu(constants.uiWidgetDefinitions.loadingMenu))
             end
         end
     end
 
+    -- Menu buttons interpcetion
     -- Trigger prefix and how many triggers are being read
     local mapsMenuPressedButton = triggers.get('maps_menu', 10)
     if (mapsMenuPressedButton) then
@@ -283,8 +373,7 @@ function onTick()
                                 get_tag('unicode_string_list',
                                         constants.unicodeStrings.mapsList))
                                 .stringList[mapsMenuPressedButton]
-            dprint(mapName)
-            core.loadForgeMap(mapName:gsub('.fmap', ''))
+            core.loadForgeMap(mapName)
         end
         dprint('Maps menu:')
         dprint('Button ' .. mapsMenuPressedButton .. ' was pressed!', 'category')
@@ -295,7 +384,11 @@ function onTick()
         local forgeState = forgeStore:getState()
         if (forgeMenuPressedButton == 9) then
             if (forgeState.forgeMenu.desiredElement ~= 'root') then
-                forgeStore:dispatch({type = 'UPWARD_NAV_FORGE_MENU'})
+                if (playerState.attachedObjectId) then
+                    playerStore:dispatch({type = 'DESTROY_OBJECT'})
+                else
+                    forgeStore:dispatch({type = 'UPWARD_NAV_FORGE_MENU'})
+                end
             else
                 dprint('Closing Forge menu...')
                 menu.close(constants.uiWidgetDefinitions.forgeMenu)
@@ -306,7 +399,7 @@ function onTick()
             forgeStore:dispatch({type = 'DECREMENT_FORGE_MENU_PAGE'})
         else
             local desiredElement = blam.unicodeStringList(
-                                       get_tag('unicode_string_list',
+                                       get_tag(tagClasses.unicodeStringList,
                                                constants.unicodeStrings
                                                    .forgeList)).stringList[forgeMenuPressedButton]
             local sceneryPath =
@@ -329,17 +422,16 @@ function onTick()
                'category')
     end
 
-    -- Attach respective hooks!
-    hook.attach('maps_menu', menu.stopUpdate,
-                constants.uiWidgetDefinitions.mapsList)
-    hook.attach('forge_menu', menu.stopUpdate,
-                constants.uiWidgetDefinitions.forgeList)
-    hook.attach('forge_menu_close', menu.stopClose,
+    -- Attach respective hooks for menus!
+    hook.attach('maps_menu', menu.stop, constants.uiWidgetDefinitions.mapsList)
+    hook.attach('forge_menu', menu.stop, constants.uiWidgetDefinitions.forgeList)
+    hook.attach('forge_menu_close', menu.stop,
                 constants.uiWidgetDefinitions.forgeMenu)
-    hook.attach('loading_menu_close', menu.stopClose,
+    hook.attach('loading_menu_close', menu.stop,
                 constants.uiWidgetDefinitions.loadingMenu)
 end
 
+-- This is not a mistake... right?
 function forgeAnimation()
     if (not lastImage) then
         lastImage = 0
@@ -353,8 +445,8 @@ function forgeAnimation()
 
     -- Animate forge logo
     blam.uiWidgetDefinition(get_tag('ui_widget_definition',
-                                    constants.uiWidgetDefinitions.loadingAnimation),
-                            {
+                                    constants.uiWidgetDefinitions
+                                        .loadingAnimation), {
         backgroundBitmap = get_tag_id('bitm',
                                       constants.bitmaps['forgeLoadingProgress' ..
                                           tostring(lastImage)])
@@ -362,178 +454,7 @@ function forgeAnimation()
     return true
 end
 
-function onMapLoad()
-    -- Like Redux we have some kind of store baby!! the rest is pure magic..
-    playerStore = redux.createStore(playerReducer)
-    forgeStore = redux.createStore(forgeReducer) -- Isolated store for all the Forge 'app' data
-    eventsStore = redux.createStore(eventsReducer) -- Unique store for all the Forge Objects
-
-    local forgeState = forgeStore:getState()
-    local scenario = blam.scenario(get_tag(0))
-
-    -- TO DO: Refactor this entire loop, has been implemented from the old script!!!
-    -- Iterate over all the sceneries available in the map scenario
-    for i = 1, #scenario.sceneryPaletteList do
-        local sceneryPath = get_tag_path(scenario.sceneryPaletteList[i])
-        local sceneriesSplit = glue.string.split('\\', sceneryPath)
-        --[[ Example:
-
-			[shm]\halo_4\scenery\structures\natural\tree small\tree small
-			---------------------> "structures\natural\tree small\tree small"
-			
-			[shm]\halo_4\scenery\barricades\barricade large\barricade large
-			---------------------> "barricades\barricade large\barricade large"
-		]]
-        local sceneryFolderIndex
-        for j, n in pairs(sceneriesSplit) do
-            if (n == 'scenery') then sceneryFolderIndex = j + 1 end
-        end
-        local fixedSplittedPath = {}
-        for l = sceneryFolderIndex, #sceneriesSplit do
-            fixedSplittedPath[#fixedSplittedPath + 1] = sceneriesSplit[l]
-        end
-        sceneriesSplit = fixedSplittedPath
-        forgeState.forgeMenu.objectsDatabase[sceneriesSplit[#sceneriesSplit]] =
-            sceneryPath
-        -- Set first level as the root of available current objects
-        -- THIS IS CALLED BY REFERENCE TO MODIFY availableObjects
-
-        -- Make a tree iteration to append sceneries
-        local treePosition = forgeState.forgeMenu.objectsList.root
-        for k, v in pairs(sceneriesSplit) do
-            if (not treePosition[v]) then treePosition[v] = {} end
-            treePosition = treePosition[v]
-        end
-    end
-    dprint('Scenery database has ' ..
-               #glue.keys(forgeState.forgeMenu.objectsDatabase) .. ' objects.')
-
-    -- Subscribed function to refresh forge state into the game!
-    -- TO DO: The subscribed function can be isolated from the map loading
-    -- This is probably not that bad (?)... needs more testing.
-    forgeStore:subscribe(function()
-        -- Get current forge state
-        local forgeState = forgeStore:getState()
-
-        local currentObjectsList =
-            forgeState.forgeMenu.currentObjectsList[forgeState.forgeMenu
-                .currentPage]
-
-        -- Prevent errors objects does not exist
-        if (not currentObjectsList) then
-            dprint('Current objects list is empty.', 'warning')
-            currentObjectsList = {}
-        end
-
-        -- Forge Menu
-        blam.unicodeStringList(get_tag('unicode_string_list',
-                                       constants.unicodeStrings.forgeList),
-                               {stringList = currentObjectsList})
-        menu.update(constants.uiWidgetDefinitions.forgeList, #currentObjectsList)
-
-        local paginationTextAddress = get_tag('unicode_string_list',
-                                              constants.unicodeStrings
-                                                  .pagination)
-        if (paginationTextAddress) then
-            local pagination = blam.unicodeStringList(paginationTextAddress)
-            local paginationStringList = pagination.stringList
-            paginationStringList[2] = tostring(forgeState.forgeMenu.currentPage)
-            paginationStringList[4] = tostring(
-                                          #forgeState.forgeMenu
-                                              .currentObjectsList)
-            blam.unicodeStringList(paginationTextAddress,
-                                   {stringList = paginationStringList})
-        end
-
-        -- Budget count
-        -- Update unicode string with current budget value
-        local budgetCountAddress = get_tag('unicode_string_list',
-                                           constants.unicodeStrings.budgetCount)
-        local currentBudget = blam.unicodeStringList(budgetCountAddress)
-
-        currentBudget.stringList = {forgeState.forgeMenu.currentBudget}
-
-        -- Refresh budget count
-        blam.unicodeStringList(budgetCountAddress, currentBudget)
-
-        -- Refresh budget bar status
-        blam.uiWidgetDefinition(get_tag('ui_widget_definition',
-                                        constants.uiWidgetDefinitions.amountBar),
-                                {width = forgeState.forgeMenu.currentBarSize})
-
-        -- Refresh loading bar size
-        blam.uiWidgetDefinition(get_tag('ui_widget_definition',
-                                        constants.uiWidgetDefinitions
-                                            .loadingProgress),
-                                {width = forgeState.loadingMenu.currentBarSize})
-
-        local currentMapsList =
-            forgeState.mapsMenu.currentMapsList[forgeState.mapsMenu.currentPage]
-
-        -- Prevent errors when maps does not exist
-        if (not currentMapsList) then
-            dprint('Current maps list is empty.')
-            currentMapsList = {}
-        end
-
-        -- Refresh available forge maps list
-        -- TO DO: Merge unicode string updating with menus updating!
-        blam.unicodeStringList(get_tag('unicode_string_list',
-                                       constants.unicodeStrings.mapsList),
-                               {stringList = currentMapsList})
-        -- Wich ui widget will be updated and how many items it will show
-        menu.update(constants.uiWidgetDefinitions.mapsList, #currentMapsList)
-
-        -- Refresh fake sidebar in maps menu
-        blam.uiWidgetDefinition(get_tag('ui_widget_definition',
-                                        constants.uiWidgetDefinitions.sidebar), {
-            height = forgeState.mapsMenu.sidebar.height,
-            boundsY = forgeState.mapsMenu.sidebar.position
-        })
-
-        -- Refresh current forge map information
-        blam.unicodeStringList(get_tag('unicode_string_list',
-                                       constants.unicodeStrings.pauseGameStrings),
-                               {
-            stringList = {
-                -- Bypass first 3 elements in the string list
-                '', '', '', forgeState.currentMap.name,
-                forgeState.currentMap.author, forgeState.currentMap.version,
-                forgeState.currentMap.description
-            }
-        })
-    end)
-
-    -- Dispatch forge objects list update
-    forgeStore:dispatch({
-        type = 'UPDATE_FORGE_OBJECTS_LIST',
-        payload = {forgeMenu = forgeState.forgeMenu}
-    })
-
-    local isForgeMap = validateMapName()
-    if (isForgeMap) then
-        dprint('Forge has been loaded!')
-
-        -- Forge maps folder creation
-        forgeMapsFolder = hfs.currentdir() .. '\\fmaps'
-        local alreadyForgeMapsFolder = not hfs.mkdir(forgeMapsFolder)
-        if (not alreadyForgeMapsFolder) then
-            dprint('Forge maps folder has been created!')
-        end
-
-        loadForgeMapsList()
-
-        set_callback('tick', 'onTick')
-        set_callback('rcon message', 'onRcon')
-        set_callback('command', 'onCommand')
-    else
-        console_out_error('This is not a compatible Forge map!!!')
-    end
-end
-
 function onRcon(message)
-    dprint('Incoming rcon message:', 'warning')
-    dprint(message)
     local request = string.gsub(message, "'", '')
     local splitData = glue.string.split(',', request)
     local requestType = constants.requestTypes[splitData[1]]
@@ -573,19 +494,20 @@ function onRcon(message)
     return true
 end
 
-function loadForgeMapsList()
-    local arrayMapsList = {}
-    for file in hfs.dir(forgeMapsFolder) do
-        if (file ~= '.' and file ~= '..') then
-            glue.append(arrayMapsList, file)
-        end
-    end
-    -- Dispatch state modification!
-    local data = {mapsList = arrayMapsList}
-    forgeStore:dispatch({type = 'UPDATE_MAP_LIST', payload = data})
-end
-
 -- Allows the script to run by just reloading it
 if (server_type == 'local') then onMapLoad() end
 
 function onCommand(command) return commands(command) end
+
+function onUnload()
+    -- Flush all the forge objects
+    core.flushForge()
+
+    -- Save configuration
+    glue.writefile(configurationFolder .. "\\forge_island.json",
+                   json.encode(configuration))
+end
+
+-- Prepare event callbacks
+set_callback('map load', 'onMapLoad')
+set_callback('unload', 'onUnload')

@@ -1,4 +1,4 @@
-
+local glue = require 'glue'
 
 -- Halo Custom Edtion libraries
 local blam = require 'lua-blam'
@@ -33,19 +33,41 @@ function playerReducer(state, action)
             if (get_object(state.attachedObjectId)) then
                 delete_object(state.attachedObjectId)
                 state.attachedObjectId =
-                    core.cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
+                    core.cspawn_object('scen', action.payload.path,
+                                       state.xOffset, state.yOffset,
+                                       state.zOffset)
             else
                 state.attachedObjectId =
-                    core.cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
+                    core.cspawn_object('scen', action.payload.path,
+                                       state.xOffset, state.yOffset,
+                                       state.zOffset)
             end
         else
-            state.attachedObjectId =
-                core.cspawn_object('scen', action.payload.path, state.xOffset, state.yOffset, state.zOffset)
+            state.attachedObjectId = core.cspawn_object('scen',
+                                                        action.payload.path,
+                                                        state.xOffset,
+                                                        state.yOffset,
+                                                        state.zOffset)
         end
-        core.rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
+        core.rotateObject(state.attachedObjectId, state.yaw, state.pitch,
+                          state.roll)
         return state
     elseif (action.type == 'ATTACH_OBJECT') then
         state.attachedObjectId = action.payload.objectId
+        local fromPerspective = action.payload.fromPerspective
+        if (fromPerspective) then
+            local player = blam.biped(get_dynamic_player())
+            local tempObject = blam.object(get_object(state.attachedObjectId))
+            if (tempObject) then
+                local distance = core.calculateDistanceFromObject(player,
+                                                                  tempObject)
+                if (configuration.snapMode) then
+                    state.distance = glue.round(distance)
+                else
+                    state.distance = distance
+                end
+            end
+        end
         local forgeObjects = eventsStore:getState().forgeObjects
         local composedObject = forgeObjects[state.attachedObjectId]
         if (composedObject) then
@@ -56,7 +78,8 @@ function playerReducer(state, action)
         return state
     elseif (action.type == 'ROTATE_OBJECT') then
         if (state.attachedObjectId and get_object(state.attachedObjectId)) then
-            core.rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
+            core.rotateObject(state.attachedObjectId, state.yaw, state.pitch,
+                              state.roll)
         end
         return state
     elseif (action.type == 'DETACH_OBJECT') then -- Update request if needed
@@ -65,11 +88,14 @@ function playerReducer(state, action)
             local composedObject = forgeObjects[state.attachedObjectId]
             if (composedObject) then
                 -- Object already exists, send update request
-                composedObject.object = blam.object(get_object(state.attachedObjectId))
+                composedObject.object = blam.object(
+                                            get_object(state.attachedObjectId))
                 composedObject.yaw = state.yaw
                 composedObject.pitch = state.pitch
                 composedObject.roll = state.roll
-                core.sendRequest(core.createRequest(composedObject, constants.requestTypes.UPDATE_OBJECT))
+                core.sendRequest(core.createRequest(composedObject,
+                                                    constants.requestTypes
+                                                        .UPDATE_OBJECT))
             else
                 delete_object(state.attachedObjectId)
                 -- Object does not exist, create composed object and send request
@@ -80,7 +106,9 @@ function playerReducer(state, action)
                     pitch = state.pitch,
                     roll = state.roll
                 }
-                core.sendRequest(core.createRequest(composedObject, constants.requestTypes.SPAWN_OBJECT))
+                core.sendRequest(core.createRequest(composedObject,
+                                                    constants.requestTypes
+                                                        .SPAWN_OBJECT))
             end
             state.attachedObjectId = nil
         end
@@ -90,7 +118,9 @@ function playerReducer(state, action)
             local forgeObjects = eventsStore:getState().forgeObjects
             local composedObject = forgeObjects[state.attachedObjectId]
             if (composedObject) then
-                core.sendRequest(core.createRequest(composedObject, constants.requestTypes.DELETE_OBJECT))
+                core.sendRequest(core.createRequest(composedObject,
+                                                    constants.requestTypes
+                                                        .DELETE_OBJECT))
             else
                 delete_object(state.attachedObjectId)
             end
@@ -98,17 +128,31 @@ function playerReducer(state, action)
         state.attachedObjectId = nil
         return state
     elseif (action.type == 'UPDATE_OFFSETS') then
-        local player = action.payload.player
-        state.xOffset = player.x + player.cameraX * state.distance
-        state.yOffset = player.y + player.cameraY * state.distance
-        state.zOffset = player.z + player.cameraZ * state.distance
+        local player = blam.biped(get_dynamic_player())
+        local xOffset = player.x + player.cameraX * state.distance
+        local yOffset = player.y + player.cameraY * state.distance
+        local zOffset = player.z + player.cameraZ * state.distance
+        if (configuration.snapMode) then
+            state.xOffset = glue.round(xOffset)
+            state.yOffset = glue.round(yOffset)
+            state.zOffset = glue.round(zOffset)
+        else
+            state.xOffset = xOffset
+            state.yOffset = yOffset
+            state.zOffset = zOffset
+        end
         return state
     elseif (action.type == 'UPDATE_DISTANCE') then
-        local player = action.payload.player
+        local player = blam.biped(get_dynamic_player())
         local tempObject = blam.object(get_object(state.attachedObjectId))
         if (tempObject) then
-            state.distance =
-                math.sqrt((tempObject.x - player.x) ^ 2 + (tempObject.y - player.y) ^ 2 + (tempObject.z - player.z) ^ 2)
+            local distance =
+                core.calculateDistanceFromObject(player, tempObject)
+            if (configuration.snapMode) then
+                state.distance = glue.round(distance)
+            else
+                state.distance = distance
+            end
         end
         return state
     elseif (action.type == 'SET_DISTANCE') then
@@ -135,21 +179,15 @@ function playerReducer(state, action)
         end
         return state
     elseif (action.type == 'SET_ROTATION_DEGREES') then
-        if (action.payload.yaw) then
-            state.yaw = action.payload.yaw
-        end
-        if (action.payload.pitch) then
-            state.pitch = action.payload.pitch
-        end
-        if (action.payload.roll) then
-            state.roll = action.payload.roll
-        end
+        if (action.payload.yaw) then state.yaw = action.payload.yaw end
+        if (action.payload.pitch) then state.pitch = action.payload.pitch end
+        if (action.payload.roll) then state.roll = action.payload.roll end
         return state
     elseif (action.type == 'RESET_ROTATION') then
         state.yaw = 0
         state.pitch = 0
         state.roll = 0
-        --state.currentAngle = 'yaw'
+        -- state.currentAngle = 'yaw'
         return state
     else
         return state

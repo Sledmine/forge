@@ -166,15 +166,17 @@ end
 test_Menus = {}
 
 function test_Menus:setUp()
-    self.expectedTagId = 2897
+    local forgeMenuTagPath = constants.uiWidgetDefinitions.forgeMenu
+    self.expectedTagId = get_simple_tag_id(tagClasses.uiWidgetDefinition,
+                                           forgeMenuTagPath)
 end
 
 function test_Menus:test_Forge_Menu()
-    
+
     local menuTagPath = constants.uiWidgetDefinitions.forgeMenu
     local bridgeWidget = get_tag('DeLa', constants.uiWidgetDefinitions
                                      .errorNonmodalFullscreen)
-    features.openMenu(menuTagPath)
+    features.openMenu(menuTagPath, true)
     local bridgeWidgetData = blam.uiWidgetDefinition(bridgeWidget)
     lu.assertEquals(bridgeWidgetData.tagReference, self.expectedTagId)
 end
