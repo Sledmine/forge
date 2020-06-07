@@ -113,15 +113,6 @@ function features.setCrosshairState(state)
     end
 end
 
---- Check if current player is using a monitor biped
----@return boolean
-function features.isPlayerMonitor()
-    local tempObject = blam.object(get_dynamic_player())
-    if (tempObject and tempObject.tagId ==
-        get_tag_id('bipd', constants.bipeds.monitor)) then return true end
-    return false
-end
-
 function features.unhighlightAll()
     local forgeObjects = eventsStore:getState().forgeObjects
     for objectId, composedObject in pairs(forgeObjects) do

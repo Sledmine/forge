@@ -173,12 +173,17 @@ local function forgeReducer(state, action)
             --dprint(inspect(action.payload))
             local expectedObjects = action.payload.expectedObjects
             local mapName = action.payload.mapName
+            local mapDescription = action.payload.mapDescription
             if (expectedObjects) then
                 state.loadingMenu.expectedObjects = expectedObjects
             end
 
             if (mapName) then
                 state.currentMap.name = mapName
+            end
+            if (mapDescription) then
+                
+                state.currentMap.description = mapDescription
             end
             
             --[[if (action.payload.currentLoadingObjectPath) then

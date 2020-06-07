@@ -8,10 +8,13 @@ local blam = require 'lua-blam'
 
 -- Forge modules
 local core = require 'forge.core'
+local features = require 'forge.features'
 
 local function eventsReducer(state, action)
     -- Create default state if it does not exist
-    if (not state) then state = {forgeObjects = {}} end
+    if (not state) then
+        state = {forgeObjects = {}}
+    end
     if (action.type) then
         dprint('-> [Objects Store]')
         dprint(action.type, 'category')
@@ -28,10 +31,8 @@ local function eventsReducer(state, action)
         dprint(inspect(objectsBeforeSpawn))
 
         -- Spawn object in the game
-        local localObjectId, x, y, z = core.cspawn_object('scen', tagPath,
-                                                          requestObject.x,
-                                                          requestObject.y,
-                                                          requestObject.z)
+        local localObjectId, x, y, z =
+            core.cspawn_object('scen', tagPath, requestObject.x, requestObject.y, requestObject.z)
 
         dprint('Object id from Chimera: ' .. localObjectId)
 
@@ -48,15 +49,13 @@ local function eventsReducer(state, action)
         -- Tricky way to get object local id, due to Chimera 581 API returning a pointer instead of id
         -- Remember objectId is local to this server
         if (server_type ~= 'sapp') then
-            local newObjects = glue.arraynv(objectsBeforeSpawn,
-                                            objectsAfterSpawn)
+            local newObjects = glue.arraynv(objectsBeforeSpawn, objectsAfterSpawn)
             localObjectId = newObjects[#newObjects]
         end
         dprint('Calculated new object simple id:' .. localObjectId)
 
         -- Set object rotation after creating the object
-        core.rotateObject(localObjectId, requestObject.yaw, requestObject.pitch,
-                          requestObject.roll)
+        core.rotateObject(localObjectId, requestObject.yaw, requestObject.pitch, requestObject.roll)
 
         -- Clean and prepare entity
         requestObject.object = blam.object(get_object(localObjectId))
@@ -75,6 +74,11 @@ local function eventsReducer(state, action)
         -- TO DO: Create a new object rather than passing it as "reference"
         local composedObject = requestObject
 
+        -- TODO: Object color customization!
+        --[[redA = math.random(0,1),
+            greenA = math.random(0,1),
+            blueA = math.random(0,1)
+        ]]
         if (tagPath:find('spawning')) then
             dprint('-> [Reflecting Spawn]', 'warning')
             if (tagPath:find('players')) then
@@ -89,26 +93,25 @@ local function eventsReducer(state, action)
 
         -- As a server we have to send back a response/request to every player
         if (server_type == 'sapp') then
-            local response = core.createRequest(composedObject,
-                                                constants.requestTypes
-                                                    .SPAWN_OBJECT)
+            local response = core.createRequest(composedObject, constants.requestTypes.SPAWN_OBJECT)
             core.sendRequest(response)
         end
 
         -- Store the object in our state
         state.forgeObjects[localObjectId] = composedObject
 
-        forgeStore:dispatch({
-            type = 'UPDATE_MAP_INFO',
-            payload = {currentLoadingObjectPath = tagPath}
-        })
+        forgeStore:dispatch(
+            {
+                type = 'UPDATE_MAP_INFO'
+            }
+        )
 
         return state
     elseif (action.type == constants.actionTypes.UPDATE_OBJECT) then
         local requestObject = action.payload.requestObject
 
-        local composedObject = state.forgeObjects[core.getObjectIdByRemoteId(
-                                   state.forgeObjects, requestObject.objectId)]
+        local composedObject =
+            state.forgeObjects[core.getObjectIdByRemoteId(state.forgeObjects, requestObject.objectId)]
 
         if (composedObject) then
             dprint('UPDATING object from store...', 'warning')
@@ -119,13 +122,15 @@ local function eventsReducer(state, action)
             composedObject.pitch = requestObject.pitch
             composedObject.roll = requestObject.roll
             -- Update object rotation after creating the object
-            core.rotateObject(composedObject.objectId, composedObject.yaw,
-                              composedObject.pitch, composedObject.roll)
-            blam.object(get_object(composedObject.objectId), {
-                x = composedObject.x,
-                y = composedObject.y,
-                z = composedObject.z
-            })
+            core.rotateObject(composedObject.objectId, composedObject.yaw, composedObject.pitch, composedObject.roll)
+            blam.object(
+                get_object(composedObject.objectId),
+                {
+                    x = composedObject.x,
+                    y = composedObject.y,
+                    z = composedObject.z
+                }
+            )
 
             if (composedObject.reflectionId) then
                 local tagPath = get_tag_path(composedObject.object.tagId)
@@ -142,21 +147,18 @@ local function eventsReducer(state, action)
             end
 
             if (server_type == 'sapp') then
-                local response = core.createRequest(composedObject,
-                                                    constants.requestTypes
-                                                        .UPDATE_OBJECT)
+                local response = core.createRequest(composedObject, constants.requestTypes.UPDATE_OBJECT)
                 core.sendRequest(response)
             end
         else
-            dprint('ERROR!!! The required object with Id: ' ..
-                       requestObject.objectId .. 'does not exist.', 'error')
+            dprint('ERROR!!! The required object with Id: ' .. requestObject.objectId .. 'does not exist.', 'error')
         end
         return state
     elseif (action.type == constants.actionTypes.DELETE_OBJECT) then
         local requestObject = action.payload.requestObject
 
-        local composedObject = state.forgeObjects[core.getObjectIdByRemoteId(
-                                   state.forgeObjects, requestObject.objectId)]
+        local composedObject =
+            state.forgeObjects[core.getObjectIdByRemoteId(state.forgeObjects, requestObject.objectId)]
 
         if (composedObject) then
             if (composedObject.reflectionId) then
@@ -166,8 +168,7 @@ local function eventsReducer(state, action)
                     if (tagPath:find('players')) then
                         dprint('PLAYER_SPAWN', 'category')
                         -- Make needed modifications to game spawn points
-                        core.modifyPlayerSpawnPoint(tagPath, composedObject,
-                                                    true)
+                        core.modifyPlayerSpawnPoint(tagPath, composedObject, true)
                     elseif (tagPath:find('vehicles') or tagPath:find('objects')) then
                         core.modifyVehicleSpawn(tagPath, composedObject, true)
                     end
@@ -176,19 +177,14 @@ local function eventsReducer(state, action)
 
             dprint('Deleting object from store...', 'warning')
             delete_object(composedObject.objectId)
-            state.forgeObjects[core.getObjectIdByRemoteId(state.forgeObjects,
-                                                          requestObject.objectId)] =
-                nil
+            state.forgeObjects[core.getObjectIdByRemoteId(state.forgeObjects, requestObject.objectId)] = nil
             dprint('Done.', 'success')
             if (server_type == 'sapp') then
-                local response = core.createRequest(composedObject,
-                                                    constants.requestTypes
-                                                        .DELETE_OBJECT)
+                local response = core.createRequest(composedObject, constants.requestTypes.DELETE_OBJECT)
                 core.sendRequest(response)
             end
         else
-            dprint('ERROR!!! The required object with Id: ' ..
-                       requestObject.objectId .. 'does not exist.', 'error')
+            dprint('ERROR!!! The required object with Id: ' .. requestObject.objectId .. 'does not exist.', 'error')
         end
         forgeStore:dispatch({type = 'UPDATE_MAP_INFO'})
         return state
@@ -198,11 +194,18 @@ local function eventsReducer(state, action)
 
         local expectedObjects = requestObject.objectCount
         local mapName = requestObject.mapName
+        local mapDescription = requestObject.mapDescription
 
-        forgeStore:dispatch({
-            type = 'UPDATE_MAP_INFO',
-            payload = {expectedObjects = expectedObjects, mapName = mapName}
-        })
+        forgeStore:dispatch(
+            {
+                type = 'UPDATE_MAP_INFO',
+                payload = {
+                    expectedObjects = expectedObjects,
+                    mapName = mapName,
+                    mapDescription = mapDescription
+                }
+            }
+        )
 
         -- TO DO: This does not end after finishing map loading
         set_timer(140, 'forgeAnimation')

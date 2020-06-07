@@ -41,14 +41,28 @@ constants.requestTypes = {
 --- Request formats for rcon communication
 constants.requestFormats = {
     ['SPAWN_OBJECT'] = {
-        'requestType', 'tagId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll',
+        'requestType',
+        'tagId',
+        'x',
+        'y',
+        'z',
+        'yaw',
+        'pitch',
+        'roll',
         'remoteId'
     },
     ['UPDATE_OBJECT'] = {
-        'requestType', 'objectId', 'x', 'y', 'z', 'yaw', 'pitch', 'roll'
+        'requestType',
+        'objectId',
+        'x',
+        'y',
+        'z',
+        'yaw',
+        'pitch',
+        'roll'
     },
     ['DELETE_OBJECT'] = {'requestType', 'objectId'},
-    ['LOAD_MAP_SCREEN'] = {'requestType', 'objectCount', 'mapName'},
+    ['LOAD_MAP_SCREEN'] = {'requestType', 'objectCount', 'mapName', 'mapDescription'},
     ['FLUSH_FORGE'] = {'requestType'}
 }
 
@@ -66,8 +80,7 @@ constants.compressionFormats = {
     ['FLUSH_FORGE'] = {}
 }
 
-constants.testObjectPath =
-    '[shm]\\halo_4\\scenery\\spawning\\vehicles\\scorpion spawn\\scorpion spawn'
+constants.testObjectPath = '[shm]\\halo_4\\scenery\\spawning\\vehicles\\scorpion spawn\\scorpion spawn'
 
 -- Biped tag definitions
 constants.bipeds = {
@@ -80,15 +93,6 @@ constants.weaponHudInterfaces = {
     forgeCrosshair = '[shm]\\halo_4\\ui\\hud\\forge'
 }
 
--- Unicode string definitions
-constants.unicodeStrings = {
-    budgetCount = '[shm]\\halo_4\\ui\\shell\\forge_menu\\strings\\budget_count',
-    forgeList = '[shm]\\halo_4\\ui\\shell\\forge_menu\\strings\\elements_text',
-    pagination = '[shm]\\halo_4\\ui\\shell\\forge_menu\\strings\\pagination',
-    mapsList = '[shm]\\halo_4\\ui\\shell\\pause_game\\strings\\maps_name',
-    pauseGameStrings = '[shm]\\halo_4\\ui\\shell\\pause_game\\strings\\titles_and_headers'
-}
-
 constants.bitmaps = {
     forgeLoadingProgress0 = '[shm]\\halo_4\\ui\\shell\\loading_menu\\bitmaps\\forge_loading_progress0',
     forgeLoadingProgress1 = '[shm]\\halo_4\\ui\\shell\\loading_menu\\bitmaps\\forge_loading_progress1'
@@ -97,6 +101,7 @@ constants.bitmaps = {
 -- UI widget definitions
 constants.uiWidgetDefinitions = {
     forgeMenu = '[shm]\\halo_4\\ui\\shell\\forge_menu\\forge_menu',
+    votingMenu = '[shm]\\halo_4\\ui\\shell\\map_vote_menu\\map_vote_menu',
     forgeList = '[shm]\\halo_4\\ui\\shell\\forge_menu\\category_menu\\category_list',
     amountBar = '[shm]\\halo_4\\ui\\shell\\forge_menu\\budget_dialog\\budget_progress_bar',
     loadingMenu = '[shm]\\halo_4\\ui\\shell\\loading_menu\\loading_menu',
@@ -106,6 +111,17 @@ constants.uiWidgetDefinitions = {
     mapsList = '[shm]\\halo_4\\ui\\shell\\pause_game\\forge_options_menu\\maps_list\\maps_list',
     sidebar = '[shm]\\halo_4\\ui\\shell\\pause_game\\forge_options_menu\\forge_map_list_sidebar_bar',
     errorNonmodalFullscreen = 'ui\\shell\\error\\error_nonmodal_fullscreen'
+}
+
+-- Unicode string definitions
+constants.unicodeStrings = {
+    budgetCount = '[shm]\\halo_4\\ui\\shell\\forge_menu\\strings\\budget_count',
+    forgeList = '[shm]\\halo_4\\ui\\shell\\forge_menu\\strings\\elements_text',
+    votingList = '[shm]\\halo_4\\ui\\shell\\map_vote_menu\\strings\\vote_maps_names',
+    votingCountList = '[shm]\\halo_4\\ui\\shell\\map_vote_menu\\strings\\vote_maps_count',
+    pagination = '[shm]\\halo_4\\ui\\shell\\forge_menu\\strings\\pagination',
+    mapsList = '[shm]\\halo_4\\ui\\shell\\pause_game\\strings\\maps_name',
+    pauseGameStrings = '[shm]\\halo_4\\ui\\shell\\pause_game\\strings\\titles_and_headers'
 }
 
 constants.spawnValues = {

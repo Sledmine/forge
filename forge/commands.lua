@@ -22,40 +22,48 @@ local function forgeCommands(command)
         if (forgeCommand == 'fstep') then
             local newRotationStep = tonumber(splitCommand[2])
             if (newRotationStep) then
-                features.printHUD('Rotation step now is ' .. newRotationStep ..
-                                      ' degrees.')
-                playerStore:dispatch({
-                    type = 'SET_ROTATION_STEP',
-                    payload = {step = newRotationStep}
-                })
+                features.printHUD('Rotation step now is ' .. newRotationStep .. ' degrees.')
+                playerStore:dispatch(
+                    {
+                        type = 'SET_ROTATION_STEP',
+                        payload = {step = newRotationStep}
+                    }
+                )
             else
-                playerStore:dispatch({
-                    type = 'SET_ROTATION_STEP',
-                    payload = {step = 3}
-                })
+                playerStore:dispatch(
+                    {
+                        type = 'SET_ROTATION_STEP',
+                        payload = {step = 3}
+                    }
+                )
             end
             return false
         elseif (forgeCommand == 'fdis' or forgeCommand == 'fdistance') then
             local newDistance = tonumber(splitCommand[2])
             if (newDistance) then
-                features.printHUD('Distance from object has been set to ' ..
-                                      newDistance .. ' units.')
+                features.printHUD('Distance from object has been set to ' .. newDistance .. ' units.')
                 -- Force distance object update
-                playerStore:dispatch({
-                    type = 'SET_LOCK_DISTANCE',
-                    payload = {lockDistance = true}
-                })
+                playerStore:dispatch(
+                    {
+                        type = 'SET_LOCK_DISTANCE',
+                        payload = {lockDistance = true}
+                    }
+                )
                 local distance = glue.round(newDistance)
-                playerStore:dispatch({
-                    type = 'SET_DISTANCE',
-                    payload = {distance = distance}
-                })
+                playerStore:dispatch(
+                    {
+                        type = 'SET_DISTANCE',
+                        payload = {distance = distance}
+                    }
+                )
             else
                 local distance = 3
-                playerStore:dispatch({
-                    type = 'SET_DISTANCE',
-                    payload = {distance = distance}
-                })
+                playerStore:dispatch(
+                    {
+                        type = 'SET_DISTANCE',
+                        payload = {distance = distance}
+                    }
+                )
             end
             return false
         elseif (forgeCommand == 'fsave') then
@@ -77,25 +85,26 @@ local function forgeCommands(command)
             end
             return false
         elseif (forgeCommand == 'fname') then
-            local mapName = table.concat(glue.shift(splitCommand, 1, -1), ' ')
-            forgeStore:dispatch({
-                type = 'SET_MAP_NAME',
-                payload = {mapName = mapName}
-            })
+            local mapName = table.concat(glue.shift(splitCommand, 1, -1), ' '):gsub(',', ' ')
+            forgeStore:dispatch(
+                {
+                    type = 'SET_MAP_NAME',
+                    payload = {mapName = mapName}
+                }
+            )
             return false
-
         elseif (forgeCommand == 'fdesc') then
-            local mapDescription = table.concat(glue.shift(splitCommand, 1, -1),
-                                                ' ')
-            forgeStore:dispatch({
-                type = 'SET_MAP_DESCRIPTION',
-                payload = {mapDescription = mapDescription}
-            })
-            return false
-
             -------------- DEBUGGING COMMANDS ONLY ---------------
+            local mapDescription = table.concat(glue.shift(splitCommand, 1, -1), ' '):gsub(',', ' ')
+            forgeStore:dispatch(
+                {
+                    type = 'SET_MAP_DESCRIPTION',
+                    payload = {mapDescription = mapDescription}
+                }
+            )
+            return false
         elseif (forgeCommand == 'fmenu') then
-            features.openMenu("ui\\shell\\multiplayer_game\\pause_game\\2p_pause_game")
+            features.openMenu('[shm]\\halo_4\\ui\\shell\\map_vote_menu\\map_vote_menu')
             return false
         elseif (forgeCommand == 'fweaps') then
             for tagId = 0, get_tags_count() - 1 do
@@ -107,7 +116,7 @@ local function forgeCommands(command)
             end
             return false
         elseif (forgeCommand == 'fsize') then
-            dprint(collectgarbage("count")/1024)
+            dprint(collectgarbage('count') / 1024)
             return false
         elseif (forgeCommand == 'fconfig') then
             loadForgeConfiguration()
@@ -124,13 +133,11 @@ local function forgeCommands(command)
                 end
             end
 
-            local weaponName =
-                table.concat(glue.shift(splitCommand, 1, -1), ' ')
+            local weaponName = table.concat(glue.shift(splitCommand, 1, -1), ' ')
             local player = blam.biped(get_dynamic_player())
             local weaponResult = weaponsList[weaponName]
             if (weaponResult) then
-                core.cspawn_object(tagClasses.weapon, weaponResult, player.x,
-                                   player.y, player.z)
+                core.cspawn_object(tagClasses.weapon, weaponResult, player.x, player.y, player.z)
             end
             return false
         elseif (forgeCommand == 'ftest') then
@@ -141,13 +148,13 @@ local function forgeCommands(command)
             local objectId = tonumber(splitCommand[2])
             console_out(tostring(get_object(objectId)))
             local eraseConfirm = splitCommand[3]
-            if (eraseConfirm) then delete_object(objectId) end
+            if (eraseConfirm) then
+                delete_object(objectId)
+            end
             return false
         elseif (forgeCommand == 'fdump') then
-            glue.writefile('forge_dump.json', inspect(forgeStore:getState()),
-                           't')
-            glue.writefile('events_dump.json',
-                           inspect(eventsStore:getState().forgeObjects), 't')
+            glue.writefile('forge_dump.json', inspect(forgeStore:getState()), 't')
+            glue.writefile('events_dump.json', inspect(eventsStore:getState().forgeObjects), 't')
             glue.writefile('debug_dump.txt', debugBuffer, 't')
             return false
         elseif (forgeCommand == 'fprint') then

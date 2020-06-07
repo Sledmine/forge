@@ -29,9 +29,11 @@ local core = require 'forge.core'
 local playerReducer = require 'forge.reducers.playerReducer'
 local eventsReducer = require 'forge.reducers.eventsReducer'
 local forgeReducer = require 'forge.reducers.forgeReducer'
+local votingReducer = require 'forge.reducers.votingReducer'
 
 -- Reflectors importation
 local forgeReflector = require 'forge.reflectors.forgeReflector'
+local votingReflector = require 'forge.reflectors.votingReflector'
 
 -- Default debug mode state
 debugMode = glue.readfile('forge_debug_mode.dbg', 't')
@@ -101,6 +103,7 @@ function onMapLoad()
     playerStore = redux.createStore(playerReducer)
     forgeStore = redux.createStore(forgeReducer) -- Isolated store for all the Forge 'app' data
     eventsStore = redux.createStore(eventsReducer) -- Unique store for all the Forge Objects
+    votingStore = redux.createStore(votingReducer) -- Storage for all the state of map voting
 
     local forgeState = forgeStore:getState()
     local scenario = blam.scenario(get_tag(0))
@@ -143,6 +146,21 @@ function onMapLoad()
         payload = {forgeMenu = forgeState.forgeMenu}
     })
 
+    local testVoteMaps = {
+        {mapName = 'Forge', gametype = "Slayer"},
+        {mapName = 'Forge', gametype = "Slayer"},
+        {mapName = 'Forge', gametype = "Slayer"},
+        {mapName = 'Forge', gametype = "Slayer"}
+    }
+
+    votingStore:subscribe(votingReflector)
+    
+    -- Dispatch forge objects list update
+    votingStore:dispatch({
+        type = 'UPDATE_VOTE_LIST',
+        payload = {mapsList = testVoteMaps}
+    })
+
     local isForgeMap = validateMapName()
     if (isForgeMap) then
 
@@ -165,8 +183,6 @@ function onMapLoad()
         set_callback('tick', 'onTick')
         set_callback('rcon message', 'onRcon')
         set_callback('command', 'onCommand')
-
-        console_out(tostring(configurationFile))
     else
         console_out('This is not a compatible Forge map!!!')
     end
@@ -178,7 +194,7 @@ function onTick()
     local player = blam.biped(get_dynamic_player())
     local playerState = playerStore:getState()
     if (player) then
-        player.isMonitor = features.isPlayerMonitor()
+        player.isMonitor = core.isPlayerMonitor()
         if (player.isMonitor) then
 
             -- Provide better movement to monitors
@@ -236,7 +252,7 @@ function onTick()
                 -- Update crosshair
                 features.setCrosshairState(2)
 
-                -- This was disabled because now every object can be spawned everywhere!
+                -- This was disabled because now objects can be spawned everywhere!
                 --[[if (playerState.zOffset < constants.minimumZSpawnPoint) then
                     -- Set crosshair to not allowed
                     features.setCrosshairState(3)
@@ -247,10 +263,6 @@ function onTick()
                     x = playerState.xOffset,
                     y = playerState.yOffset,
                     z = playerState.zOffset
-                    -- TODO: Object color customization!
-                    --[[redA = math.random(0,1),
-                        greenA = math.random(0,1),
-                        blueA = math.random(0,1)]]
                 })
                 if (player.jumpHold) then
                     playerStore:dispatch({type = 'DESTROY_OBJECT'})
@@ -359,6 +371,7 @@ function onTick()
     end
 
     -- Menu buttons interpcetion
+
     -- Trigger prefix and how many triggers are being read
     local mapsMenuPressedButton = triggers.get('maps_menu', 10)
     if (mapsMenuPressedButton) then
@@ -379,6 +392,7 @@ function onTick()
         dprint('Button ' .. mapsMenuPressedButton .. ' was pressed!', 'category')
     end
 
+    -- Trigger prefix and how many triggers are being read
     local forgeMenuPressedButton = triggers.get('forge_menu', 9)
     if (forgeMenuPressedButton) then
         local forgeState = forgeStore:getState()
@@ -420,6 +434,14 @@ function onTick()
         dprint(' -> [ Forge Menu ]')
         dprint('Button ' .. forgeMenuPressedButton .. ' was pressed!',
                'category')
+    end
+
+    -- Trigger prefix and how many triggers are being read
+    local voteMapMenuPressedButton = triggers.get('map_vote_menu', 5)
+    if (voteMapMenuPressedButton) then
+        execute_script('rcon forge #v,' .. voteMapMenuPressedButton)
+        dprint('Vote Map menu:')
+        dprint('Button ' .. voteMapMenuPressedButton .. ' was pressed!', 'category')
     end
 
     -- Attach respective hooks for menus!
