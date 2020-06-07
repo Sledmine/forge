@@ -1,0 +1,3 @@
+@echo Building Forge release script....
+@call luajit "D:\Users\Sledmine\Documents\Developing\luacc\bin\luacc.lua" -o "D:\Users\Sledmine\Documents\My Games\Halo CE\chimera\lua\release\map\forge_island.lua" -i "D:\Program Files (x86)\Microsoft Games\Halo Custom Edition\lua" -i "D:\Users\Sledmine\Documents\Developing\Forge\client" forge_island lua-blam maethrillian luaunit glue json lua-redux inspect forge.menu forge.constants forge.hook forge.triggers forge.features forge.tests forge.commands forge.reflectors.forgeReflector forge.reducers.playerReducer forge.reducers.eventsReducer forge.reducers.forgeReducer forge.core 
+@echo Done!!!
