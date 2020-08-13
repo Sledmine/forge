@@ -14,6 +14,7 @@ constants.maximumSidebarSize = 249
 constants.minimumSidebarSize = 40
 
 constants.scenarioPath = '[shm]\\halo_4\\maps\\forge_island\\forge_island'
+constants.scenerysTagCollectionPath = '[shm]\\halo_4\\maps\\forge_island\\forge_island_scenerys'
 
 constants.actionTypes = {
     SPAWN_OBJECT = 'SPAWN_OBJECT',
