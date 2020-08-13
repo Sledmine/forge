@@ -109,6 +109,12 @@ local function forgeReducer(state, action)
         local keysList = glue.keys(objectsList)
         table.sort(keysList, function(a, b) return a:lower() < b:lower() end)
 
+        for i = 1, #keysList do
+            if (string.sub(keysList[i], 1, 1) == '_') then
+                keysList[i] = string.sub(keysList[i], 2, -1)
+            end
+        end
+
         -- Create list pagination
         state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
         
