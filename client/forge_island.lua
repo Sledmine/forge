@@ -12,7 +12,8 @@ local glue = require "glue"
 local json = require "json"
 
 -- Halo Custom Edition libraries
-local blam = require "lua-blam"
+local blam = require "nlua-blam"
+blam = blam.compat35()
 local maethrillian = require "maethrillian"
 hfs = require "hcefs"
 
