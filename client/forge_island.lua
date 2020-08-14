@@ -109,13 +109,15 @@ function onMapLoad()
     votingStore = redux.createStore(votingReducer) -- Storage for all the state of map voting
 
     local forgeState = forgeStore:getState()
-    local scenario = blam.scenario(get_tag(0))
 
-    -- Iterate over all the sceneries available in the map scenario
+    local tagCollectionAddress = get_tag('tag_collection', constants.scenerysTagCollectionPath)
+    local tagCollection = blam.tagCollection(tagCollectionAddress)
+
     -- TO DO: Refactor this entire loop, has been implemented from the old script!!!
-    for i = 1, #scenario.sceneryPaletteList do
-        local sceneryPath = get_tag_path(scenario.sceneryPaletteList[i])
-        local sceneriesSplit = glue.string.split("\\", sceneryPath)
+    -- Iterate over all the sceneries available in the sceneries tag collection
+    for i = 1, tagCollection.count do
+        local sceneryPath = get_tag_path(tagCollection.tagList[i])
+        local sceneriesSplit = glue.string.split('\\', sceneryPath)
         local sceneryFolderIndex
         for j, n in pairs(sceneriesSplit) do
             if (n == "scenery") then
@@ -132,9 +134,10 @@ function onMapLoad()
         -- Make a tree iteration to append sceneries
         local treePosition = forgeState.forgeMenu.objectsList.root
         for k, v in pairs(sceneriesSplit) do
-            if (not treePosition[v]) then
-                treePosition[v] = {}
+            if(v:sub(1, 1) == '_') then
+                v = glue.string.fromhex(0x2) .. v:sub(2, -1)
             end
+            if (not treePosition[v]) then treePosition[v] = {} end
             treePosition = treePosition[v]
         end
     end
@@ -323,13 +326,18 @@ function onTick()
                             if (isPlayerLookingAt) then
 
                                 -- Get and parse object name
-                                local objectPath =
-                                    glue.string.split("\\",
-                                                      get_tag_path(composedObject.object.tagId))
+                                local objectPath = glue.string.split('\\', get_tag_path(composedObject.object.tagId))
                                 local objectName = objectPath[#objectPath - 1]
                                 local objectCategory = objectPath[#objectPath - 2]
-                                features.printHUD("NAME:  " .. objectName,
-                                                  "CATEGORY:  " .. objectCategory)
+
+                                if (objectCategory:sub(1, 1) == '_') then
+                                    objectCategory = objectCategory:sub(2, -1)
+                                end
+
+                                objectName = objectName:gsub("^%l", string.upper)
+                                objectCategory = objectCategory:gsub("^%l", string.upper)
+
+                                features.printHUD("NAME:  " .. objectName, "CATEGORY:  " .. objectCategory)
 
                                 -- Update crosshair state
                                 if (features.setCrosshairState) then
