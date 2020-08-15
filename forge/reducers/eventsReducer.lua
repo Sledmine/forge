@@ -3,9 +3,6 @@ local glue = require "glue"
 local inspect = require "inspect"
 local constants = require "forge.constants"
 
--- Halo Custom Edition libraries
-local blam = require "lua-blam"
-
 -- Forge modules
 local core = require "forge.core"
 local features = require "forge.features"
@@ -81,8 +78,8 @@ local function eventsReducer(state, action)
         ]]
         if (tagPath:find("spawning")) then
             dprint("-> [Reflecting Spawn]", "warning")
-            if (tagPath:find("players")) then
-                dprint("PLAYER_SPAWN", "category")
+            if (tagPath:find("gametypes")) then
+                dprint("GAMETYPE_SPAWN", "category")
 
                 -- Make needed modifications to game spawn points
                 core.modifyPlayerSpawnPoint(tagPath, composedObject)
@@ -132,8 +129,8 @@ local function eventsReducer(state, action)
                 local tagPath = get_tag_path(composedObject.object.tagId)
                 if (tagPath:find("spawning")) then
                     dprint("-> [Reflecting Spawn]", "warning")
-                    if (tagPath:find("players")) then
-                        dprint("PLAYER_SPAWN", "category")
+                    if (tagPath:find("gametypes")) then
+                        dprint("GAMETYPE_SPAWN", "category")
                         -- Make needed modifications to game spawn points
                         core.modifyPlayerSpawnPoint(tagPath, composedObject)
                     elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
@@ -163,8 +160,8 @@ local function eventsReducer(state, action)
                 local tagPath = get_tag_path(composedObject.object.tagId)
                 if (tagPath:find("spawning")) then
                     dprint("-> [Reflecting Spawn]", "warning")
-                    if (tagPath:find("players")) then
-                        dprint("PLAYER_SPAWN", "category")
+                    if (tagPath:find("gametypes")) then
+                        dprint("GAMETYPE_SPAWN", "category")
                         -- Make needed modifications to game spawn points
                         core.modifyPlayerSpawnPoint(tagPath, composedObject, true)
                     elseif (tagPath:find("vehicles") or tagPath:find("objects")) then

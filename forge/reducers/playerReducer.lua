@@ -1,8 +1,5 @@
 local glue = require "glue"
 
--- Halo Custom Edtion libraries
-local blam = require "lua-blam"
-
 -- Forge modules
 local core = require "forge.core"
 local constants = require "forge.constants"

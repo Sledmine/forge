@@ -6,32 +6,33 @@
 ------------------------------------------------------------------------------
 -- Declare SAPP API Version before importing libraries
 -- This is usefull for SAPP detection
-api_version = '1.12.0.0'
+api_version = "1.12.0.0"
 
-print('Server is running ' .. _VERSION)
+print("Server is running " .. _VERSION)
 -- Bring compatibility with Lua 5.3
-require('compat53')
-print('Compatibility with Lua 5.3 has been loaded!')
+require("compat53")
+print("Compatibility with Lua 5.3 has been loaded!")
 
 -- Set server type to sapp for triggering certain server actions
-server_type = 'sapp'
+server_type = "sapp"
 
 -- Lua libraries
-local inspect = require 'inspect'
-local glue = require 'glue'
-local redux = require 'lua-redux'
+local inspect = require "inspect"
+local glue = require "glue"
+local redux = require "lua-redux"
 
 -- Specific Halo Custom Edition libraries
-local blam = require 'lua-blam'
-local maethrillian = require 'maethrillian'
+blam = require "nlua-blam"
+blam = blam.compat35()
+local maethrillian = require "maethrillian"
 
 -- Forge modules
-local constants = require 'forge.constants'
-local core = require 'forge.core'
+local constants = require "forge.constants"
+local core = require "forge.core"
 
 -- Reducers importation
-local eventsReducer = require 'forge.reducers.eventsReducer'
-local forgeReducer = require 'forge.reducers.forgeReducer'
+local eventsReducer = require "forge.reducers.eventsReducer"
+local forgeReducer = require "forge.reducers.forgeReducer"
 
 -- Variable used to store the current forge map in memory
 local forgeMap
@@ -50,13 +51,13 @@ configuration = {}
 ---@param color string | "'category'" | "'warning'" | "'error'" | "'success'"
 function dprint(message, color)
     if (debugMode) then
-        if (color == 'category') then
+        if (color == "category") then
             console_out(message, 0.31, 0.631, 0.976)
-        elseif (color == 'warning') then
+        elseif (color == "warning") then
             console_out(message)
-        elseif (color == 'error') then
+        elseif (color == "error") then
             console_out(message)
-        elseif (color == 'success') then
+        elseif (color == "success") then
             console_out(message, 0.235, 0.82, 0)
         else
             console_out(message)
@@ -86,22 +87,31 @@ function OnScriptLoad()
     eventsStore = redux.createStore(eventsReducer) -- Unique store for all the Forge Objects
 
     -- Forge folders creation
-    forgeMapsFolder = 'fmaps'
+    forgeMapsFolder = "fmaps"
 
     -- Add forge rcon as not dangerous for command interception
-    execute_command('lua_call rcon_bypass submitRcon ' .. 'forge')
+    execute_command("lua_call rcon_bypass submitRcon " .. "forge")
 
     -- Add forge commands for interception
-    local forgeCommands = {'#s', '#d', '#u', '#l', '#b', '#v', 'fload', 'fsave'}
+    local forgeCommands = {
+        "#s",
+        "#d",
+        "#u",
+        "#l",
+        "#b",
+        "#v",
+        "fload",
+        "fsave",
+    }
     for index, command in pairs(forgeCommands) do
-        execute_command('lua_call rcon_bypass submitCommand ' .. command)
+        execute_command("lua_call rcon_bypass submitCommand " .. command)
     end
-    register_callback(cb['EVENT_COMMAND'], 'onRcon')
-    register_callback(cb['EVENT_OBJECT_SPAWN'], 'onObjectSpawn')
-    register_callback(cb['EVENT_JOIN'], 'onPlayerJoin')
-    register_callback(cb['EVENT_GAME_START'], 'onGameStart')
-    register_callback(cb['EVENT_GAME_END'], 'onGameEnd')
-    register_callback(cb['EVENT_PRESPAWN'], 'onPlayerSpawn')
+    register_callback(cb["EVENT_COMMAND"], "onRcon")
+    register_callback(cb["EVENT_OBJECT_SPAWN"], "onObjectSpawn")
+    register_callback(cb["EVENT_JOIN"], "onPlayerJoin")
+    register_callback(cb["EVENT_GAME_START"], "onGameStart")
+    register_callback(cb["EVENT_GAME_END"], "onGameEnd")
+    register_callback(cb["EVENT_PRESPAWN"], "onPlayerSpawn")
 end
 
 -- Change biped tag id from players and store their object ids
@@ -140,11 +150,17 @@ function onPlayerSpawn(playerIndex)
         player.isMonitor = core.isPlayerMonitor(playerIndex)
         -- Provide better movement to monitors
         if (player.isMonitor and not player.ignoreCollision) then
-            blam.biped(get_dynamic_player(playerIndex), {ignoreCollision = true})
+            blam.biped(get_dynamic_player(playerIndex), {
+                ignoreCollision = true,
+            })
         end
         local pos = playerObjectTempPos[playerIndex]
         if (pos) then
-            blam.object(get_dynamic_player(playerIndex), {x = pos[1], y = pos[2], z = pos[3]})
+            blam.object(get_dynamic_player(playerIndex), {
+                x = pos[1],
+                y = pos[2],
+                z = pos[3],
+            })
             playerObjectTempPos[playerIndex] = nil
         end
     end
@@ -158,7 +174,7 @@ function onPlayerJoin(playerIndex)
 
     -- There are objects to sync
     if (objectCount > 0) then
-        dprint('Sending sync responses for: ' .. playerIndex)
+        dprint("Sending sync responses for: " .. playerIndex)
 
         -- Create a temporal composed object like
         local tempObject = {}
@@ -179,78 +195,84 @@ end
 function onRcon(playerIndex, message, environment, rconPassword)
     -- TO DO: Check rcon environment
     if (environment) then
-        dprint('Triggering rcon...')
+        dprint("Triggering rcon...")
         -- TO DO: Check if we have to avoid returning true or false
-        dprint('Incoming rcon message:', 'warning')
+        dprint("Incoming rcon message:", "warning")
         dprint(message)
-        local request = string.gsub(message, "'", '')
-        local splitData = glue.string.split(',', request)
+        local request = string.gsub(message, "'", "")
+        local splitData = glue.string.split(",", request)
         local command = splitData[1]
         local requestType = constants.requestTypes[command]
         if (requestType) then
-            dprint('Decoding incoming ' .. requestType .. ' ...', 'warning')
+            dprint("Decoding incoming " .. requestType .. " ...", "warning")
 
-            local requestObject = maethrillian.convertRequestToObject(request, constants.requestFormats[requestType])
+            local requestObject = maethrillian.convertRequestToObject(request,
+                                                                      constants.requestFormats[requestType])
 
             if (requestObject) then
-                dprint('Done.', 'success')
+                dprint("Done.", "success")
             else
-                dprint('Error at converting request.', 'error')
+                dprint("Error at converting request.", "error")
                 return false, nil
             end
 
-            dprint('Decompressing ...', 'warning')
+            dprint("Decompressing ...", "warning")
             local compressionFormat = constants.compressionFormats[requestType]
             requestObject = maethrillian.decompressObject(requestObject, compressionFormat)
 
             if (requestObject) then
-                dprint('Done.', 'success')
+                dprint("Done.", "success")
             else
-                dprint('Error at decompressing request.', 'error')
+                dprint("Error at decompressing request.", "error")
                 return false, nil
             end
-            dprint('Error at decompressing request.', 'error')
+            dprint("Error at decompressing request.", "error")
             if (not ftestingMode) then
-                eventsStore:dispatch(
-                    {
-                        type = requestType,
-                        payload = {requestObject = requestObject}
-                    }
-                )
+                eventsStore:dispatch({
+                    type = requestType,
+                    payload = {
+                        requestObject = requestObject,
+                    },
+                })
             end
             return false, requestObject
-        elseif (command == '#b') then
-            dprint('Trying to process a biped swap request...')
+        elseif (command == "#b") then
+            dprint("Trying to process a biped swap request...")
             if (playersObjectIds[playerIndex]) then
                 local playerObjectId = playersObjectIds[playerIndex]
-                dprint('playerObjectId: ' .. tostring(playerObjectId))
+                dprint("playerObjectId: " .. tostring(playerObjectId))
                 local player = blam.object(get_object(playerObjectId))
                 if (player) then
-                    dprint('lua-blam rocks!!!')
-                    playerObjectTempPos[playerIndex] = {player.x, player.y, player.z}
-                    if (player.tagId == get_tag_id('bipd', constants.bipeds.monitor)) then
-                        bipedChangeRequest[playerIndex] = 'spartan'
+                    dprint("lua-blam rocks!!!")
+                    playerObjectTempPos[playerIndex] =
+                        {
+                            player.x,
+                            player.y,
+                            player.z,
+                        }
+                    if (player.tagId == get_tag_id("bipd", constants.bipeds.monitor)) then
+                        bipedChangeRequest[playerIndex] = "spartan"
                     else
-                        bipedChangeRequest[playerIndex] = 'monitor'
+                        bipedChangeRequest[playerIndex] = "monitor"
                     end
                     delete_object(playerObjectId)
                 end
             end
-        elseif (command == '#v') then
-            gprint('A player has voted for map .. ' .. splitData[2])
-        elseif (command == 'fload') then
+        elseif (command == "#v") then
+            gprint("A player has voted for map .. " .. splitData[2])
+        elseif (command == "fload") then
             local mapName = splitData[2]
             local gameType = splitData[3]
             if (mapName) then
                 local forgeObjects = eventsStore:getState().forgeObjects
                 if (#glue.keys(forgeObjects) > 0) then
                     forgeMap = mapName
-                    execute_script('sv_map forge_island ' .. gameType)
+                    --execute_script("sv_map forge_island " .. gameType)
                 else
                     core.loadForgeMap(mapName)
                 end
             else
-                rprint(playerIndex, 'You must specify a forge map name.')
+                rprint(playerIndex, "You must specify a forge map name.")
             end
         end
     end
@@ -264,7 +286,9 @@ function onGameStart()
 end
 
 function onGameEnd()
-    eventsStore:dispatch({type = constants.actionTypes.FLUSH_FORGE})
+    eventsStore:dispatch({
+        type = constants.actionTypes.FLUSH_FORGE,
+    })
 end
 
 function OnScriptUnload()

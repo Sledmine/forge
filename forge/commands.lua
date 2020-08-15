@@ -2,8 +2,6 @@ local inspect = require "inspect"
 local tests = require "forge.tests"
 local glue = require "glue"
 
-local blam = require "lua-blam"
-
 local core = require "forge.core"
 local features = require "forge.features"
 

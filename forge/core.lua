@@ -5,20 +5,66 @@
 -- Core functionality for Forge
 ------------------------------------------------------------------------------
 -- Lua libraries
-local inspect = require 'inspect'
-local json = require 'json'
-local glue = require 'glue'
+local inspect = require "inspect"
+local json = require "json"
+local glue = require "glue"
 
 -- Halo libraries
-local blam = require 'lua-blam'
-local maethrillian = require 'maethrillian'
+local maethrillian = require "maethrillian"
 
 -- Forge modules
-local features = require 'forge.features'
-local constants = require 'forge.constants'
+local features = require "forge.features"
+local constants = require "forge.constants"
 
 -- Core module
 local core = {}
+
+--- Check if player is looking at object main frame
+---@param target number
+---@param sensitivity number
+---@param zOffset number
+-- Credits to Devieth and IceCrow14
+function core.playerIsLookingAt(target, sensitivity, zOffset)
+    -- Minimum amount for distance scaling
+    local baseline_sensitivity = 0.012
+    local function read_vector3d(Address)
+        return read_float(Address), read_float(Address + 0x4), read_float(Address + 0x8)
+    end
+    local mainObject = get_dynamic_player()
+    local targetObject = get_object(target)
+    -- Both objects must exist
+    if targetObject and mainObject then
+        local player_x, player_y, player_z = read_vector3d(mainObject + 0xA0)
+        local camera_x, camera_y, camera_z = read_vector3d(mainObject + 0x230)
+        -- Target location 2
+        local target_x, target_y, target_z = read_vector3d(targetObject + 0x5C)
+        -- 3D distance
+        local distance = math.sqrt((target_x - player_x) ^ 2 + (target_y - player_y) ^ 2 +
+                                       (target_z - player_z) ^ 2)
+        local local_x = target_x - player_x
+        local local_y = target_y - player_y
+        local local_z = (target_z + zOffset) - player_z
+        local point_x = 1 / distance * local_x
+        local point_y = 1 / distance * local_y
+        local point_z = 1 / distance * local_z
+        local x_diff = math.abs(camera_x - point_x)
+        local y_diff = math.abs(camera_y - point_y)
+        local z_diff = math.abs(camera_z - point_z)
+        local average = (x_diff + y_diff + z_diff) / 3
+        local scaler = 0
+        if distance > 10 then
+            scaler = math.floor(distance) / 1000
+        end
+        local auto_aim = sensitivity - scaler
+        if auto_aim < baseline_sensitivity then
+            auto_aim = baseline_sensitivity
+        end
+        if average < auto_aim then
+            return true
+        end
+    end
+    return false
+end
 
 --- Rotate object into desired degrees
 ---@param objectId number
@@ -27,17 +73,14 @@ local core = {}
 ---@param roll number
 function core.rotateObject(objectId, yaw, pitch, roll)
     local rotation = features.convertDegrees(yaw, pitch, roll)
-    blam.object(
-        get_object(objectId),
-        {
-            pitch = rotation[1],
-            yaw = rotation[2],
-            roll = rotation[3],
-            xScale = rotation[4],
-            yScale = rotation[5],
-            zScale = rotation[6]
-        }
-    )
+    blam.object(get_object(objectId), {
+        pitch = rotation[1],
+        yaw = rotation[2],
+        roll = rotation[3],
+        xScale = rotation[4],
+        yScale = rotation[5],
+        zScale = rotation[6],
+    })
 end
 
 --- Check if current player is using a monitor biped
@@ -64,20 +107,20 @@ end
 ---@return boolean success
 ---@return string request
 function core.sendRequest(data, playerIndex)
-    dprint('Request data: ')
+    dprint("Request data: ")
     dprint(inspect(data))
-    dprint('-> [ Sending request ]')
+    dprint("-> [ Sending request ]")
     local requestType = constants.requestTypes[data.requestType]
     if (requestType) then
-        dprint('Type: ' .. requestType, 'category')
+        dprint("Type: " .. requestType, "category")
         local compressionFormat = constants.compressionFormats[requestType]
 
         if (not compressionFormat) then
-            dprint('There is no format compression for this request!!!!', 'error')
+            dprint("There is no format compression for this request!!!!", "error")
             return false
         end
 
-        dprint('Compression: ' .. inspect(compressionFormat))
+        dprint("Compression: " .. inspect(compressionFormat))
 
         local requestObject = maethrillian.compressObject(data, compressionFormat, true)
 
@@ -86,21 +129,21 @@ function core.sendRequest(data, playerIndex)
 
         request = "rcon forge '" .. request .. "'"
 
-        dprint('Request: ' .. request)
-        if (server_type == 'local') then
+        dprint("Request: " .. request)
+        if (server_type == "local") then
             -- We need to mockup the server response in local mode
-            local mockedResponse = string.gsub(string.gsub(request, "rcon forge '", ''), "'", '')
-            dprint('Local Request: ' .. mockedResponse)
+            local mockedResponse = string.gsub(string.gsub(request, "rcon forge '", ""), "'", "")
+            dprint("Local Request: " .. mockedResponse)
             onRcon(mockedResponse)
             return true, mockedResponse
-        elseif (server_type == 'dedicated') then
+        elseif (server_type == "dedicated") then
             -- Player is connected to a server
-            dprint('Dedicated Request: ' .. request)
+            dprint("Dedicated Request: " .. request)
             execute_script(request)
             return true, request
-        elseif (server_type == 'sapp') then
-            local fixedResponse = string.gsub(request, "rcon forge '", '')
-            dprint('Server Request: ' .. fixedResponse)
+        elseif (server_type == "sapp") then
+            local fixedResponse = string.gsub(request, "rcon forge '", "")
+            dprint("Server Request: " .. fixedResponse)
 
             -- We want to broadcast to every player in the server
             if (not playerIndex) then
@@ -116,7 +159,7 @@ function core.sendRequest(data, playerIndex)
             return true, fixedResponse
         end
     end
-    dprint('Error at trying to send request!!!!', 'error')
+    dprint("Error at trying to send request!!!!", "error")
     return false
 end
 
@@ -129,18 +172,18 @@ function core.createRequest(composedObject, requestType)
         objectData.requestType = requestType
         if (requestType == constants.requestTypes.SPAWN_OBJECT) then
             objectData.tagId = composedObject.object.tagId
-            if (server_type == 'sapp') then
+            if (server_type == "sapp") then
                 objectData.remoteId = composedObject.remoteId
             end
         elseif (requestType == constants.requestTypes.UPDATE_OBJECT) then
             composedObject.object = blam.object(get_object(composedObject.objectId))
-            if (server_type ~= 'sapp') then
+            if (server_type ~= "sapp") then
                 objectData.objectId = composedObject.remoteId
             else
                 objectData.objectId = composedObject.objectId
             end
         elseif (requestType == constants.requestTypes.DELETE_OBJECT) then
-            if (server_type ~= 'sapp') then
+            if (server_type ~= "sapp") then
                 objectData.objectId = composedObject.remoteId
             else
                 objectData.objectId = composedObject.objectId
@@ -165,18 +208,18 @@ end
 
 function core.resetSpawnPoints()
     local scenarioAddress
-    if (server_type ~= 'sapp') then
+    if (server_type ~= "sapp") then
         scenarioAddress = get_tag(0)
     else
-        scenarioAddress = get_tag('scnr', constants.scenarioPath)
+        scenarioAddress = get_tag("scnr", constants.scenarioPath)
     end
     local scenario = blam.scenario(scenarioAddress)
 
     local mapSpawnCount = scenario.spawnLocationCount
     local vehicleLocationCount = scenario.vehicleLocationCount
 
-    dprint('Found ' .. mapSpawnCount .. ' stock player starting points!')
-    dprint('Found ' .. vehicleLocationCount .. ' stock vehicle location points!')
+    dprint("Found " .. mapSpawnCount .. " stock player starting points!")
+    dprint("Found " .. vehicleLocationCount .. " stock vehicle location points!")
     local mapSpawnPoints = scenario.spawnLocationList
     -- Reset any spawn point, except the first one
     for i = 1, mapSpawnCount do
@@ -186,15 +229,12 @@ function core.resetSpawnPoints()
     local vehicleLocationList = scenario.vehicleLocationList
     for i = 2, vehicleLocationCount do
         vehicleLocationList[i].type = 65535
-        execute_script('object_destroy v' .. vehicleLocationList[i].nameIndex)
+        execute_script("object_destroy v" .. vehicleLocationList[i].nameIndex)
     end
-    blam.scenario(
-        scenarioAddress,
-        {
-            spawnLocationList = mapSpawnPoints,
-            vehicleLocationList = vehicleLocationList
-        }
-    )
+    blam.scenario(scenarioAddress, {
+        spawnLocationList = mapSpawnPoints,
+        vehicleLocationList = vehicleLocationList,
+    })
 end
 
 function core.flushForge()
@@ -205,35 +245,36 @@ function core.flushForge()
         for objectId, composedObject in pairs(forgeObjects) do
             delete_object(objectId)
         end
-        eventsStore:dispatch({type = constants.actionTypes.FLUSH_FORGE})
+        eventsStore:dispatch({
+            type = constants.actionTypes.FLUSH_FORGE,
+        })
     end
 end
 
 function core.loadForgeMap(mapName)
-    if (server_type == 'dedicated') then
+    if (server_type == "dedicated") then
         console_out("You can not load a map while connected to a server!'")
         return false
     end
-    local fmapContent = glue.readfile(forgeMapsFolder .. '\\' .. mapName .. '.fmap', 't')
+    local fmapContent = glue.readfile(forgeMapsFolder .. "\\" .. mapName .. ".fmap", "t")
     if (fmapContent) then
-        dprint('Loading forge map...')
+        dprint("Loading forge map...")
         local forgeMap = json.decode(fmapContent)
         if (forgeMap and forgeMap.objects and #forgeMap.objects > 0) then
-            forgeStore:dispatch(
-                {
-                    type = 'SET_MAP_DATA',
-                    payload = {
-                        mapName = forgeMap.name,
-                        mapDescription = forgeMap.description
-                    }
-                }
-            )
-            if (server_type == 'sapp') then
+            forgeStore:dispatch({
+                type = "SET_MAP_DATA",
+                payload = {
+                    mapName = forgeMap.name,
+                    mapDescription = forgeMap.description,
+                },
+            })
+            if (server_type == "sapp") then
                 local tempObject = {}
                 tempObject.objectCount = #forgeMap.objects
                 tempObject.mapName = forgeMap.name
                 tempObject.mapDescription = forgeMap.description
-                local response = core.createRequest(tempObject, constants.requestTypes.LOAD_MAP_SCREEN)
+                local response = core.createRequest(tempObject,
+                                                    constants.requestTypes.LOAD_MAP_SCREEN)
                 core.sendRequest(response)
             end
 
@@ -241,36 +282,37 @@ function core.loadForgeMap(mapName)
             core.resetSpawnPoints()
 
             -- Remove blur after reloading server on local mode
-            if (server_type == 'local') then
-                execute_script('menu_blur_off')
+            if (server_type == "local") then
+                execute_script("menu_blur_off")
                 core.flushForge()
             end
 
             for objectIndex, composedObject in pairs(forgeMap.objects) do
-                composedObject.tagId = get_tag_id('scen', composedObject.tagPath)
+                composedObject.tagId = get_tag_id("scen", composedObject.tagPath)
                 if (composedObject.tagId) then
                     composedObject.tagPath = nil
-                    eventsStore:dispatch(
-                        {
-                            type = constants.actionTypes.SPAWN_OBJECT,
-                            payload = {requestObject = composedObject}
-                        }
-                    )
+                    eventsStore:dispatch({
+                        type = constants.actionTypes.SPAWN_OBJECT,
+                        payload = {
+                            requestObject = composedObject,
+                        },
+                    })
                 else
-                    dprint("WARNING!! Object with path '" .. composedObject.tagPath .. "' can't be spawn...", 'warning')
+                    dprint("WARNING!! Object with path '" .. composedObject.tagPath ..
+                               "' can't be spawn...", "warning")
                 end
             end
 
-            execute_script('sv_map_reset')
+            execute_script("sv_map_reset")
             dprint("Succesfully loaded '" .. mapName .. "' fmap!")
 
             return true
         else
-            dprint("ERROR!! At decoding data from '" .. mapName .. "' forge map...", 'error')
+            dprint("ERROR!! At decoding data from '" .. mapName .. "' forge map...", "error")
         end
     else
-        dprint("ERROR!! At trying to load '" .. mapName .. "' as a forge map...", 'error')
-        if (server_type == 'sapp') then
+        dprint("ERROR!! At trying to load '" .. mapName .. "' as a forge map...", "error")
+        if (server_type == "sapp") then
             gprint("ERROR!! At trying to load '" .. mapName .. "' as a forge map...")
         end
     end
@@ -278,7 +320,7 @@ function core.loadForgeMap(mapName)
 end
 
 function core.saveForgeMap(mapName)
-    dprint('Saving forge map...')
+    dprint("Saving forge map...")
 
     local forgeState = forgeStore:getState()
 
@@ -288,10 +330,10 @@ function core.saveForgeMap(mapName)
     -- List used to store data of every object in the forge map
     local forgeMap = {
         name = mapName,
-        author = '',
+        author = "",
         description = mapDescription,
-        version = '',
-        objects = {}
+        version = "",
+        objects = {},
     }
 
     -- Get the state of the forge objects
@@ -326,18 +368,19 @@ function core.saveForgeMap(mapName)
     local fmapContent = json.encode(forgeMap)
 
     -- Update map name
-    mapName = string.gsub(mapName, ' ', '_')
+    mapName = string.gsub(mapName, " ", "_")
 
-    local forgeMapFile = glue.writefile(forgeMapsFolder .. '\\' .. mapName .. '.fmap', fmapContent, 't')
+    local forgeMapFile = glue.writefile(forgeMapsFolder .. "\\" .. mapName .. ".fmap", fmapContent,
+                                        "t")
 
     -- Check if file was created
     if (forgeMapFile) then
-        dprint("Forge map '" .. mapName .. "' has been succesfully saved!", 'success')
+        dprint("Forge map '" .. mapName .. "' has been succesfully saved!", "success")
 
         -- Reload forge maps list
         loadForgeMaps()
     else
-        dprint("ERROR!! At saving '" .. mapName .. "' as a forge map...", 'error')
+        dprint("ERROR!! At saving '" .. mapName .. "' as a forge map...", "error")
     end
 end
 
@@ -346,24 +389,25 @@ end
 ---@param x number @param y number @param Z number
 ---@return number | nil objectId
 function core.cspawn_object(type, tagPath, x, y, z)
-    dprint(' -> [ Object Spawning ]')
-    dprint('Type:', 'category')
+    dprint(" -> [ Object Spawning ]")
+    dprint("Type:", "category")
     dprint(type)
-    dprint('Tag  Path:', 'category')
+    dprint("Tag  Path:", "category")
     dprint(tagPath)
-    dprint('Trying to spawn object...', 'warning')
+    dprint("Trying to spawn object...", "warning")
     -- Prevent objects from phantom spawning!
-    -- local variables are accesed first than parameter variables
     local objectId = spawn_object(type, tagPath, x, y, z)
     if (objectId) then
         local tempObject = blam.object(get_object(objectId))
 
         -- Forces the object to render shadow
         if (configuration.objectsCastShadow) then
-            blam.object(get_object(objectId), {isNotCastingShadow = false})
+            blam.object(get_object(objectId), {
+                isNotCastingShadow = false,
+            })
         end
         if (tempObject.isOutSideMap) then
-            dprint('-> Object: ' .. objectId .. ' is INSIDE map!!!', 'warning')
+            dprint("-> Object: " .. objectId .. " is INSIDE map!!!", "warning")
 
             -- Erase object to spawn it later in a safe place
             delete_object(objectId)
@@ -373,19 +417,25 @@ function core.cspawn_object(type, tagPath, x, y, z)
 
             if (objectId) then
                 -- Update new object position to match the original
-                blam.object(get_object(objectId), {x = x, y = y, z = z})
+                blam.object(get_object(objectId), {
+                    x = x,
+                    y = y,
+                    z = z,
+                })
 
                 -- Forces the object to render shadow
                 if (configuration.objectsCastShadow) then
-                    blam.object(get_object(objectId), {isNotCastingShadow = false})
+                    blam.object(get_object(objectId), {
+                        isNotCastingShadow = false,
+                    })
                 end
             end
         end
 
-        dprint('-> Object: ' .. objectId .. ' succesfully spawned!!!', 'success')
+        dprint("-> Object: " .. objectId .. " succesfully spawned!!!", "success")
         return objectId, x, y, z
     end
-    dprint('Error at trying to spawn object!!!!', 'error')
+    dprint("Error at trying to spawn object!!!!", "error")
     return nil
 end
 
@@ -399,29 +449,47 @@ function core.modifyPlayerSpawnPoint(tagPath, composedObject, disable)
     local gameType = 0
 
     -- Get spawn info from tag name
-    if (tagPath:find('ctf')) then
-        dprint('CTF')
+    if (tagPath:find("ctf")) then
+        dprint("CTF")
         gameType = 1
-    elseif (tagPath:find('slayer')) then
-        dprint('SLAYER')
+    elseif (tagPath:find("slayer")) then
+        if (tagPath:find("generic")) then
+            dprint("SLAYER")
+        else
+            dprint("TEAM_SLAYER")
+        end
         gameType = 2
-    elseif (tagPath:find('generic')) then
-        dprint('GENERIC')
-        gameType = 12
+    elseif (tagPath:find("oddball")) then
+        dprint("ODDBALL")
+        gameType = 3
+    elseif (tagPath:find("koth")) then
+        dprint("KOTH")
+        gameType = 4
+    elseif (tagPath:find("race")) then
+        dprint("RACE")
+        gameType = 5
+        -- These gametypes are probably leftovers in the game (?)
+        --[[
+    elseif (tagPath:find("terminator")) then
+        dprint("SLAYER")
+        gameType = 6
+    elseif (tagPath:find("stub")) then
+        dprint("SLAYER")
+        gameType = 7]]
     end
 
-    if (tagPath:find('red')) then
-        dprint('RED TEAM')
+    if (tagPath:find("red")) then
+        dprint("RED TEAM")
         teamIndex = 0
-    elseif (tagPath:find('blue')) then
-        dprint('BLUE TEAM')
+    elseif (tagPath:find("blue")) then
+        dprint("BLUE TEAM")
         teamIndex = 1
     end
 
     -- SAPP and Chimera can't substract scenario tag in the same way
     local scenarioAddress
-    if (server_type == 'sapp') then
-        scenarioAddress = get_tag('scnr', constants.scenarioPath)
+    if (server_type == "sapp") then
+        scenarioAddress = get_tag("scnr", constants.scenarioPath)
     else
         scenarioAddress = get_tag(0)
     end
@@ -446,7 +514,7 @@ function core.modifyPlayerSpawnPoint(tagPath, composedObject, disable)
                 mapSpawnPoints[spawnId].type = gameType
 
                 -- Debug spawn index
-                dprint('Creating spawn replacing index: ' .. spawnId, 'warning')
+                dprint("Creating spawn replacing index: " .. spawnId, "warning")
                 composedObject.reflectionId = spawnId
                 break
             end
@@ -457,7 +525,9 @@ function core.modifyPlayerSpawnPoint(tagPath, composedObject, disable)
             -- Disable or "delete" spawn point by setting type as 0
             mapSpawnPoints[composedObject.reflectionId].type = 0
             -- Update spawn point list
-            blam.scenario(scenarioAddress, {spawnLocationList = mapSpawnPoints})
+            blam.scenario(scenarioAddress, {
+                spawnLocationList = mapSpawnPoints,
+            })
             return true
         end
         -- Replace spawn point values
@@ -467,45 +537,47 @@ function core.modifyPlayerSpawnPoint(tagPath, composedObject, disable)
         mapSpawnPoints[composedObject.reflectionId].rotation = math.rad(composedObject.yaw)
         dprint(mapSpawnPoints[composedObject.reflectionId].type)
         -- Debug spawn index
-        dprint('Updating spawn replacing index: ' .. composedObject.reflectionId)
+        dprint("Updating spawn replacing index: " .. composedObject.reflectionId)
     end
     -- Update spawn point list
-    blam.scenario(scenarioAddress, {spawnLocationList = mapSpawnPoints})
+    blam.scenario(scenarioAddress, {
+        spawnLocationList = mapSpawnPoints,
+    })
 end
 
 --- Enable, update and disable vehicle spawns
 -- Must be called after adding scenery object to the store!!
 -- @return true if found an available spawn
 function core.modifyVehicleSpawn(tagPath, composedObject, disable)
-    if (server_type == 'dedicated') then
+    if (server_type == "dedicated") then
         return true
     end
     local vehicleType = 0
     -- Get spawn info from tag name
-    if (tagPath:find('banshee')) then
-        dprint('banshee')
+    if (tagPath:find("banshee")) then
+        dprint("banshee")
         vehicleType = 0
-    elseif (tagPath:find('hog')) then
-        dprint('hog')
+    elseif (tagPath:find("hog")) then
+        dprint("hog")
         vehicleType = 1
-    elseif (tagPath:find('ghost')) then
-        dprint('ghost')
+    elseif (tagPath:find("ghost")) then
+        dprint("ghost")
         vehicleType = 2
-    elseif (tagPath:find('scorpion')) then
-        dprint('scorpion')
+    elseif (tagPath:find("scorpion")) then
+        dprint("scorpion")
         vehicleType = 3
-    elseif (tagPath:find('turret spawn')) then
-        dprint('turret')
+    elseif (tagPath:find("turret spawn")) then
+        dprint("turret")
         vehicleType = 4
-    elseif (tagPath:find('ball spawn')) then
-        dprint('ball')
+    elseif (tagPath:find("ball spawn")) then
+        dprint("ball")
         vehicleType = 5
     end
 
     -- SAPP and Chimera can't substract scenario tag in the same way
     local scenarioAddress
-    if (server_type == 'sapp') then
-        scenarioAddress = get_tag('scnr', constants.scenarioPath)
+    if (server_type == "sapp") then
+        scenarioAddress = get_tag("scnr", constants.scenarioPath)
     else
         scenarioAddress = get_tag(0)
     end
@@ -514,7 +586,7 @@ function core.modifyVehicleSpawn(tagPath, composedObject, disable)
     local scenario = blam.scenario(scenarioAddress)
 
     local vehicleLocationCount = scenario.vehicleLocationCount
-    dprint('Maximum count of vehicle spawn points: ' .. vehicleLocationCount)
+    dprint("Maximum count of vehicle spawn points: " .. vehicleLocationCount)
 
     local vehicleLocationList = scenario.vehicleLocationList
 
@@ -533,13 +605,15 @@ function core.modifyVehicleSpawn(tagPath, composedObject, disable)
                 vehicleLocationList[spawnId].type = vehicleType
 
                 -- Debug spawn index
-                dprint('Creating spawn replacing index: ' .. spawnId)
+                dprint("Creating spawn replacing index: " .. spawnId)
                 composedObject.reflectionId = spawnId
 
                 -- Update spawn point list
-                blam.scenario(scenarioAddress, {vehicleLocationList = vehicleLocationList})
-                dprint('object_create_anew v' .. vehicleLocationList[spawnId].nameIndex)
-                execute_script('object_create_anew v' .. vehicleLocationList[spawnId].nameIndex)
+                blam.scenario(scenarioAddress, {
+                    vehicleLocationList = vehicleLocationList,
+                })
+                dprint("object_create_anew v" .. vehicleLocationList[spawnId].nameIndex)
+                execute_script("object_create_anew v" .. vehicleLocationList[spawnId].nameIndex)
                 -- Stop looking for "available" spawn slots
                 break
             end
@@ -550,9 +624,13 @@ function core.modifyVehicleSpawn(tagPath, composedObject, disable)
             -- Disable or "delete" spawn point by setting type as 65535
             vehicleLocationList[composedObject.reflectionId].type = 65535
             -- Update spawn point list
-            blam.scenario(scenarioAddress, {vehicleLocationList = vehicleLocationList})
-            dprint('object_create_anew v' .. vehicleLocationList[composedObject.reflectionId].nameIndex)
-            execute_script('object_destroy v' .. vehicleLocationList[composedObject.reflectionId].nameIndex)
+            blam.scenario(scenarioAddress, {
+                vehicleLocationList = vehicleLocationList,
+            })
+            dprint("object_create_anew v" ..
+                       vehicleLocationList[composedObject.reflectionId].nameIndex)
+            execute_script("object_destroy v" ..
+                               vehicleLocationList[composedObject.reflectionId].nameIndex)
             return true
         end
         -- Replace spawn point values
@@ -563,10 +641,12 @@ function core.modifyVehicleSpawn(tagPath, composedObject, disable)
         -- REMINDER!!! Check vehicle rotation
 
         -- Debug spawn index
-        dprint('Updating spawn replacing index: ' .. composedObject.reflectionId)
+        dprint("Updating spawn replacing index: " .. composedObject.reflectionId)
 
         -- Update spawn point list
-        blam.scenario(scenarioAddress, {vehicleLocationList = vehicleLocationList})
+        blam.scenario(scenarioAddress, {
+            vehicleLocationList = vehicleLocationList,
+        })
     end
 end
 

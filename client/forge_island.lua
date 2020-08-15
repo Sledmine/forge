@@ -12,7 +12,7 @@ local glue = require "glue"
 local json = require "json"
 
 -- Halo Custom Edition libraries
-local blam = require "nlua-blam"
+blam = require "nlua-blam"
 blam = blam.compat35()
 local maethrillian = require "maethrillian"
 hfs = require "hcefs"
@@ -322,8 +322,8 @@ function onTick()
                     -- Object exists
                     if (composedObject) then
                         local tagType = get_tag_type(composedObject.object.tagId)
-                        if (tagType == "scen") then
-                            local isPlayerLookingAt = features.playerIsLookingAt(objectId, 0.047, 0)
+                        if (tagType == tagClasses.scenery) then
+                            local isPlayerLookingAt = core.playerIsLookingAt(objectId, 0.047, 0)
                             if (isPlayerLookingAt) then
 
                                 -- Get and parse object name
