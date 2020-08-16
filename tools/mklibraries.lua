@@ -1,7 +1,6 @@
 local glue = require 'glue'
 local fs = require 'fs'
 local md5 = require 'md5'
-local inspect = require 'ansicolors'
 local argparse = require 'argparse'
 
 -- Create argument parser with Updater info

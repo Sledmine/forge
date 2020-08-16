@@ -104,7 +104,7 @@ local function forgeReducer(state, action)
         return state
     elseif (action.type == 'UPDATE_FORGE_OBJECTS_LIST') then
         state.forgeMenu = action.payload.forgeMenu
-        local objectsList = glue.childsByParent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
+        local objectsList = glue.childsbyparent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
 
         -- Sort and prepare object list in alphabetic order
         local keysList = glue.keys(objectsList)
@@ -136,7 +136,7 @@ local function forgeReducer(state, action)
     elseif (action.type == 'DOWNWARD_NAV_FORGE_MENU') then
         state.forgeMenu.currentPage = 1
         state.forgeMenu.desiredElement = action.payload.desiredElement
-        local objectsList = glue.childsByParent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
+        local objectsList = glue.childsbyparent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
 
         -- Sort and prepare object list in alphabetic order
         local keysList = glue.keys(objectsList)
@@ -149,8 +149,8 @@ local function forgeReducer(state, action)
         return state
     elseif (action.type == 'UPWARD_NAV_FORGE_MENU') then
         state.forgeMenu.currentPage = 1
-        state.forgeMenu.desiredElement = glue.parentByChild(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
-        local objectsList = glue.childsByParent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
+        state.forgeMenu.desiredElement = glue.parentbychild(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
+        local objectsList = glue.childsbyparent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
 
         -- Sort and prepare object list in alphabetic order
         local keysList = glue.keys(objectsList)

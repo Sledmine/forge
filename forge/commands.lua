@@ -1,5 +1,7 @@
 local inspect = require "inspect"
-local tests = require "forge.tests"
+if (debugMode) then
+    local tests = require "forge.tests"
+end
 local glue = require "glue"
 
 local core = require "forge.core"
@@ -12,7 +14,7 @@ local function forgeCommands(command)
         return false
     else
         -- Split all the data in the command input
-        local splitCommand = glue.string.split(" ", command)
+        local splitCommand = glue.string.split(command, " ")
 
         -- Substract first console command
         local forgeCommand = splitCommand[1]
@@ -122,7 +124,7 @@ local function forgeCommands(command)
                 local tagType = get_tag_type(tagId)
                 if (tagType == tagClasses.weapon) then
                     local tagPath = get_tag_path(tagId)
-                    local splitPath = glue.string.split("\\", tagPath)
+                    local splitPath = glue.string.split(tagPath, "\\")
                     local weaponTagName = splitPath[#splitPath]
                     weaponsList[weaponTagName] = tagPath
                 end
@@ -152,6 +154,14 @@ local function forgeCommands(command)
             glue.writefile("forge_dump.json", inspect(forgeStore:getState()), "t")
             glue.writefile("events_dump.json", inspect(eventsStore:getState().forgeObjects), "t")
             glue.writefile("debug_dump.txt", debugBuffer, "t")
+            return false
+        elseif (forgeCommand == "fset") then
+            local playerState = playerStore:getState()
+            if (playerState.attachedObjectId) then
+                blam.object(get_object(playerState.attachedObjectId), {
+                    yaw = -0.99619472026825,
+                })
+            end
             return false
         elseif (forgeCommand == "fprint") then
             -- Testing rcon communication

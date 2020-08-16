@@ -85,7 +85,7 @@ function loadForgeMaps()
     local mapsList = {}
     for file in hfs.dir(forgeMapsFolder) do
         if (file ~= "." and file ~= "..") then
-            local splitFileName = glue.string.split(".", file)
+            local splitFileName = glue.string.split(file, ".")
             local extFile = splitFileName[#splitFileName]
             -- Only load files with extension .fmap
             if (extFile == "fmap") then
@@ -111,14 +111,14 @@ function onMapLoad()
 
     local forgeState = forgeStore:getState()
 
-    local tagCollectionAddress = get_tag('tag_collection', constants.scenerysTagCollectionPath)
+    local tagCollectionAddress = get_tag("tag_collection", constants.scenerysTagCollectionPath)
     local tagCollection = blam.tagCollection(tagCollectionAddress)
 
     -- TO DO: Refactor this entire loop, has been implemented from the old script!!!
     -- Iterate over all the sceneries available in the sceneries tag collection
     for i = 1, tagCollection.count do
         local sceneryPath = get_tag_path(tagCollection.tagList[i])
-        local sceneriesSplit = glue.string.split('\\', sceneryPath)
+        local sceneriesSplit = glue.string.split(sceneryPath, "\\")
         local sceneryFolderIndex
         for j, n in pairs(sceneriesSplit) do
             if (n == "scenery") then
@@ -135,10 +135,12 @@ function onMapLoad()
         -- Make a tree iteration to append sceneries
         local treePosition = forgeState.forgeMenu.objectsList.root
         for k, v in pairs(sceneriesSplit) do
-            if(v:sub(1, 1) == '_') then
-                v = glue.string.fromhex(0x2) .. v:sub(2, -1)
+            if (v:sub(1, 1) == "_") then
+                v = glue.string.fromhex(tostring((0x2))) .. v:sub(2, -1)
             end
-            if (not treePosition[v]) then treePosition[v] = {} end
+            if (not treePosition[v]) then
+                treePosition[v] = {}
+            end
             treePosition = treePosition[v]
         end
     end
@@ -204,8 +206,7 @@ function onTick()
     local player = blam.biped(get_dynamic_player())
     local playerState = playerStore:getState()
     if (player) then
-        player.isMonitor = core.isPlayerMonitor()
-        if (player.isMonitor) then
+        if (core.isPlayerMonitor()) then
 
             -- Provide better movement to monitors
             if (not player.ignoreCollision) then
@@ -253,7 +254,7 @@ function onTick()
                         },
                     })
                     features.printHUD("Distance from object is " ..
-                                    tostring(glue.round(playerState.distance)) .. " units.")
+                                          tostring(glue.round(playerState.distance)) .. " units.")
                     if (playerState.lockDistance) then
                         features.printHUD("Push n pull.")
                     else
@@ -263,10 +264,10 @@ function onTick()
 
                 if (not playerState.lockDistance) then
                     playerStore:dispatch({
-                        type = "UPDATE_DISTANCE"
+                        type = "UPDATE_DISTANCE",
                     })
                     playerStore:dispatch({
-                        type = "UPDATE_OFFSETS"
+                        type = "UPDATE_OFFSETS",
                     })
                 end
 
@@ -327,18 +328,21 @@ function onTick()
                             if (isPlayerLookingAt) then
 
                                 -- Get and parse object name
-                                local objectPath = glue.string.split('\\', get_tag_path(composedObject.object.tagId))
+                                local objectPath =
+                                    glue.string.split(get_tag_path(composedObject.object.tagId),
+                                                      "\\")
                                 local objectName = objectPath[#objectPath - 1]
                                 local objectCategory = objectPath[#objectPath - 2]
 
-                                if (objectCategory:sub(1, 1) == '_') then
+                                if (objectCategory:sub(1, 1) == "_") then
                                     objectCategory = objectCategory:sub(2, -1)
                                 end
 
                                 objectName = objectName:gsub("^%l", string.upper)
                                 objectCategory = objectCategory:gsub("^%l", string.upper)
 
-                                features.printHUD("NAME:  " .. objectName, "CATEGORY:  " .. objectCategory)
+                                features.printHUD("NAME:  " .. objectName,
+                                                  "CATEGORY:  " .. objectCategory)
 
                                 -- Update crosshair state
                                 if (features.setCrosshairState) then
@@ -488,6 +492,7 @@ function onTick()
     hook.attach("forge_menu", menu.stop, constants.uiWidgetDefinitions.forgeList)
     hook.attach("forge_menu_close", menu.stop, constants.uiWidgetDefinitions.forgeMenu)
     hook.attach("loading_menu_close", menu.stop, constants.uiWidgetDefinitions.loadingMenu)
+
 end
 
 -- This is not a mistake... right?
@@ -513,7 +518,7 @@ end
 
 function onRcon(message)
     local request = string.gsub(message, "'", "")
-    local splitData = glue.string.split(",", request)
+    local splitData = glue.string.split(request, ",")
     local requestType = constants.requestTypes[splitData[1]]
     if (requestType) then
         dprint("Decoding incoming " .. requestType .. " ...", "warning")

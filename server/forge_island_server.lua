@@ -10,7 +10,7 @@ api_version = "1.12.0.0"
 
 print("Server is running " .. _VERSION)
 -- Bring compatibility with Lua 5.3
-require("compat53")
+require "compat53"
 print("Compatibility with Lua 5.3 has been loaded!")
 
 -- Set server type to sapp for triggering certain server actions
@@ -200,7 +200,7 @@ function onRcon(playerIndex, message, environment, rconPassword)
         dprint("Incoming rcon message:", "warning")
         dprint(message)
         local request = string.gsub(message, "'", "")
-        local splitData = glue.string.split(",", request)
+        local splitData = glue.string.split(request, ",")
         local command = splitData[1]
         local requestType = constants.requestTypes[command]
         if (requestType) then
