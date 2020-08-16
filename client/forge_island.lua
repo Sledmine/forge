@@ -7,6 +7,7 @@
 clua_version = 2.042
 
 -- Lua libraries
+local inspect = require "inspect"
 local redux = require "lua-redux"
 local glue = require "glue"
 local json = require "json"
@@ -525,6 +526,7 @@ function onRcon(message)
         local requestObject = maethrillian.convertRequestToObject(request,
                                                                   constants.requestFormats[requestType])
 
+        -- TODO: Add better in game validation for these objects!!!!!!!                                                      
         if (requestObject) then
             dprint("Done.", "success")
         else

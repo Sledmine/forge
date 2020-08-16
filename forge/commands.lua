@@ -1,7 +1,4 @@
 local inspect = require "inspect"
-if (debugMode) then
-    local tests = require "forge.tests"
-end
 local glue = require "glue"
 
 local core = require "forge.core"
@@ -140,6 +137,7 @@ local function forgeCommands(command)
         elseif (forgeCommand == "ftest") then
             -- Run unit testing
             if (debugMode) then
+                local tests = require "forge.tests"
                 tests.run(true)
                 return false
             end
