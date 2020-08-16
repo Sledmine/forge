@@ -4,7 +4,6 @@
 -- Version: 1.0
 -- Forging features
 ------------------------------------------------------------------------------
-local blam = require "lua-blam"
 local constants = require "forge.constants"
 
 local features = {}

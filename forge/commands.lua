@@ -91,7 +91,6 @@ local function forgeCommands(command)
             })
             return false
         elseif (forgeCommand == "fdesc") then
-            -------------- DEBUGGING COMMANDS ONLY ---------------
             local mapDescription = table.concat(glue.shift(splitCommand, 1, -1), " "):gsub(",", " ")
             forgeStore:dispatch({
                 type = "SET_MAP_DESCRIPTION",
@@ -100,6 +99,7 @@ local function forgeCommands(command)
                 },
             })
             return false
+            -------------- DEBUGGING COMMANDS ONLY ---------------
         elseif (forgeCommand == "fmenu") then
             features.openMenu("[shm]\\halo_4\\ui\\shell\\map_vote_menu\\map_vote_menu")
             return false
@@ -139,8 +139,10 @@ local function forgeCommands(command)
             return false
         elseif (forgeCommand == "ftest") then
             -- Run unit testing
-            tests.run(true)
-            return false
+            if (debugMode) then
+                tests.run(true)
+                return false
+            end
         elseif (forgeCommand == "fobject") then
             local objectId = tonumber(splitCommand[2])
             console_out(tostring(get_object(objectId)))
@@ -154,14 +156,6 @@ local function forgeCommands(command)
             glue.writefile("forge_dump.json", inspect(forgeStore:getState()), "t")
             glue.writefile("events_dump.json", inspect(eventsStore:getState().forgeObjects), "t")
             glue.writefile("debug_dump.txt", debugBuffer, "t")
-            return false
-        elseif (forgeCommand == "fset") then
-            local playerState = playerStore:getState()
-            if (playerState.attachedObjectId) then
-                blam.object(get_object(playerState.attachedObjectId), {
-                    yaw = -0.99619472026825,
-                })
-            end
             return false
         elseif (forgeCommand == "fprint") then
             -- Testing rcon communication

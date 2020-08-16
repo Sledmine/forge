@@ -4,20 +4,17 @@
 -- Version: 1.0
 -- Couple of tests for Forge functionality
 ------------------------------------------------------------------------------
-local lu = require 'luaunit'
-
--- Halo Custom Edition libraries
-local blam = require 'lua-blam'
+local lu = require "luaunit"
 
 -- Forge modules
-local core = require 'forge.core'
-local constants = require 'forge.constants'
-local features = require 'forge.features'
+local core = require "forge.core"
+local constants = require "forge.constants"
+local features = require "forge.features"
 
 -- Mocked function to redirect print calls to test print
 local function tprint(message, ...)
     if (message) then
-        if (message:find('Starting')) then
+        if (message:find("Starting")) then
             console_out(message)
             return
         end
@@ -32,35 +29,41 @@ test_Rcon = {}
 
 function test_Rcon:setUp()
     -- Patch function if does not exist due to chimera blocking function thing
-    if (not onRcon) then onRcon = function() end end
+    if (not onRcon) then
+        onRcon = function()
+        end
+    end
     self.expectedDecodeResultSpawn = {
         pitch = 360,
-        requestType = '#s',
+        requestType = "#s",
         remoteId = 1234,
         roll = 360,
         tagId = 1234,
         x = 1,
         y = 2,
         yaw = 360,
-        z = 3
+        z = 3,
     }
 
     self.expectedDecodeResultUpdate = {
         pitch = 360,
-        requestType = '#u',
+        requestType = "#u",
         roll = 360,
         objectId = 1234,
         x = 1,
         y = 2,
         yaw = 360,
-        z = 3
+        z = 3,
     }
 
-    self.expectedDecodeResultDelete = {requestType = '#d', objectId = 1234}
+    self.expectedDecodeResultDelete = {
+        requestType = "#d",
+        objectId = 1234,
+    }
 end
 
 function test_Rcon:test_Callback()
-    local decodeResult = onRcon('I am a callback test!')
+    local decodeResult = onRcon("I am a callback test!")
     lu.assertEquals(decodeResult, true)
 end
 
@@ -72,8 +75,7 @@ function test_Rcon:test_Decode_Spawn()
 end
 
 function test_Rcon:test_Decode_Update()
-    local decodeResult, decodeData = onRcon(
-                                         "'#u,1234,0000803f,00000040,00004040,360,360,360'")
+    local decodeResult, decodeData = onRcon("'#u,1234,0000803f,00000040,00004040,360,360,360'")
     lu.assertEquals(decodeResult, false)
     lu.assertEquals(decodeData, self.expectedDecodeResultUpdate)
 end
@@ -93,7 +95,7 @@ function test_Objects:test_Objects_Spawn()
     for index, tagPath in pairs(forgeStore:getState().forgeMenu.objectsDatabase) do
 
         -- Spawn object in the game
-        local objectId = core.cspawn_object('scen', tagPath, 233, 41,
+        local objectId = core.cspawn_object("scen", tagPath, 233, 41,
                                             constants.minimumZSpawnPoint + 1)
 
         -- Check the object has been spawned
@@ -102,7 +104,7 @@ function test_Objects:test_Objects_Spawn()
         -- Clean up object
         if (objectId) then
             dprint(objectId)
-            dprint('Erasing object:' .. tagPath)
+            dprint("Erasing object:" .. tagPath)
             delete_object(objectId)
         end
         -- local deletionResult = get_object(objectId)
@@ -115,23 +117,21 @@ end
 test_Request = {}
 
 function test_Request:setUp()
-    self.expectedEncodeSpawnResult =
-        '#s,d2040000,0000803f,00000040,00004040,360,360,360'
-    self.expectedEncodeUpdateResult =
-        '#u,1234,0000803f,00000040,00004040,360,360,360'
-    self.expectedEncodeDeleteResult = '#d,1234'
+    self.expectedEncodeSpawnResult = "#s,d2040000,0000803f,00000040,00004040,360,360,360"
+    self.expectedEncodeUpdateResult = "#u,1234,0000803f,00000040,00004040,360,360,360"
+    self.expectedEncodeDeleteResult = "#d,1234"
 end
 
 function test_Request:test_Encode_Spawn()
     local objectExample = {
-        requestType = '#s',
-        tagId = '1234',
-        x = '1',
-        y = '2',
-        z = '3',
-        yaw = '360',
-        pitch = '360',
-        roll = '360'
+        requestType = "#s",
+        tagId = "1234",
+        x = "1",
+        y = "2",
+        z = "3",
+        yaw = "360",
+        pitch = "360",
+        roll = "360",
     }
     local result, request = core.sendRequest(objectExample)
     lu.assertEquals(result, true)
@@ -140,14 +140,14 @@ end
 
 function test_Request:test_Encode_Update()
     local objectExample = {
-        requestType = '#u',
-        objectId = '1234',
-        x = '1.0',
-        y = '2.0',
-        z = '3.0',
-        yaw = '360',
-        pitch = '360',
-        roll = '360'
+        requestType = "#u",
+        objectId = "1234",
+        x = "1.0",
+        y = "2.0",
+        z = "3.0",
+        yaw = "360",
+        pitch = "360",
+        roll = "360",
     }
     local result, request = core.sendRequest(objectExample)
     lu.assertEquals(result, true)
@@ -155,7 +155,10 @@ function test_Request:test_Encode_Update()
 end
 
 function test_Request:test_Encode_Spawn()
-    local objectExample = {requestType = '#d', objectId = '1234'}
+    local objectExample = {
+        requestType = "#d",
+        objectId = "1234",
+    }
     local result, request = core.sendRequest(objectExample)
     lu.assertEquals(result, true)
     lu.assertEquals(request, self.expectedEncodeDeleteResult)
@@ -167,15 +170,13 @@ test_Menus = {}
 
 function test_Menus:setUp()
     local forgeMenuTagPath = constants.uiWidgetDefinitions.forgeMenu
-    self.expectedTagId = get_simple_tag_id(tagClasses.uiWidgetDefinition,
-                                           forgeMenuTagPath)
+    self.expectedTagId = get_simple_tag_id(tagClasses.uiWidgetDefinition, forgeMenuTagPath)
 end
 
 function test_Menus:test_Forge_Menu()
 
     local menuTagPath = constants.uiWidgetDefinitions.forgeMenu
-    local bridgeWidget = get_tag('DeLa', constants.uiWidgetDefinitions
-                                     .errorNonmodalFullscreen)
+    local bridgeWidget = get_tag("DeLa", constants.uiWidgetDefinitions.errorNonmodalFullscreen)
     features.openMenu(menuTagPath, true)
     local bridgeWidgetData = blam.uiWidgetDefinition(bridgeWidget)
     lu.assertEquals(bridgeWidgetData.tagReference, self.expectedTagId)
@@ -190,7 +191,9 @@ function tests.run(output)
     debugMode = not debugMode
 
     local runner = lu.LuaUnit.new()
-    if (output) then runner:setOutputType('junit', 'forge_tests_results') end
+    if (output) then
+        runner:setOutputType("junit", "forge_tests_results")
+    end
     runner:runSuite()
     --[[if (bprint) then
         print = bprint
@@ -204,7 +207,7 @@ end
 
 -- Mocked arguments and executions for standalone execution and in game execution
 if (not arg) then
-    arg = {'-v'}
+    arg = {"-v"}
     -- bprint = print
     print = tprint
 else

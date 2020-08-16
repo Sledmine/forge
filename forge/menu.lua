@@ -5,8 +5,6 @@
 -- Menus handler
 ------------------------------------------------------------------------------
 
-local blam = require 'lua-blam'
-
 local menu = {}
 
 ---@param widgetPath string
