@@ -23,6 +23,7 @@ local redux = require "lua-redux"
 
 -- Specific Halo Custom Edition libraries
 blam = require "nlua-blam"
+tagClasses = blam.tagClasses
 blam = blam.compat35()
 local maethrillian = require "maethrillian"
 

@@ -13,7 +13,11 @@ local glue = require "glue"
 local json = require "json"
 
 -- Halo Custom Edition libraries
-blam = require "nlua-blam".compat35()
+blam = require "nlua-blam"
+-- Create global reference to tagClasses
+tagClasses = blam.tagClasses
+-- Bring old api compatibility
+blam = blam.compat35()
 local maethrillian = require "maethrillian"
 hfs = require "hcefs"
 
@@ -118,6 +122,7 @@ function onMapLoad()
     -- Iterate over all the sceneries available in the sceneries tag collection
     for i = 1, tagCollection.count do
         local sceneryPath = get_tag_path(tagCollection.tagList[i])
+
         local sceneriesSplit = glue.string.split(sceneryPath, "\\")
         local sceneryFolderIndex
         for j, n in pairs(sceneriesSplit) do
@@ -130,7 +135,9 @@ function onMapLoad()
             fixedSplittedPath[#fixedSplittedPath + 1] = sceneriesSplit[l]
         end
         sceneriesSplit = fixedSplittedPath
-        forgeState.forgeMenu.objectsDatabase[sceneriesSplit[#sceneriesSplit]] = sceneryPath
+        local sceneriesSplitLast = sceneriesSplit[#sceneriesSplit]
+
+        forgeState.forgeMenu.objectsDatabase[sceneriesSplitLast] = sceneryPath
         -- Set first level as the root of available current objects
         -- Make a tree iteration to append sceneries
         local treePosition = forgeState.forgeMenu.objectsList.root
@@ -384,7 +391,6 @@ function onTick()
                                             },
                                         })
                                 end
-
                                 -- Stop searching for other objects
                                 break
                             end

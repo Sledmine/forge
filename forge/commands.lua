@@ -178,6 +178,22 @@ local function forgeCommands(command)
             dprint(inspect(storeObjects))
 
             return false
+        elseif (forgeCommand == "fblam") then
+            console_out("lua-blam " .. blam.version)
+            return false
+        elseif (forgeCommand == "fspawn") then
+            -- Get scenario data
+            local scenario = blam.scenario(get_tag(0))
+
+            -- Get scenario player spawn points
+            local mapSpawnPoints = scenario.spawnLocationList
+            
+            mapSpawnPoints[1].type = 12
+
+            blam.scenario(scenarioAddress, {
+                spawnLocationList = mapSpawnPoints,
+            })
+            return false
         end
     end
     return true

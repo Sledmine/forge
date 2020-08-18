@@ -5,7 +5,7 @@
 -- Forging features
 ------------------------------------------------------------------------------
 -- TODO: THIS IS THE OLD LUA BLAM, USING GLOBAL NEW ONE CAUSES CRASHES, FIX IT!!!
-local blam = require "lua-blam"
+
 
 local constants = require "forge.constants"
 
