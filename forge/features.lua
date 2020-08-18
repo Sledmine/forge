@@ -11,32 +11,6 @@ local constants = require "forge.constants"
 
 local features = {}
 
--- Internal functions for rotation calculation
-local function rotate(x, y, alpha)
-    local cosAlpha = math.cos(math.rad(alpha))
-    local sinAlpha = math.sin(math.rad(alpha))
-    local t1 = x[1] * sinAlpha
-    local t2 = x[2] * sinAlpha
-    local t3 = x[3] * sinAlpha
-    x[1] = x[1] * cosAlpha + y[1] * sinAlpha
-    x[2] = x[2] * cosAlpha + y[2] * sinAlpha
-    x[3] = x[3] * cosAlpha + y[3] * sinAlpha
-    y[1] = y[1] * cosAlpha - t1
-    y[2] = y[2] * cosAlpha - t2
-    y[3] = y[3] * cosAlpha - t3
-end
-
--- Internal functions for rotation calculation
-function features.convertDegrees(yaw, pitch, roll)
-    local F = {1, 0, 0}
-    local L = {0, 1, 0}
-    local T = {0, 0, 1}
-    rotate(F, L, yaw)
-    rotate(F, T, pitch)
-    rotate(T, L, roll)
-    return {F[1], -L[1], -T[1], -F[3], L[3], T[3]}
-end
-
 --- Changes default crosshair values
 ---@param state number
 function features.setCrosshairState(state)

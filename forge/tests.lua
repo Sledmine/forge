@@ -91,7 +91,6 @@ end
 test_Objects = {}
 
 function test_Objects:test_Objects_Spawn()
-    local objectResult = false
     for index, tagPath in pairs(forgeStore:getState().forgeMenu.objectsDatabase) do
 
         -- Spawn object in the game
@@ -180,6 +179,38 @@ function test_Menus:test_Forge_Menu()
     features.openMenu(menuTagPath, true)
     local bridgeWidgetData = blam.uiWidgetDefinition(bridgeWidget)
     lu.assertEquals(bridgeWidgetData.tagReference, self.expectedTagId)
+end
+
+----------------- Core Functions Tests -----------------------
+
+test_Core = {}
+
+function test_Core:setUp()
+    -- yaw 0, pitch 0, roll 0
+    self.case1Array = {1, 0, 0, 0, 0, 1}
+    self.case1Matrix = {
+        {1, 0, 0},
+        {0, 1, 0},
+        {0, 0, 1},
+    }
+    -- yaw 45, pitch 0, roll 0
+    self.case2Array = {0.70710678118655, 0.70710678118655, 0, 0, 0, 1}
+    self.case2Matrix = {
+        {1, 0, 0},
+        {0, 1, 0},
+        {0, 0, 1},
+    }
+end
+
+function test_Core:test_Euler_Rotation()
+    local case1Array, case1Matrix = core.eulerRotation(0, 0, 0)
+    lu.assertEquals(case1Array, self.case1Array, "Rotation array must match", true)
+    lu.assertEquals(case1Matrix, self.case1Matrix, "Rotation matrix must match", true)
+
+    --[[
+    local case2Array, case2Matrix = core.eulerRotation(45, 0, 0)
+    lu.assertEquals(case2Array, self.case2Array, "Rotation array must match", true)
+    lu.assertEquals(case2Matrix, self.case2Matrix, "Rotation matrix must match", true)]]
 end
 
 ----------------------------------

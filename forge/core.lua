@@ -66,20 +66,88 @@ function core.playerIsLookingAt(target, sensitivity, zOffset)
     return false
 end
 
+-- Old internal functions for rotation calculation
+--[[
+local function rotate(x, y, alpha)
+    local cosAlpha = math.cos(math.rad(alpha))
+    local sinAlpha = math.sin(math.rad(alpha))
+    local t1 = x[1] * sinAlpha
+    local t2 = x[2] * sinAlpha
+    local t3 = x[3] * sinAlpha
+    x[1] = x[1] * cosAlpha + y[1] * sinAlpha
+    x[2] = x[2] * cosAlpha + y[2] * sinAlpha
+    x[3] = x[3] * cosAlpha + y[3] * sinAlpha
+    y[1] = y[1] * cosAlpha - t1
+    y[2] = y[2] * cosAlpha - t2
+    y[3] = y[3] * cosAlpha - t3
+end
+
+function core.eulerToMatrix(yaw, pitch, roll)
+    local F = {1, 0, 0}
+    local L = {0, 1, 0}
+    local T = {0, 0, 1}
+    rotate(F, L, yaw)
+    rotate(F, T, pitch)
+    rotate(T, L, roll)
+    return {F[1], -L[1], -T[1], -F[3], L[3], T[3]}, {
+        F,
+        L,
+        T,
+    }
+end
+]]
+
+--- Covert euler rotation into game rotation array, optional rotation matrix
+---@param yaw number
+---@param pitch number
+---@param roll number
+---@return table, table
+function core.eulerRotation(yaw, pitch, roll)
+    local matrix = {
+        {1, 0, 0},
+        {0, 1, 0},
+        {0, 0, 1},
+    }
+    local cosPitch = math.cos(math.rad(pitch))
+    local sinPitch = math.sin(math.rad(pitch))
+    local cosYaw = math.cos(math.rad(yaw))
+    local sinYaw = math.sin(math.rad(yaw))
+    local cosRoll = math.cos(math.rad(roll))
+    local sinRoll = math.sin(math.rad(roll))
+    matrix[1][1] = cosPitch * cosYaw
+    matrix[1][2] = sinPitch * sinRoll - cosPitch * sinYaw * cosRoll
+    matrix[1][3] = cosPitch * sinYaw * sinRoll + sinPitch * cosRoll
+    matrix[2][1] = sinYaw
+    matrix[2][2] = cosYaw * cosRoll
+    matrix[2][3] = -cosYaw * sinRoll
+    matrix[3][1] = -sinPitch * cosYaw
+    matrix[3][2] = sinPitch * sinYaw * cosRoll + cosPitch * sinRoll
+    matrix[3][3] = -sinPitch * sinYaw * sinRoll + cosPitch * cosRoll
+    local array = {
+        matrix[1][1],
+        matrix[2][1],
+        matrix[3][1],
+        matrix[1][3],
+        matrix[2][3],
+        matrix[3][3],
+    }
+    return array, matrix
+end
+
 --- Rotate object into desired degrees
 ---@param objectId number
 ---@param yaw number
 ---@param pitch number
 ---@param roll number
 function core.rotateObject(objectId, yaw, pitch, roll)
-    local rotation = features.convertDegrees(yaw, pitch, roll)
+    local rotation = core.eulerRotation(yaw, pitch, roll)
     blam.object(get_object(objectId), {
-        pitch = rotation[1],
-        yaw = rotation[2],
-        roll = rotation[3],
-        xScale = rotation[4],
-        yScale = rotation[5],
-        zScale = rotation[6],
+        vX = rotation[1],
+        vY = rotation[2],
+        vZ = rotation[3],
+        v2X = rotation[4],
+        v2Y = rotation[5],
+        v2Z = rotation[6],
     })
 end
 

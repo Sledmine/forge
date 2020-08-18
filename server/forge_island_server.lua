@@ -148,9 +148,8 @@ end
 function onPlayerSpawn(playerIndex)
     local player = blam.biped(get_dynamic_player(playerIndex))
     if (player) then
-        player.isMonitor = core.isPlayerMonitor(playerIndex)
         -- Provide better movement to monitors
-        if (player.isMonitor and not player.ignoreCollision) then
+        if (core.isPlayerMonitor(playerIndex) and not player.ignoreCollision) then
             blam.biped(get_dynamic_player(playerIndex), {
                 ignoreCollision = true,
             })
