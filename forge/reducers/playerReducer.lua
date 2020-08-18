@@ -7,13 +7,13 @@ local constants = require "forge.constants"
 function playerReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
+        ---@class playerState
+        ---@field object biped
         state = {
             lockDistance = true,
             distance = 5,
             attachedObjectId = nil,
-            playerNewX = nil,
-            playerNewY = nil,
-            playerNewZ = nil,
+            object = nil,
             xOffset = 0,
             yOffset = 0,
             zOffset = 0,
@@ -181,6 +181,13 @@ function playerReducer(state, action)
         state.pitch = 0
         state.roll = 0
         -- state.currentAngle = 'yaw'
+        return state
+    elseif (action.type == "SAVE_POSITION") then
+        -- Do not forget to migrate this to dumpObject or getAll
+        state.object = blam.biped(get_dynamic_player())
+        return state
+    elseif (action.type == "RESET_POSITION") then
+        state.object = nil
         return state
     else
         return state

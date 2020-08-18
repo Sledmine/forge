@@ -210,9 +210,22 @@ end
 -- Where the magick happens, tiling!
 function onTick()
     -- Get player object
+    ---@type biped
     local player = blam.biped(get_dynamic_player())
+    ---@type playerState
     local playerState = playerStore:getState()
     if (player) then
+        local oldPosition = playerState.object
+        if (playerPosition) then
+            blam.biped(get_dynamic_player(), {
+                x = oldPosition.x,
+                y = oldPosition.y,
+                z = oldPosition.z + 0.1
+            })
+            playerStore:dispatch({
+                type = "RESET_POSITION",
+            })
+        end
         if (core.isPlayerMonitor()) then
 
             -- Provide better movement to monitors
@@ -306,16 +319,6 @@ function onTick()
                     })
                 end
             else
-                -- Open Forge menu by pressing 'Q'
-                if (player.flashlightKey) then
-                    dprint("Opening Forge menu...")
-                    features.openMenu(constants.uiWidgetDefinitions.forgeMenu)
-                elseif (player.crouchHold) then
-                    features.swapBiped()
-                    playerStore:dispatch({
-                        type = "DETACH_OBJECT",
-                    })
-                end
 
                 -- Set crosshair to not selected state
                 features.setCrosshairState(0)
@@ -396,6 +399,16 @@ function onTick()
                             end
                         end
                     end
+                end
+                -- Open Forge menu by pressing 'Q'
+                if (player.flashlightKey) then
+                    dprint("Opening Forge menu...")
+                    features.openMenu(constants.uiWidgetDefinitions.forgeMenu)
+                elseif (player.crouchHold) then
+                    features.swapBiped()
+                    playerStore:dispatch({
+                        type = "DETACH_OBJECT",
+                    })
                 end
             end
         else

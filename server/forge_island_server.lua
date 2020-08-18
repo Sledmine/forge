@@ -154,12 +154,12 @@ function onPlayerSpawn(playerIndex)
                 ignoreCollision = true,
             })
         end
-        local pos = playerObjectTempPos[playerIndex]
-        if (pos) then
+        local playerPosition = playerObjectTempPos[playerIndex]
+        if (playerPosition) then
             blam.object(get_dynamic_player(playerIndex), {
-                x = pos[1],
-                y = pos[2],
-                z = pos[3],
+                x = playerPosition[1],
+                y = playerPosition[2],
+                z = playerPosition[3],
             })
             playerObjectTempPos[playerIndex] = nil
         end

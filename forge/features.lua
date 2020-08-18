@@ -4,9 +4,6 @@
 -- Version: 1.0
 -- Forging features
 ------------------------------------------------------------------------------
--- TODO: THIS IS THE OLD LUA BLAM, USING GLOBAL NEW ONE CAUSES CRASHES, FIX IT!!!
-
-
 local constants = require "forge.constants"
 
 local features = {}
@@ -83,6 +80,18 @@ end
 function features.swapBiped()
     features.unhighlightAll()
     if (server_type == "local") then
+        local player = blam.biped(get_dynamic_player())
+        if (player) then
+            playerStore:dispatch({
+                type = "SAVE_POSITION",
+                payload = {
+                    x = player.x,
+                    y = player.y,
+                    z = player.z,
+                },
+            })
+        end
+
         -- Avoid annoying low health/shield bug after swaping bipeds
         blam.biped(get_dynamic_player(), {
             health = 100,
