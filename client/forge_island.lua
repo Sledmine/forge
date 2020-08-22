@@ -203,13 +203,13 @@ function onMapLoad()
         forgeMapsFolder = hfs.currentdir() .. "\\fmaps"
         local alreadyForgeMapsFolder = not hfs.mkdir(forgeMapsFolder)
         if (not alreadyForgeMapsFolder) then
-            dprint("Forge maps folder has been created!")
+            console_out("Forge maps folder has been created!")
         end
 
         configurationFolder = hfs.currentdir() .. "\\config"
         local alreadyConfigurationFolder = not hfs.mkdir(configurationFolder)
         if (not alreadyConfigurationFolder) then
-            dprint("Configuratin folder has been created!")
+            console_out("Configuratin folder has been created!")
         end
 
         -- Load all the forge stuff
