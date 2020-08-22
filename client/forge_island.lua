@@ -40,12 +40,12 @@ local votingReducer = require "forge.reducers.votingReducer"
 local forgeReflector = require "forge.reflectors.forgeReflector"
 local votingReflector = require "forge.reflectors.votingReflector"
 
--- Default debug mode state
-debugMode = glue.readfile("forge_debug_mode.dbg", "t")
-
 -- Forge default configuration
 -- DO NOT MODIFY ON SCRIPT!! use json config file instead
 configuration = {
+    debugMode = false,
+    autoSave = true,
+    autoSaveTime = 10000,
     snapMode = false,
     objectsCastShadow = false,
 }
@@ -79,11 +79,16 @@ function validateMapName()
 end
 
 function loadForgeConfiguration()
+    local configurationFolder = hfs.currentdir() .. "\\config"
     local configurationFile = glue.readfile(configurationFolder .. "\\forge_island.json")
     if (configurationFile) then
         configuration = json.decode(configurationFile)
     end
 end
+
+loadForgeConfiguration()
+
+debugMode = configuration.debugMode
 
 function loadForgeMaps()
     local mapsList = {}
@@ -104,6 +109,17 @@ function loadForgeMaps()
         type = "UPDATE_MAP_LIST",
         payload = data,
     })
+end
+
+function autoSaveForgeMap()
+    if (configuration.autoSave and core.isPlayerMonitor()) then
+        ---@type forgeState
+        local forgeState = forgeStore:getState()
+        local currentMapName = forgeState.currentMap.name
+        if (currentMapName and currentMapName ~= "Unsaved") then
+            core.saveForgeMap()
+        end
+    end
 end
 
 function onMapLoad()
@@ -196,12 +212,19 @@ function onMapLoad()
             dprint("Configuratin folder has been created!")
         end
 
+        -- Load all the forge stuff
         loadForgeConfiguration()
         loadForgeMaps()
+
+        -- Start autosave timer
+        if (not autoSaveTimer and server_type == "local") then
+            autoSaveTimer = set_timer(configuration.autoSaveTime, "autoSaveForgeMap")
+        end
 
         set_callback("tick", "onTick")
         set_callback("rcon message", "onRcon")
         set_callback("command", "onCommand")
+
     else
         error("This is not a compatible Forge map!!!")
     end
@@ -216,18 +239,17 @@ function onTick()
     local playerState = playerStore:getState()
     if (player) then
         local oldPosition = playerState.object
-        if (playerPosition) then
+        if (oldPosition) then
             blam.biped(get_dynamic_player(), {
                 x = oldPosition.x,
                 y = oldPosition.y,
-                z = oldPosition.z + 0.1
+                z = oldPosition.z + 0.1,
             })
             playerStore:dispatch({
                 type = "RESET_POSITION",
             })
         end
         if (core.isPlayerMonitor()) then
-
             -- Provide better movement to monitors
             if (not player.ignoreCollision) then
                 blam.biped(get_dynamic_player(), {
@@ -298,10 +320,10 @@ function onTick()
                 features.setCrosshairState(2)
 
                 -- This was disabled because now objects can be spawned everywhere!
-                --[[if (playerState.zOffset < constants.minimumZSpawnPoint) then
-                    -- Set crosshair to not allowed
-                    features.setCrosshairState(3)
-                end]]
+                -- if (playerState.zOffset < constants.minimumZSpawnPoint) then
+                -- Set crosshair to not allowed
+                --    features.setCrosshairState(3)
+                -- end
 
                 -- Update object position
                 blam.object(get_object(attachedObjectId), {
@@ -545,7 +567,7 @@ function onRcon(message)
         local requestObject = maethrillian.convertRequestToObject(request,
                                                                   constants.requestFormats[requestType])
 
-        -- TODO: Add better in game validation for these objects!!!!!!!                                                      
+        -- // TODO: Add better in game validation for these objects!!!!!!!
         if (requestObject) then
             dprint("Done.", "success")
         else
@@ -577,9 +599,9 @@ function onRcon(message)
     return true
 end
 
--- Allows the script to run by just reloading it
+-- // TODO: Change this in to a command or a key sequence
 if (server_type == "local") then
-    onMapLoad()
+    -- onMapLoad()
 end
 
 function onCommand(command)

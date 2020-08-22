@@ -387,7 +387,7 @@ function core.loadForgeMap(mapName)
     return false
 end
 
-function core.saveForgeMap(mapName)
+function core.saveForgeMap()
     dprint("Saving forge map...")
 
     local forgeState = forgeStore:getState()
@@ -447,6 +447,10 @@ function core.saveForgeMap(mapName)
 
         -- Reload forge maps list
         loadForgeMaps()
+
+        if (server_type == "local") then
+            features.printHUD("Done.", "Saving " .. mapName .. "..")
+        end
     else
         dprint("ERROR!! At saving '" .. mapName .. "' as a forge map...", "error")
     end

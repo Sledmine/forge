@@ -5,6 +5,7 @@
 -- Couple of tests for Forge functionality
 ------------------------------------------------------------------------------
 local lu = require "luaunit"
+local glue = require "glue"
 
 -- Forge modules
 local core = require "forge.core"
@@ -90,24 +91,20 @@ end
 
 test_Objects = {}
 
-function test_Objects:test_Objects_Spawn()
+function test_Objects:test_Spawn_And_Rotate_Objects()
     for index, tagPath in pairs(forgeStore:getState().forgeMenu.objectsDatabase) do
-
         -- Spawn object in the game
         local objectId = core.cspawn_object("scen", tagPath, 233, 41,
                                             constants.minimumZSpawnPoint + 1)
-
         -- Check the object has been spawned
         lu.assertNotIsNil(objectId)
-
-        -- Clean up object
         if (objectId) then
-            dprint(objectId)
-            dprint("Erasing object:" .. tagPath)
+            for i = 1, 1000 do
+                core.rotateObject(objectId, math.random(1, 360), math.random(1, 360),
+                                  math.random(1, 360))
+            end
             delete_object(objectId)
         end
-        -- local deletionResult = get_object(objectId)
-        -- lu.assertIsNil(deletionResult)
     end
 end
 
@@ -173,7 +170,6 @@ function test_Menus:setUp()
 end
 
 function test_Menus:test_Forge_Menu()
-
     local menuTagPath = constants.uiWidgetDefinitions.forgeMenu
     local bridgeWidget = get_tag("DeLa", constants.uiWidgetDefinitions.errorNonmodalFullscreen)
     features.openMenu(menuTagPath, true)
@@ -194,7 +190,14 @@ function test_Core:setUp()
         {0, 0, 1},
     }
     -- yaw 45, pitch 0, roll 0
-    self.case2Array = {0.70710678118655, 0.70710678118655, 0, 0, 0, 1}
+    self.case2Array = {
+        0.70710678118655,
+        0.70710678118655,
+        0,
+        0,
+        0,
+        1,
+    }
     self.case2Matrix = {
         {1, 0, 0},
         {0, 1, 0},
@@ -207,8 +210,7 @@ function test_Core:test_Euler_Rotation()
     lu.assertEquals(case1Array, self.case1Array, "Rotation array must match", true)
     lu.assertEquals(case1Matrix, self.case1Matrix, "Rotation matrix must match", true)
 
-    --[[
-    local case2Array, case2Matrix = core.eulerRotation(45, 0, 0)
+    --[[local case2Array, case2Matrix = core.eulerRotation(45, 0, 0)
     lu.assertEquals(case2Array, self.case2Array, "Rotation array must match", true)
     lu.assertEquals(case2Matrix, self.case2Matrix, "Rotation matrix must match", true)]]
 end
@@ -217,22 +219,15 @@ end
 
 function tests.run(output)
     ftestingMode = true
-
     -- Disable debug printing
     debugMode = not debugMode
-
     local runner = lu.LuaUnit.new()
     if (output) then
         runner:setOutputType("junit", "forge_tests_results")
     end
     runner:runSuite()
-    --[[if (bprint) then
-        print = bprint
-    end]]
-
     -- Restore debug printing
     debugMode = not debugMode
-
     ftestingMode = false
 end
 

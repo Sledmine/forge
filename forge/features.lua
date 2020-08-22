@@ -83,19 +83,14 @@ function features.swapBiped()
         local player = blam.biped(get_dynamic_player())
         if (player) then
             playerStore:dispatch({
-                type = "SAVE_POSITION",
-                payload = {
-                    x = player.x,
-                    y = player.y,
-                    z = player.z,
-                },
+                type = "SAVE_POSITION"
             })
         end
 
         -- Avoid annoying low health/shield bug after swaping bipeds
         blam.biped(get_dynamic_player(), {
-            health = 100,
-            shield = 100,
+            health = 1,
+            shield = 1,
         })
 
         -- Needs kinda refactoring, probably splitting this into LuaBlam
@@ -150,11 +145,11 @@ function features.printHUD(message, optional)
         cleanLimit = 2
     end
     for i = 1, cleanLimit do
-        hud_message("")
+        execute_script("cls")
     end
-    hud_message(message)
+    console_out(message)
     if (optional) then
-        hud_message(optional)
+        console_out(optional)
     end
 end
 

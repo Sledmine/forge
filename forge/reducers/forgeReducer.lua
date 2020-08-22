@@ -10,6 +10,7 @@ local menu = require 'forge.menu'
 local function forgeReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
+        ---@class forgeState
         state = {
             mapsMenu = {
                 mapsList = {},
