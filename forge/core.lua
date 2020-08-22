@@ -306,16 +306,18 @@ function core.resetSpawnPoints()
 end
 
 function core.flushForge()
-    local forgeObjects = eventsStore:getState().forgeObjects
-    if (#glue.keys(forgeObjects) > 0 and #get_objects() > 0) then
-        -- saveForgeMap('unsaved')
-        -- execute_script('object_destroy_all')
-        for objectId, composedObject in pairs(forgeObjects) do
-            delete_object(objectId)
+    if (eventsStore) then
+        local forgeObjects = eventsStore:getState().forgeObjects
+        if (#glue.keys(forgeObjects) > 0 and #get_objects() > 0) then
+            -- saveForgeMap('unsaved')
+            -- execute_script('object_destroy_all')
+            for objectId, composedObject in pairs(forgeObjects) do
+                delete_object(objectId)
+            end
+            eventsStore:dispatch({
+                type = constants.actionTypes.FLUSH_FORGE
+            })
         end
-        eventsStore:dispatch({
-            type = constants.actionTypes.FLUSH_FORGE
-        })
     end
 end
 
