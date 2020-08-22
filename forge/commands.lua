@@ -23,13 +23,13 @@ local function forgeCommands(command)
                 playerStore:dispatch({
                     type = "SET_ROTATION_STEP",
                     payload = {
-                        step = newRotationStep,
-                    },
+                        step = newRotationStep
+                    }
                 })
             else
                 playerStore:dispatch({
                     type = "SET_ROTATION_STEP",
-                    payload = {step = 3},
+                    payload = {step = 3}
                 })
             end
             return false
@@ -42,23 +42,23 @@ local function forgeCommands(command)
                 playerStore:dispatch({
                     type = "SET_LOCK_DISTANCE",
                     payload = {
-                        lockDistance = true,
-                    },
+                        lockDistance = true
+                    }
                 })
                 local distance = glue.round(newDistance)
                 playerStore:dispatch({
                     type = "SET_DISTANCE",
                     payload = {
-                        distance = distance,
-                    },
+                        distance = distance
+                    }
                 })
             else
                 local distance = 3
                 playerStore:dispatch({
                     type = "SET_DISTANCE",
                     payload = {
-                        distance = distance,
-                    },
+                        distance = distance
+                    }
                 })
             end
             return false
@@ -84,7 +84,7 @@ local function forgeCommands(command)
             local mapName = table.concat(glue.shift(splitCommand, 1, -1), " "):gsub(",", " ")
             forgeStore:dispatch({
                 type = "SET_MAP_NAME",
-                payload = {mapName = mapName},
+                payload = {mapName = mapName}
             })
             return false
         elseif (forgeCommand == "fdesc") then
@@ -92,8 +92,8 @@ local function forgeCommands(command)
             forgeStore:dispatch({
                 type = "SET_MAP_DESCRIPTION",
                 payload = {
-                    mapDescription = mapDescription,
-                },
+                    mapDescription = mapDescription
+                }
             })
             return false
             -------------- DEBUGGING COMMANDS ONLY ---------------
@@ -187,11 +187,11 @@ local function forgeCommands(command)
 
             -- Get scenario player spawn points
             local mapSpawnPoints = scenario.spawnLocationList
-            
+
             mapSpawnPoints[1].type = 12
 
             blam.scenario(scenarioAddress, {
-                spawnLocationList = mapSpawnPoints,
+                spawnLocationList = mapSpawnPoints
             })
             return false
         end

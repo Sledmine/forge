@@ -18,35 +18,35 @@ function features.setCrosshairState(state)
             defaultRed = 64,
             defaultGreen = 169,
             defaultBlue = 255,
-            sequenceIndex = 1,
+            sequenceIndex = 1
         })
     elseif (state == 1) then
         blam.weaponHudInterface(forgeCrosshairAddress, {
             defaultRed = 0,
             defaultGreen = 255,
             defaultBlue = 0,
-            sequenceIndex = 2,
+            sequenceIndex = 2
         })
     elseif (state == 2) then
         blam.weaponHudInterface(forgeCrosshairAddress, {
             defaultRed = 0,
             defaultGreen = 255,
             defaultBlue = 0,
-            sequenceIndex = 3,
+            sequenceIndex = 3
         })
     elseif (state == 3) then
         blam.weaponHudInterface(forgeCrosshairAddress, {
             defaultRed = 255,
             defaultGreen = 0,
             defaultBlue = 0,
-            sequenceIndex = 4,
+            sequenceIndex = 4
         })
     else
         blam.weaponHudInterface(forgeCrosshairAddress, {
             defaultRed = 64,
             defaultGreen = 169,
             defaultBlue = 255,
-            sequenceIndex = 0,
+            sequenceIndex = 0
         })
     end
 end
@@ -60,7 +60,7 @@ function features.unhighlightAll()
             local tagType = get_tag_type(tempObject.tagId)
             if (tagType == "scen") then
                 blam.object(get_object(objectId), {
-                    health = 0,
+                    health = 0
                 })
             end
         end
@@ -72,7 +72,7 @@ end
 function features.highlightObject(objectId, transparency)
     -- Highlight object
     blam.object(get_object(objectId), {
-        health = transparency,
+        health = transparency
     })
 end
 
@@ -90,7 +90,7 @@ function features.swapBiped()
         -- Avoid annoying low health/shield bug after swaping bipeds
         blam.biped(get_dynamic_player(), {
             health = 1,
-            shield = 1,
+            shield = 1
         })
 
         -- Needs kinda refactoring, probably splitting this into LuaBlam
@@ -125,7 +125,7 @@ function features.openMenu(tagPath, prevent)
         blam.uiWidgetDefinition(get_tag("DeLa",
                                         constants.uiWidgetDefinitions.errorNonmodalFullscreen),
                                 {
-            tagReference = newMenuTagId,
+            tagReference = newMenuTagId
         })
         if (not prevent) then
             execute_script("multiplayer_map_name lua-blam-rocks")

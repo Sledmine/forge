@@ -21,7 +21,7 @@ function playerReducer(state, action)
             pitch = 0,
             roll = 0,
             rotationStep = 5,
-            currentAngle = "yaw",
+            currentAngle = "yaw"
         }
     end
     if (action.type == "SET_LOCK_DISTANCE") then
@@ -94,7 +94,7 @@ function playerReducer(state, action)
                     objectId = state.attachedObjectId,
                     yaw = state.yaw,
                     pitch = state.pitch,
-                    roll = state.roll,
+                    roll = state.roll
                 }
                 core.sendRequest(core.createRequest(composedObject,
                                                     constants.requestTypes.SPAWN_OBJECT))

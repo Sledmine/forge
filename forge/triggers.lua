@@ -12,11 +12,11 @@ local triggers = {}
 function triggers.get(triggerName, triggersNumber)
     local restoreTriggersState = (function()
         for i = 1, triggersNumber do
-            execute_script('set ' .. triggerName .. '_trigger_' .. i .. ' false')
+            execute_script("set " .. triggerName .. "_trigger_" .. i .. " false")
         end
     end)
     for i = 1, triggersNumber do
-        if (get_global(triggerName .. '_trigger_' .. i)) then
+        if (get_global(triggerName .. "_trigger_" .. i)) then
             restoreTriggersState()
             return i
         end

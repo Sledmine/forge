@@ -102,7 +102,7 @@ function OnScriptLoad()
         "#b",
         "#v",
         "fload",
-        "fsave",
+        "fsave"
     }
     for index, command in pairs(forgeCommands) do
         execute_command("lua_call rcon_bypass submitCommand " .. command)
@@ -151,7 +151,7 @@ function onPlayerSpawn(playerIndex)
         -- Provide better movement to monitors
         if (core.isPlayerMonitor(playerIndex) and not player.ignoreCollision) then
             blam.biped(get_dynamic_player(playerIndex), {
-                ignoreCollision = true,
+                ignoreCollision = true
             })
         end
         local playerPosition = playerObjectTempPos[playerIndex]
@@ -159,7 +159,7 @@ function onPlayerSpawn(playerIndex)
             blam.object(get_dynamic_player(playerIndex), {
                 x = playerPosition[1],
                 y = playerPosition[2],
-                z = playerPosition[3],
+                z = playerPosition[3]
             })
             playerObjectTempPos[playerIndex] = nil
         end
@@ -231,8 +231,8 @@ function onRcon(playerIndex, message, environment, rconPassword)
                 eventsStore:dispatch({
                     type = requestType,
                     payload = {
-                        requestObject = requestObject,
-                    },
+                        requestObject = requestObject
+                    }
                 })
             end
             return false, requestObject
@@ -248,7 +248,7 @@ function onRcon(playerIndex, message, environment, rconPassword)
                         {
                             player.x,
                             player.y,
-                            player.z,
+                            player.z
                         }
                     if (player.tagId == get_tag_id("bipd", constants.bipeds.monitor)) then
                         bipedChangeRequest[playerIndex] = "spartan"
@@ -267,7 +267,7 @@ function onRcon(playerIndex, message, environment, rconPassword)
                 local forgeObjects = eventsStore:getState().forgeObjects
                 if (#glue.keys(forgeObjects) > 0) then
                     forgeMap = mapName
-                    --execute_script("sv_map forge_island " .. gameType)
+                    -- execute_script("sv_map forge_island " .. gameType)
                 else
                     core.loadForgeMap(mapName)
                 end
@@ -287,7 +287,7 @@ end
 
 function onGameEnd()
     eventsStore:dispatch({
-        type = constants.actionTypes.FLUSH_FORGE,
+        type = constants.actionTypes.FLUSH_FORGE
     })
 end
 

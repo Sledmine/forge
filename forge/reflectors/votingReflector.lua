@@ -28,14 +28,14 @@ local function forgeReflector()
 
     -- Update string list
     blam.unicodeStringList(unideStringListAddress, {
-        stringList = currentMapsList,
+        stringList = currentMapsList
     })
 
     unideStringListAddress = get_tag(tagClasses.unicodeStringList,
                                      constants.unicodeStrings.votingCountList)
 
     blam.unicodeStringList(unideStringListAddress, {
-        stringList = votesList,
+        stringList = votesList
     })
 
 end

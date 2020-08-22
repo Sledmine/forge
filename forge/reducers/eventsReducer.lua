@@ -98,7 +98,7 @@ local function eventsReducer(state, action)
         state.forgeObjects[localObjectId] = composedObject
 
         forgeStore:dispatch({
-            type = "UPDATE_MAP_INFO",
+            type = "UPDATE_MAP_INFO"
         })
 
         return state
@@ -122,7 +122,7 @@ local function eventsReducer(state, action)
             blam.object(get_object(composedObject.objectId), {
                 x = composedObject.x,
                 y = composedObject.y,
-                z = composedObject.z,
+                z = composedObject.z
             })
 
             if (composedObject.reflectionId) then
@@ -185,7 +185,7 @@ local function eventsReducer(state, action)
                        "does not exist.", "error")
         end
         forgeStore:dispatch({
-            type = "UPDATE_MAP_INFO",
+            type = "UPDATE_MAP_INFO"
         })
         return state
     elseif (action.type == constants.actionTypes.LOAD_MAP_SCREEN) then
@@ -201,8 +201,8 @@ local function eventsReducer(state, action)
             payload = {
                 expectedObjects = expectedObjects,
                 mapName = mapName,
-                mapDescription = mapDescription,
-            },
+                mapDescription = mapDescription
+            }
         })
 
         -- TO DO: This does not end after finishing map loading

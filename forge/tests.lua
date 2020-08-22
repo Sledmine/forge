@@ -43,7 +43,7 @@ function test_Rcon:setUp()
         x = 1,
         y = 2,
         yaw = 360,
-        z = 3,
+        z = 3
     }
 
     self.expectedDecodeResultUpdate = {
@@ -54,12 +54,12 @@ function test_Rcon:setUp()
         x = 1,
         y = 2,
         yaw = 360,
-        z = 3,
+        z = 3
     }
 
     self.expectedDecodeResultDelete = {
         requestType = "#d",
-        objectId = 1234,
+        objectId = 1234
     }
 end
 
@@ -127,7 +127,7 @@ function test_Request:test_Encode_Spawn()
         z = "3",
         yaw = "360",
         pitch = "360",
-        roll = "360",
+        roll = "360"
     }
     local result, request = core.sendRequest(objectExample)
     lu.assertEquals(result, true)
@@ -143,7 +143,7 @@ function test_Request:test_Encode_Update()
         z = "3.0",
         yaw = "360",
         pitch = "360",
-        roll = "360",
+        roll = "360"
     }
     local result, request = core.sendRequest(objectExample)
     lu.assertEquals(result, true)
@@ -153,7 +153,7 @@ end
 function test_Request:test_Encode_Spawn()
     local objectExample = {
         requestType = "#d",
-        objectId = "1234",
+        objectId = "1234"
     }
     local result, request = core.sendRequest(objectExample)
     lu.assertEquals(result, true)
@@ -187,7 +187,7 @@ function test_Core:setUp()
     self.case1Matrix = {
         {1, 0, 0},
         {0, 1, 0},
-        {0, 0, 1},
+        {0, 0, 1}
     }
     -- yaw 45, pitch 0, roll 0
     self.case2Array = {
@@ -196,12 +196,12 @@ function test_Core:setUp()
         0,
         0,
         0,
-        1,
+        1
     }
     self.case2Matrix = {
         {1, 0, 0},
         {0, 1, 0},
-        {0, 0, 1},
+        {0, 0, 1}
     }
 end
 

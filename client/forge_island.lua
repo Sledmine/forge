@@ -47,7 +47,7 @@ configuration = {
     autoSave = true,
     autoSaveTime = 10000,
     snapMode = false,
-    objectsCastShadow = false,
+    objectsCastShadow = false
 }
 
 -- Internal functions
@@ -107,7 +107,7 @@ function loadForgeMaps()
     local data = {mapsList = mapsList}
     forgeStore:dispatch({
         type = "UPDATE_MAP_LIST",
-        payload = data,
+        payload = data
     })
 end
 
@@ -178,15 +178,15 @@ function onMapLoad()
     forgeStore:dispatch({
         type = "UPDATE_FORGE_OBJECTS_LIST",
         payload = {
-            forgeMenu = forgeState.forgeMenu,
-        },
+            forgeMenu = forgeState.forgeMenu
+        }
     })
 
     local testVoteMaps = {
         {mapName = "Forge", gametype = "Slayer"},
         {mapName = "Forge", gametype = "Slayer"},
         {mapName = "Forge", gametype = "Slayer"},
-        {mapName = "Forge", gametype = "Slayer"},
+        {mapName = "Forge", gametype = "Slayer"}
     }
 
     votingStore:subscribe(votingReflector)
@@ -194,7 +194,7 @@ function onMapLoad()
     -- Dispatch forge objects list update
     votingStore:dispatch({
         type = "UPDATE_VOTE_LIST",
-        payload = {mapsList = testVoteMaps},
+        payload = {mapsList = testVoteMaps}
     })
 
     local isForgeMap = validateMapName()
@@ -243,23 +243,23 @@ function onTick()
             blam.biped(get_dynamic_player(), {
                 x = oldPosition.x,
                 y = oldPosition.y,
-                z = oldPosition.z + 0.1,
+                z = oldPosition.z + 0.1
             })
             playerStore:dispatch({
-                type = "RESET_POSITION",
+                type = "RESET_POSITION"
             })
         end
         if (core.isPlayerMonitor()) then
             -- Provide better movement to monitors
             if (not player.ignoreCollision) then
                 blam.biped(get_dynamic_player(), {
-                    ignoreCollision = true,
+                    ignoreCollision = true
                 })
             end
 
             -- Calculate player point of view
             playerStore:dispatch({
-                type = "UPDATE_OFFSETS",
+                type = "UPDATE_OFFSETS"
             })
 
             -- Check if monitor has an object attached
@@ -268,32 +268,32 @@ function onTick()
                 -- Change rotation angle
                 if (player.flashlightKey) then
                     playerStore:dispatch({
-                        type = "CHANGE_ROTATION_ANGLE",
+                        type = "CHANGE_ROTATION_ANGLE"
                     })
                     features.printHUD("Rotating in " .. playerState.currentAngle)
                 elseif (player.actionKeyHold or player.actionKey) then
                     playerStore:dispatch({
-                        type = "STEP_ROTATION_DEGREE",
+                        type = "STEP_ROTATION_DEGREE"
                     })
                     features.printHUD(playerState.currentAngle:upper() .. ": " ..
                                           playerState[playerState.currentAngle])
 
                     playerStore:dispatch({
-                        type = "ROTATE_OBJECT",
+                        type = "ROTATE_OBJECT"
                     })
                 elseif (player.crouchHold) then
                     playerStore:dispatch({
-                        type = "RESET_ROTATION",
+                        type = "RESET_ROTATION"
                     })
                     playerStore:dispatch({
-                        type = "ROTATE_OBJECT",
+                        type = "ROTATE_OBJECT"
                     })
                 elseif (player.meleeKey) then
                     playerStore:dispatch({
                         type = "SET_LOCK_DISTANCE",
                         payload = {
-                            lockDistance = not playerState.lockDistance,
-                        },
+                            lockDistance = not playerState.lockDistance
+                        }
                     })
                     features.printHUD("Distance from object is " ..
                                           tostring(glue.round(playerState.distance)) .. " units.")
@@ -306,10 +306,10 @@ function onTick()
 
                 if (not playerState.lockDistance) then
                     playerStore:dispatch({
-                        type = "UPDATE_DISTANCE",
+                        type = "UPDATE_DISTANCE"
                     })
                     playerStore:dispatch({
-                        type = "UPDATE_OFFSETS",
+                        type = "UPDATE_OFFSETS"
                     })
                 end
 
@@ -329,15 +329,15 @@ function onTick()
                 blam.object(get_object(attachedObjectId), {
                     x = playerState.xOffset,
                     y = playerState.yOffset,
-                    z = playerState.zOffset,
+                    z = playerState.zOffset
                 })
                 if (player.jumpHold) then
                     playerStore:dispatch({
-                        type = "DESTROY_OBJECT",
+                        type = "DESTROY_OBJECT"
                     })
                 elseif (player.weaponSTH) then
                     playerStore:dispatch({
-                        type = "DETACH_OBJECT",
+                        type = "DETACH_OBJECT"
                     })
                 end
             else
@@ -394,8 +394,8 @@ function onTick()
                                             type = "ATTACH_OBJECT",
                                             payload = {
                                                 objectId = objectId,
-                                                fromPerspective = true,
-                                            },
+                                                fromPerspective = true
+                                            }
                                         })
                                 elseif (player.actionKey) then
                                     playerStore:dispatch(
@@ -404,16 +404,16 @@ function onTick()
                                             payload = {
                                                 yaw = composedObject.yaw,
                                                 pitch = composedObject.pitch,
-                                                roll = composedObject.roll,
-                                            },
+                                                roll = composedObject.roll
+                                            }
                                         })
                                     local tagId = composedObject.object.tagId
                                     playerStore:dispatch(
                                         {
                                             type = "CREATE_AND_ATTACH_OBJECT",
                                             payload = {
-                                                path = get_tag_path(tagId),
-                                            },
+                                                path = get_tag_path(tagId)
+                                            }
                                         })
                                 end
                                 -- Stop searching for other objects
@@ -429,7 +429,7 @@ function onTick()
                 elseif (player.crouchHold) then
                     features.swapBiped()
                     playerStore:dispatch({
-                        type = "DETACH_OBJECT",
+                        type = "DETACH_OBJECT"
                     })
                 end
             end
@@ -452,12 +452,12 @@ function onTick()
         if (mapsMenuPressedButton == 9) then
             -- Dispatch an event to increment current page
             forgeStore:dispatch({
-                type = "DECREMENT_MAPS_MENU_PAGE",
+                type = "DECREMENT_MAPS_MENU_PAGE"
             })
         elseif (mapsMenuPressedButton == 10) then
             -- Dispatch an event to decrement current page
             forgeStore:dispatch({
-                type = "INCREMENT_MAPS_MENU_PAGE",
+                type = "INCREMENT_MAPS_MENU_PAGE"
             })
         else
             local mapName = blam.unicodeStringList(
@@ -477,11 +477,11 @@ function onTick()
             if (forgeState.forgeMenu.desiredElement ~= "root") then
                 if (playerState.attachedObjectId) then
                     playerStore:dispatch({
-                        type = "DESTROY_OBJECT",
+                        type = "DESTROY_OBJECT"
                     })
                 else
                     forgeStore:dispatch({
-                        type = "UPWARD_NAV_FORGE_MENU",
+                        type = "UPWARD_NAV_FORGE_MENU"
                     })
                 end
             else
@@ -490,11 +490,11 @@ function onTick()
             end
         elseif (forgeMenuPressedButton == 8) then
             forgeStore:dispatch({
-                type = "INCREMENT_FORGE_MENU_PAGE",
+                type = "INCREMENT_FORGE_MENU_PAGE"
             })
         elseif (forgeMenuPressedButton == 7) then
             forgeStore:dispatch({
-                type = "DECREMENT_FORGE_MENU_PAGE",
+                type = "DECREMENT_FORGE_MENU_PAGE"
             })
         else
             local desiredElement = blam.unicodeStringList(
@@ -505,14 +505,14 @@ function onTick()
                 dprint(" -> [ Forge Menu ]")
                 playerStore:dispatch({
                     type = "CREATE_AND_ATTACH_OBJECT",
-                    payload = {path = sceneryPath},
+                    payload = {path = sceneryPath}
                 })
             else
                 forgeStore:dispatch({
                     type = "DOWNWARD_NAV_FORGE_MENU",
                     payload = {
-                        desiredElement = desiredElement,
-                    },
+                        desiredElement = desiredElement
+                    }
                 })
             end
         end
@@ -552,7 +552,7 @@ function forgeAnimation()
     blam.uiWidgetDefinition(get_tag("ui_widget_definition",
                                     constants.uiWidgetDefinitions.loadingAnimation), {
         backgroundBitmap = get_tag_id("bitm", constants.bitmaps["forgeLoadingProgress" ..
-                                          tostring(lastImage)]),
+                                          tostring(lastImage)])
     })
     return true
 end
@@ -590,8 +590,8 @@ function onRcon(message)
             eventsStore:dispatch({
                 type = requestType,
                 payload = {
-                    requestObject = requestObject,
-                },
+                    requestObject = requestObject
+                }
             })
         end
         return false, requestObject

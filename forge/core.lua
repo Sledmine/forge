@@ -106,7 +106,7 @@ function core.eulerRotation(yaw, pitch, roll)
     local matrix = {
         {1, 0, 0},
         {0, 1, 0},
-        {0, 0, 1},
+        {0, 0, 1}
     }
     local cosPitch = math.cos(math.rad(pitch))
     local sinPitch = math.sin(math.rad(pitch))
@@ -129,7 +129,7 @@ function core.eulerRotation(yaw, pitch, roll)
         matrix[3][1],
         matrix[1][3],
         matrix[2][3],
-        matrix[3][3],
+        matrix[3][3]
     }
     return array, matrix
 end
@@ -147,7 +147,7 @@ function core.rotateObject(objectId, yaw, pitch, roll)
         vZ = rotation[3],
         v2X = rotation[4],
         v2Y = rotation[5],
-        v2Z = rotation[6],
+        v2Z = rotation[6]
     })
 end
 
@@ -301,7 +301,7 @@ function core.resetSpawnPoints()
     end
     blam.scenario(scenarioAddress, {
         spawnLocationList = mapSpawnPoints,
-        vehicleLocationList = vehicleLocationList,
+        vehicleLocationList = vehicleLocationList
     })
 end
 
@@ -314,7 +314,7 @@ function core.flushForge()
             delete_object(objectId)
         end
         eventsStore:dispatch({
-            type = constants.actionTypes.FLUSH_FORGE,
+            type = constants.actionTypes.FLUSH_FORGE
         })
     end
 end
@@ -333,8 +333,8 @@ function core.loadForgeMap(mapName)
                 type = "SET_MAP_DATA",
                 payload = {
                     mapName = forgeMap.name,
-                    mapDescription = forgeMap.description,
-                },
+                    mapDescription = forgeMap.description
+                }
             })
             if (server_type == "sapp") then
                 local tempObject = {}
@@ -362,8 +362,8 @@ function core.loadForgeMap(mapName)
                     eventsStore:dispatch({
                         type = constants.actionTypes.SPAWN_OBJECT,
                         payload = {
-                            requestObject = composedObject,
-                        },
+                            requestObject = composedObject
+                        }
                     })
                 else
                     dprint("WARNING!! Object with path '" .. composedObject.tagPath ..
@@ -401,7 +401,7 @@ function core.saveForgeMap()
         author = "",
         description = mapDescription,
         version = "",
-        objects = {},
+        objects = {}
     }
 
     -- Get the state of the forge objects
@@ -475,7 +475,7 @@ function core.cspawn_object(type, tagPath, x, y, z)
         -- Forces the object to render shadow
         if (configuration.objectsCastShadow) then
             blam.object(get_object(objectId), {
-                isNotCastingShadow = false,
+                isNotCastingShadow = false
             })
         end
         if (tempObject.isOutSideMap) then
@@ -492,13 +492,13 @@ function core.cspawn_object(type, tagPath, x, y, z)
                 blam.object(get_object(objectId), {
                     x = x,
                     y = y,
-                    z = z,
+                    z = z
                 })
 
                 -- Forces the object to render shadow
                 if (configuration.objectsCastShadow) then
                     blam.object(get_object(objectId), {
-                        isNotCastingShadow = false,
+                        isNotCastingShadow = false
                     })
                 end
             end
@@ -598,7 +598,7 @@ function core.modifyPlayerSpawnPoint(tagPath, composedObject, disable)
             mapSpawnPoints[composedObject.reflectionId].type = 0
             -- Update spawn point list
             blam.scenario(scenarioAddress, {
-                spawnLocationList = mapSpawnPoints,
+                spawnLocationList = mapSpawnPoints
             })
             return true
         end
@@ -613,7 +613,7 @@ function core.modifyPlayerSpawnPoint(tagPath, composedObject, disable)
     end
     -- Update spawn point list
     blam.scenario(scenarioAddress, {
-        spawnLocationList = mapSpawnPoints,
+        spawnLocationList = mapSpawnPoints
     })
 end
 
@@ -682,7 +682,7 @@ function core.modifyVehicleSpawn(tagPath, composedObject, disable)
 
                 -- Update spawn point list
                 blam.scenario(scenarioAddress, {
-                    vehicleLocationList = vehicleLocationList,
+                    vehicleLocationList = vehicleLocationList
                 })
                 dprint("object_create_anew v" .. vehicleLocationList[spawnId].nameIndex)
                 execute_script("object_create_anew v" .. vehicleLocationList[spawnId].nameIndex)
@@ -697,7 +697,7 @@ function core.modifyVehicleSpawn(tagPath, composedObject, disable)
             vehicleLocationList[composedObject.reflectionId].type = 65535
             -- Update spawn point list
             blam.scenario(scenarioAddress, {
-                vehicleLocationList = vehicleLocationList,
+                vehicleLocationList = vehicleLocationList
             })
             dprint("object_create_anew v" ..
                        vehicleLocationList[composedObject.reflectionId].nameIndex)
@@ -717,7 +717,7 @@ function core.modifyVehicleSpawn(tagPath, composedObject, disable)
 
         -- Update spawn point list
         blam.scenario(scenarioAddress, {
-            vehicleLocationList = vehicleLocationList,
+            vehicleLocationList = vehicleLocationList
         })
     end
 end

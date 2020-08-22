@@ -1,11 +1,10 @@
-
 -- Lua libraries
-local inspect = require 'inspect'
-local glue = require 'glue'
+local inspect = require "inspect"
+local glue = require "glue"
 
 -- Forge modules
-local constants = require 'forge.constants'
-local menu = require 'forge.menu'
+local constants = require "forge.constants"
+local menu = require "forge.menu"
 
 local function forgeReducer(state, action)
     -- Create default state if it does not exist
@@ -24,37 +23,39 @@ local function forgeReducer(state, action)
                 }
             },
             forgeMenu = {
-                desiredElement = 'root',
+                desiredElement = "root",
                 objectsDatabase = {},
                 objectsList = {root = {}},
                 currentObjectsList = {},
                 currentPage = 1,
-                currentBudget = '0',
+                currentBudget = "0",
                 currentBarSize = 0
             },
             loadingMenu = {
-                currentLoadingObjectPath = '',
+                currentLoadingObjectPath = "",
                 currentBarSize = 422,
                 expectedObjects = 1
             },
             currentMap = {
-                name = 'Unsaved',
-                author = 'Author: Unknown',
-                version = '1.0',
-                description = 'No description given for this map.'
+                name = "Unsaved",
+                author = "Author: Unknown",
+                version = "1.0",
+                description = "No description given for this map."
             }
         }
     end
     if (action.type) then
-        dprint('Forge Store, dispatched event:')
-        dprint(action.type, 'category')
+        dprint("Forge Store, dispatched event:")
+        dprint(action.type, "category")
     end
-    if (action.type == 'UPDATE_MAP_LIST') then
+    if (action.type == "UPDATE_MAP_LIST") then
         state.mapsMenu.mapsList = action.payload.mapsList
 
         -- Sort maps list by alphabetical order
-        table.sort(state.mapsMenu.mapsList, function(a, b) return a:lower() < b:lower() end)
-        
+        table.sort(state.mapsMenu.mapsList, function(a, b)
+            return a:lower() < b:lower()
+        end)
+
         state.mapsMenu.currentMapsList = glue.chunks(state.mapsMenu.mapsList, 8)
         local totalPages = #state.mapsMenu.currentMapsList
         if (totalPages > 1) then
@@ -70,7 +71,7 @@ local function forgeReducer(state, action)
         end
         dprint(inspect(state.mapsMenu))
         return state
-    elseif (action.type == 'INCREMENT_MAPS_MENU_PAGE') then
+    elseif (action.type == "INCREMENT_MAPS_MENU_PAGE") then
         if (state.mapsMenu.currentPage < #state.mapsMenu.currentMapsList) then
             state.mapsMenu.currentPage = state.mapsMenu.currentPage + 1
             local newHeight = state.mapsMenu.sidebar.height + state.mapsMenu.sidebar.slice
@@ -86,7 +87,7 @@ local function forgeReducer(state, action)
         end
         dprint(state.mapsMenu.currentPage)
         return state
-    elseif (action.type == 'DECREMENT_MAPS_MENU_PAGE') then
+    elseif (action.type == "DECREMENT_MAPS_MENU_PAGE") then
         if (state.mapsMenu.currentPage > 1) then
             state.mapsMenu.currentPage = state.mapsMenu.currentPage - 1
             local newHeight = state.mapsMenu.sidebar.height - state.mapsMenu.sidebar.slice
@@ -102,82 +103,92 @@ local function forgeReducer(state, action)
         end
         dprint(state.mapsMenu.currentPage)
         return state
-    elseif (action.type == 'UPDATE_FORGE_OBJECTS_LIST') then
+    elseif (action.type == "UPDATE_FORGE_OBJECTS_LIST") then
         state.forgeMenu = action.payload.forgeMenu
-        local objectsList = glue.childsbyparent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
+        local objectsList = glue.childsbyparent(state.forgeMenu.objectsList,
+                                                state.forgeMenu.desiredElement)
 
         -- Sort and prepare object list in alphabetic order
         local keysList = glue.keys(objectsList)
-        table.sort(keysList, function(a, b) return a:lower() < b:lower() end)
+        table.sort(keysList, function(a, b)
+            return a:lower() < b:lower()
+        end)
 
         for i = 1, #keysList do
-            if (string.sub(keysList[i], 1, 1) == '_') then
+            if (string.sub(keysList[i], 1, 1) == "_") then
                 keysList[i] = string.sub(keysList[i], 2, -1)
             end
         end
 
         -- Create list pagination
         state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
-        
+
         dprint(inspect(state.forgeMenu))
         return state
-    elseif (action.type == 'INCREMENT_FORGE_MENU_PAGE') then
-        dprint('Page:' .. inspect(state.forgeMenu.currentPage))
+    elseif (action.type == "INCREMENT_FORGE_MENU_PAGE") then
+        dprint("Page:" .. inspect(state.forgeMenu.currentPage))
         if (state.forgeMenu.currentPage < #state.forgeMenu.currentObjectsList) then
             state.forgeMenu.currentPage = state.forgeMenu.currentPage + 1
         end
         return state
-    elseif (action.type == 'DECREMENT_FORGE_MENU_PAGE') then
-        dprint('Page:' .. inspect(state.forgeMenu.currentPage))
+    elseif (action.type == "DECREMENT_FORGE_MENU_PAGE") then
+        dprint("Page:" .. inspect(state.forgeMenu.currentPage))
         if (state.forgeMenu.currentPage > 1) then
             state.forgeMenu.currentPage = state.forgeMenu.currentPage - 1
         end
         return state
-    elseif (action.type == 'DOWNWARD_NAV_FORGE_MENU') then
+    elseif (action.type == "DOWNWARD_NAV_FORGE_MENU") then
         state.forgeMenu.currentPage = 1
         state.forgeMenu.desiredElement = action.payload.desiredElement
-        local objectsList = glue.childsbyparent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
+        local objectsList = glue.childsbyparent(state.forgeMenu.objectsList,
+                                                state.forgeMenu.desiredElement)
 
         -- Sort and prepare object list in alphabetic order
         local keysList = glue.keys(objectsList)
-        table.sort(keysList, function(a, b) return a:lower() < b:lower() end)
+        table.sort(keysList, function(a, b)
+            return a:lower() < b:lower()
+        end)
 
         -- Create list pagination
         state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
 
         dprint(inspect(state.forgeMenu))
         return state
-    elseif (action.type == 'UPWARD_NAV_FORGE_MENU') then
+    elseif (action.type == "UPWARD_NAV_FORGE_MENU") then
         state.forgeMenu.currentPage = 1
-        state.forgeMenu.desiredElement = glue.parentbychild(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
-        local objectsList = glue.childsbyparent(state.forgeMenu.objectsList, state.forgeMenu.desiredElement)
+        state.forgeMenu.desiredElement = glue.parentbychild(state.forgeMenu.objectsList,
+                                                            state.forgeMenu.desiredElement)
+        local objectsList = glue.childsbyparent(state.forgeMenu.objectsList,
+                                                state.forgeMenu.desiredElement)
 
         -- Sort and prepare object list in alphabetic order
         local keysList = glue.keys(objectsList)
-        table.sort(keysList, function(a, b) return a:lower() < b:lower() end)
+        table.sort(keysList, function(a, b)
+            return a:lower() < b:lower()
+        end)
 
         -- Create list pagination
         state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
 
         dprint(inspect(state.forgeMenu))
         return state
-    elseif (action.type == 'SET_MAP_NAME') then
+    elseif (action.type == "SET_MAP_NAME") then
         state.currentMap.name = action.payload.mapName
         return state
-    elseif (action.type == 'SET_MAP_DESCRIPTION') then
+    elseif (action.type == "SET_MAP_DESCRIPTION") then
         state.currentMap.description = action.payload.mapDescription
         return state
-    elseif (action.type == 'SET_MAP_DATA') then
+    elseif (action.type == "SET_MAP_DATA") then
         state.currentMap.name = action.payload.mapName
-        if (action.payload.mapDescription == '') then
-            state.currentMap.description = 'No description given for this map.'
-            return state    
+        if (action.payload.mapDescription == "") then
+            state.currentMap.description = "No description given for this map."
+            return state
         end
         state.currentMap.description = action.payload.mapDescription
         return state
-    elseif (action.type == 'UPDATE_MAP_INFO') then
+    elseif (action.type == "UPDATE_MAP_INFO") then
         if (action.payload) then
-            --dprint(inspect(action.payload))
+            -- dprint(inspect(action.payload))
             local expectedObjects = action.payload.expectedObjects
             local mapName = action.payload.mapName
             local mapDescription = action.payload.mapDescription
@@ -189,26 +200,28 @@ local function forgeReducer(state, action)
                 state.currentMap.name = mapName
             end
             if (mapDescription) then
-                
+
                 state.currentMap.description = mapDescription
             end
-            
+
             --[[if (action.payload.currentLoadingObjectPath) then
                 state.loadingMenu.currentLoadingObjectPath = action.payload.currentLoadingObjectPath
             end]]
         end
-        if (server_type ~= 'sapp') then
+        if (server_type ~= "sapp") then
             if (eventsStore) then
                 -- Set current budget bar data
                 local objectState = eventsStore:getState().forgeObjects
                 local currentObjects = #glue.keys(objectState)
-                local newBarSize = currentObjects * constants.maximumProgressBarSize / constants.maximumBudget
+                local newBarSize = currentObjects * constants.maximumProgressBarSize /
+                                       constants.maximumBudget
                 state.forgeMenu.currentBarSize = glue.floor(newBarSize)
                 state.forgeMenu.currentBudget = tostring(currentObjects)
 
                 -- Set loading map bar data
                 local expectedObjects = state.loadingMenu.expectedObjects
-                local newBarSize = currentObjects * constants.maximumLoadingProgressBarSize / expectedObjects
+                local newBarSize = currentObjects * constants.maximumLoadingProgressBarSize /
+                                       expectedObjects
                 state.loadingMenu.currentBarSize = glue.floor(newBarSize)
                 if (state.loadingMenu.currentBarSize >= constants.maximumLoadingProgressBarSize) then
                     menu.close(constants.uiWidgetDefinitions.loadingMenu)
@@ -217,10 +230,10 @@ local function forgeReducer(state, action)
         end
         return state
     else
-        if (action.type == '@@lua-redux/INIT') then
-            dprint('Default state has been created!')
+        if (action.type == "@@lua-redux/INIT") then
+            dprint("Default state has been created!")
         else
-            dprint('ERROR!!! The dispatched event does not exist:', 'error')
+            dprint("ERROR!!! The dispatched event does not exist:", "error")
         end
         return state
     end

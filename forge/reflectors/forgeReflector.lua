@@ -18,7 +18,7 @@ local function forgeReflector()
     -- Forge Menu
     blam.unicodeStringList(get_tag("unicode_string_list", constants.unicodeStrings.forgeList),
                            {
-        stringList = currentObjectsList,
+        stringList = currentObjectsList
     })
     menu.update(constants.uiWidgetDefinitions.forgeList, #currentObjectsList + 2)
 
@@ -30,7 +30,7 @@ local function forgeReflector()
         paginationStringList[2] = tostring(forgeState.forgeMenu.currentPage)
         paginationStringList[4] = tostring(#forgeState.forgeMenu.currentObjectsList)
         blam.unicodeStringList(paginationTextAddress, {
-            stringList = paginationStringList,
+            stringList = paginationStringList
         })
     end
 
@@ -40,7 +40,7 @@ local function forgeReflector()
     local currentBudget = blam.unicodeStringList(budgetCountAddress)
 
     currentBudget.stringList = {
-        forgeState.forgeMenu.currentBudget,
+        forgeState.forgeMenu.currentBudget
     }
 
     -- Refresh budget count
@@ -50,14 +50,14 @@ local function forgeReflector()
     blam.uiWidgetDefinition(
         get_tag("ui_widget_definition", constants.uiWidgetDefinitions.amountBar),
         {
-            width = forgeState.forgeMenu.currentBarSize,
+            width = forgeState.forgeMenu.currentBarSize
         })
 
     -- Refresh loading bar size
     blam.uiWidgetDefinition(get_tag("ui_widget_definition",
                                     constants.uiWidgetDefinitions.loadingProgress),
                             {
-        width = forgeState.loadingMenu.currentBarSize,
+        width = forgeState.loadingMenu.currentBarSize
     })
 
     local currentMapsList = forgeState.mapsMenu.currentMapsList[forgeState.mapsMenu.currentPage]
@@ -72,7 +72,7 @@ local function forgeReflector()
     -- TO DO: Merge unicode string updating with menus updating!
     blam.unicodeStringList(get_tag("unicode_string_list", constants.unicodeStrings.mapsList),
                            {
-        stringList = currentMapsList,
+        stringList = currentMapsList
     })
     -- Wich ui widget will be updated and how many items it will show
     menu.update(constants.uiWidgetDefinitions.mapsList, #currentMapsList + 3)
@@ -81,7 +81,7 @@ local function forgeReflector()
     blam.uiWidgetDefinition(get_tag("ui_widget_definition", constants.uiWidgetDefinitions.sidebar),
                             {
         height = forgeState.mapsMenu.sidebar.height,
-        boundsY = forgeState.mapsMenu.sidebar.position,
+        boundsY = forgeState.mapsMenu.sidebar.position
     })
 
     -- Refresh current forge map information
@@ -95,8 +95,8 @@ local function forgeReflector()
                 forgeState.currentMap.name,
                 forgeState.currentMap.author,
                 forgeState.currentMap.version,
-                forgeState.currentMap.description,
-            },
+                forgeState.currentMap.description
+            }
         })
 end
 
