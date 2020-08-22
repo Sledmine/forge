@@ -1,14 +1,13 @@
 ------------------------------------------------------------------------------
 -- Forge Constants
--- Author: Sledmine
--- Version: 1.0
+-- Sledmine
 -- Constants values
 ------------------------------------------------------------------------------
 local constants = {}
 
 constants.maximumProgressBarSize = 171
 constants.maximumLoadingProgressBarSize = 422
-constants.maximumBudget = 900
+constants.maximumBudget = 1024
 constants.minimumZSpawnPoint = -18.69
 constants.maximumSidebarSize = 249
 constants.minimumSidebarSize = 40
@@ -31,7 +30,7 @@ constants.requestTypes = {
     ["DELETE_OBJECT"] = "#d",
     ["LOAD_MAP_SCREEN"] = "#l",
     -- We have to provide reverse typing for fast coding
-    -- Ok.. never mind, TODO: reverse function, check glue lib
+    -- Ok.. never mind, // TODO: implement glue index reverse function
     ["#s"] = "SPAWN_OBJECT",
     ["#u"] = "UPDATE_OBJECT",
     ["#d"] = "DELETE_OBJECT",
@@ -136,29 +135,6 @@ constants.unicodeStrings = {
     pagination = "[shm]\\halo_4\\ui\\shell\\forge_menu\\strings\\pagination",
     mapsList = "[shm]\\halo_4\\ui\\shell\\pause_game\\strings\\maps_name",
     pauseGameStrings = "[shm]\\halo_4\\ui\\shell\\pause_game\\strings\\titles_and_headers"
-}
-
-constants.spawnValues = {
-    -- CTF, Blue Team
-    ctfSpawnPointBlueTeam = {type = 1, team = 1},
-    -- CTF, Red Team
-    ctfSpawnPointReadTeam = {type = 1, team = 0},
-    -- Generic, Both teams
-    slayerSpawnPointBlueTeam = {
-        type = 3,
-        team = 0
-    },
-    -- Generic, Both teams
-    allGamesGenericSpawnPoint = {
-        type = 12,
-        team = 0
-    },
-    bansheeSpawn = {type = 0},
-    warthogSpawn = {type = 1},
-    ghostSpawn = {type = 2},
-    scorpionSpawn = {type = 3},
-    cTurretSpawn = {type = 4},
-    soccerBallSpawn = {type = 5}
 }
 
 return constants

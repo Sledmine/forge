@@ -1,8 +1,12 @@
--- Global Halo Custom Edition libraries
+------------------------------------------------------------------------------
+-- Voting Reflector
+-- Sledmine
+-- Function reflector for store
+------------------------------------------------------------------------------
 local constants = require "forge.constants"
 local menu = require "forge.menu"
 
-local function forgeReflector()
+local function votingReflector()
     -- Get current forge state
     local votingState = votingStore:getState()
 
@@ -40,4 +44,4 @@ local function forgeReflector()
 
 end
 
-return forgeReflector
+return votingReflector

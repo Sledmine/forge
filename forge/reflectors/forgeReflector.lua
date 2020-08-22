@@ -1,6 +1,12 @@
--- Global Halo Custom Edition libraries
+------------------------------------------------------------------------------
+-- Forge Reflector
+-- Sledmine
+-- Function reflector for store
+------------------------------------------------------------------------------
 local constants = require "forge.constants"
 local menu = require "forge.menu"
+
+local inspect = require "inspect"
 
 local function forgeReflector()
     -- Get current forge state
@@ -40,11 +46,13 @@ local function forgeReflector()
     local currentBudget = blam.unicodeStringList(budgetCountAddress)
 
     currentBudget.stringList = {
-        forgeState.forgeMenu.currentBudget
+        forgeState.forgeMenu.currentBudget,
+        "/ " .. tostring(constants.maximumBudget)
     }
 
     -- Refresh budget count
     blam.unicodeStringList(budgetCountAddress, currentBudget)
+    
 
     -- Refresh budget bar status
     blam.uiWidgetDefinition(

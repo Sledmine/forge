@@ -407,12 +407,11 @@ function onTick()
                                                 roll = composedObject.roll
                                             }
                                         })
-                                    local tagId = composedObject.object.tagId
                                     playerStore:dispatch(
                                         {
                                             type = "CREATE_AND_ATTACH_OBJECT",
                                             payload = {
-                                                path = get_tag_path(tagId)
+                                                path = get_tag_path(composedObject.object.tagId)
                                             }
                                         })
                                 end
