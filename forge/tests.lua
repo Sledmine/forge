@@ -108,6 +108,12 @@ function test_Objects:test_Spawn_And_Rotate_Objects()
     end
 end
 
+function test_Objects:test_Get_Netgame_SpawnPoints()
+    local scenario = blam.scenario(get_tag(0))
+    console_out(scenario.vehicleLocationCount)
+    lu.assertEquals(scenario.vehicleLocationCount, 33)
+end
+
 ----------------- Request Tests -----------------------
 
 test_Request = {}
