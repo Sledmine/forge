@@ -82,10 +82,13 @@ local function eventsReducer(state, action)
                 dprint("GAMETYPE_SPAWN", "category")
 
                 -- Make needed modifications to game spawn points
-                core.modifyPlayerSpawnPoint(tagPath, composedObject)
+                core.updatePlayerSpawnPoint(tagPath, composedObject)
             elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
-                core.modifyVehicleSpawn(tagPath, composedObject)
+                core.updateVehicleSpawn(tagPath, composedObject)
             end
+        elseif (tagPath:find("objectives")) then
+            dprint("-> [Reflecting Flag]", "warning")
+            core.updateNetgameFlagSpawnPoint(tagPath, composedObject)
         end
 
         -- As a server we have to send back a response/request to every player
@@ -132,10 +135,13 @@ local function eventsReducer(state, action)
                     if (tagPath:find("gametypes")) then
                         dprint("GAMETYPE_SPAWN", "category")
                         -- Make needed modifications to game spawn points
-                        core.modifyPlayerSpawnPoint(tagPath, composedObject)
+                        core.updatePlayerSpawnPoint(tagPath, composedObject)
                     elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
-                        core.modifyVehicleSpawn(tagPath, composedObject)
+                        core.updateVehicleSpawn(tagPath, composedObject)
                     end
+                elseif (tagPath:find("objectives")) then
+                    dprint("-> [Reflecting Flag]", "warning")
+                    core.updateNetgameFlagSpawnPoint(tagPath, composedObject)
                 end
             end
 
@@ -163,9 +169,9 @@ local function eventsReducer(state, action)
                     if (tagPath:find("gametypes")) then
                         dprint("GAMETYPE_SPAWN", "category")
                         -- Make needed modifications to game spawn points
-                        core.modifyPlayerSpawnPoint(tagPath, composedObject, true)
+                        core.updatePlayerSpawnPoint(tagPath, composedObject, true)
                     elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
-                        core.modifyVehicleSpawn(tagPath, composedObject, true)
+                        core.updateVehicleSpawn(tagPath, composedObject, true)
                     end
                 end
             end

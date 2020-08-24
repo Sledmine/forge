@@ -14,6 +14,8 @@ local json = require "json"
 
 -- Halo Custom Edition libraries
 blam = require "nlua-blam"
+-- Bind legacy console out to better lua-blam printing function
+console_out = blam.consoleOutput
 -- Create global reference to tagClasses
 tagClasses = blam.tagClasses
 -- Bring old api compatibility

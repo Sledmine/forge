@@ -152,7 +152,6 @@ local function forgeReducer(state, action)
         -- Create list pagination
         state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
 
-        dprint(inspect(state.forgeMenu))
         return state
     elseif (action.type == "UPWARD_NAV_FORGE_MENU") then
         state.forgeMenu.currentPage = 1

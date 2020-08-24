@@ -30,7 +30,7 @@ constants.requestTypes = {
     ["DELETE_OBJECT"] = "#d",
     ["LOAD_MAP_SCREEN"] = "#l",
     -- We have to provide reverse typing for fast coding
-    -- Ok.. never mind, // TODO: implement glue index reverse function
+    -- Ok.. never mind, // TODO: review implementations of this that need glue index reverse function
     ["#s"] = "SPAWN_OBJECT",
     ["#u"] = "UPDATE_OBJECT",
     ["#d"] = "DELETE_OBJECT",

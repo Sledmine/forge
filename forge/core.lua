@@ -373,7 +373,9 @@ function core.loadForgeMap(mapName)
                 end
             end
 
-            execute_script("sv_map_reset")
+            if (server_type == "local") then
+                execute_script("sv_map_reset")
+            end
             dprint("Succesfully loaded '" .. mapName .. "' fmap!")
 
             return true
@@ -513,16 +515,16 @@ function core.cspawn_object(type, tagPath, x, y, z)
     return nil
 end
 
---- Apply needed modifications to scenario spawn points
--- It's local to the reducer to avoid outside implementation
+--- Apply updates to player spawn points based on a given tag path
 ---@param tagPath string
 ---@param composedObject table
 ---@param disable boolean
-function core.modifyPlayerSpawnPoint(tagPath, composedObject, disable)
+function core.updatePlayerSpawnPoint(tagPath, composedObject, disable)
     local teamIndex = 0
     local gameType = 0
 
     -- Get spawn info from tag name
+    -- // TODO: Add comment here with all the game types index!
     if (tagPath:find("ctf")) then
         dprint("CTF")
         gameType = 1
@@ -542,21 +544,13 @@ function core.modifyPlayerSpawnPoint(tagPath, composedObject, disable)
     elseif (tagPath:find("race")) then
         dprint("RACE")
         gameType = 5
-        -- These gametypes are probably leftovers in the game (?)
-        --[[
-    elseif (tagPath:find("terminator")) then
-        dprint("SLAYER")
-        gameType = 6
-    elseif (tagPath:find("stub")) then
-        dprint("SLAYER")
-        gameType = 7]]
     end
 
     if (tagPath:find("red")) then
-        dprint("RED TEAM")
+        dprint("RED TEAM SPAWN")
         teamIndex = 0
     elseif (tagPath:find("blue")) then
-        dprint("BLUE TEAM")
+        dprint("BLUE TEAM SPAWN")
         teamIndex = 1
     end
 
@@ -619,10 +613,97 @@ function core.modifyPlayerSpawnPoint(tagPath, composedObject, disable)
     })
 end
 
+--- Apply updates to netgame flags spawn points based on a tag path
+---@param tagPath string
+---@param composedObject table
+function core.updateNetgameFlagSpawnPoint(tagPath, composedObject)
+    -- // TODO: Review if some flags use team index as "group index"!
+    local teamIndex = 0
+    local flagType = 0
+
+    -- Set flag type from tag path
+    --[[
+        0 = ctf - flag
+        1 = ctf - vehicle
+        2 = oddball - ball spawn
+        3 = race - track
+        4 = race - vehicle
+        5 = vegas - bank (?) WHAT, I WAS NOT AWARE OF THIS THING!
+        6 = teleport from
+        7 = teleport to
+        8 = hill flag
+    ]]  
+    if (tagPath:find("flag stand")) then
+        dprint("FLAG POINT")
+        flagType = 0
+        -- // TODO: Check if double setting team index against default value is needed!
+        if (tagPath:find("red")) then
+            dprint("RED TEAM FLAG")
+            teamIndex = 0
+        else
+            dprint("BLUE TEAM FLAG")
+            teamIndex = 1
+        end
+    elseif (tagPath:find("weapons")) then
+        -- // TODO: Check and add weapon based netgame flags like oddball!
+    end
+
+    -- SAPP and Chimera can't substract scenario tag in the same way
+    local scenarioAddress
+    if (server_type == "sapp") then
+        scenarioAddress = get_tag("scnr", constants.scenarioPath)
+    else
+        scenarioAddress = get_tag(0)
+    end
+
+    -- Get scenario data
+    local scenario = blam.scenario(scenarioAddress)
+
+    -- Get scenario player spawn points
+    local mapNetgameFlagsPoints = scenario.netgameFlagsList
+
+    -- Object is not already reflecting a flag point
+    if (not composedObject.reflectionId) then
+        for flagId = 1, #mapNetgameFlagsPoints do
+            -- // FIXME: This control block is not neccessary but needs improvements!
+            -- If this flag point is using the same flag type
+            if (mapNetgameFlagsPoints[flagId].type == flagType and mapNetgameFlagsPoints[flagId].teamIndex == teamIndex) then
+                -- Replace spawn point values
+                mapNetgameFlagsPoints[flagId].x = composedObject.x
+                mapNetgameFlagsPoints[flagId].y = composedObject.y
+                -- Z plus an offset to prevent flag from falling in lower bsp values
+                mapNetgameFlagsPoints[flagId].z = composedObject.z + 0.135
+                mapNetgameFlagsPoints[flagId].rotation = math.rad(composedObject.yaw)
+                mapNetgameFlagsPoints[flagId].teamIndex = teamIndex
+                mapNetgameFlagsPoints[flagId].type = flagType
+
+                -- Debug spawn index
+                dprint("Creating flag replacing index: " .. flagId, "warning")
+                composedObject.reflectionId = flagId
+                break
+            end
+        end
+    else
+        dprint("Reflection id:" .. composedObject.reflectionId)
+        -- Replace spawn point values
+        mapNetgameFlagsPoints[composedObject.reflectionId].x = composedObject.x
+        mapNetgameFlagsPoints[composedObject.reflectionId].y = composedObject.y
+        mapNetgameFlagsPoints[composedObject.reflectionId].z = composedObject.z
+        mapNetgameFlagsPoints[composedObject.reflectionId].rotation = math.rad(composedObject.yaw)
+        dprint(mapNetgameFlagsPoints[composedObject.reflectionId].type)
+        -- Debug spawn index
+        dprint("Updating flag replacing index: " .. composedObject.reflectionId)
+    end
+    -- Update spawn point list
+    blam.scenario(scenarioAddress, {
+        netgameFlagsList = mapNetgameFlagsPoints
+    })
+end
+
 --- Enable, update and disable vehicle spawns
 -- Must be called after adding scenery object to the store!!
 -- @return true if found an available spawn
-function core.modifyVehicleSpawn(tagPath, composedObject, disable)
+function core.updateVehicleSpawn(tagPath, composedObject, disable)
     if (server_type == "dedicated") then
         return true
     end

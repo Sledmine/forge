@@ -190,7 +190,7 @@ local function forgeCommands(command)
 
             mapSpawnPoints[1].type = 12
 
-            blam.scenario(scenarioAddress, {
+            blam.scenario(get_tag(0), {
                 spawnLocationList = mapSpawnPoints
             })
             return false

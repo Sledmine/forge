@@ -1,8 +1,7 @@
 ------------------------------------------------------------------------------
 -- Forge Features
--- Author: Sledmine
--- Version: 1.0
--- Forging features
+-- Sledmine
+-- Set of different forge features
 ------------------------------------------------------------------------------
 local constants = require "forge.constants"
 
@@ -120,6 +119,7 @@ end
 ---@param tagPath string
 ---@return boolean result susccess
 function features.openMenu(tagPath, prevent)
+    --[[
     local newMenuTagId = get_tag_id("DeLa", tagPath)
     if (newMenuTagId) then
         blam.uiWidgetDefinition(get_tag("DeLa",
@@ -133,23 +133,28 @@ function features.openMenu(tagPath, prevent)
         end
         return true
     end
-    return false
+    return false]]
+    return load_ui_widget(tagPath)
 end
 
 --- Print formatted text into HUD message output
 ---@param message string
 ---@param optional string
 function features.printHUD(message, optional)
-    local cleanLimit = 3
-    if (optional) then
-        cleanLimit = 2
-    end
-    for i = 1, cleanLimit do
-        execute_script("cls")
-    end
-    console_out(message)
-    if (optional) then
-        console_out(optional)
+    if (not debugMode) then
+        local cleanLimit = 3
+        if (optional) then
+            cleanLimit = 2
+        end
+        for i = 1, cleanLimit do
+
+            execute_script("cls")
+
+        end
+        console_out(message)
+        if (optional) then
+            console_out(optional)
+        end
     end
 end
 

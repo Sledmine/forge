@@ -149,7 +149,7 @@ function onPlayerSpawn(playerIndex)
     local player = blam.biped(get_dynamic_player(playerIndex))
     if (player) then
         -- Provide better movement to monitors
-        if (core.isPlayerMonitor(playerIndex) and not player.ignoreCollision) then
+        if (core.isPlayerMonitor(playerIndex)) then
             blam.biped(get_dynamic_player(playerIndex), {
                 ignoreCollision = true
             })
@@ -267,7 +267,7 @@ function onRcon(playerIndex, message, environment, rconPassword)
                 local forgeObjects = eventsStore:getState().forgeObjects
                 if (#glue.keys(forgeObjects) > 0) then
                     forgeMap = mapName
-                    -- execute_script("sv_map forge_island " .. gameType)
+                    execute_script("sv_map forge_island " .. gameType)  
                 else
                     core.loadForgeMap(mapName)
                 end
