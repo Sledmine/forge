@@ -70,19 +70,19 @@ end
 
 function testRcon:testDecodeSpawn()
     local decodeResult, decodeData = OnRcon(
-                                         "'#s;d2040000;0000803f;00000040;00004040;360;360;360;d2040000'")
+                                         "'#s|d2040000|0000803f|00000040|00004040|360|360|360|d2040000'")
     lu.assertEquals(decodeResult, false)
     lu.assertEquals(decodeData, self.expectedDecodeResultSpawn)
 end
 
 function testRcon:testDecodeUpdate()
-    local decodeResult, decodeData = OnRcon("'#u;1234;0000803f;00000040;00004040;360;360;360'")
+    local decodeResult, decodeData = OnRcon("'#u|1234|0000803f|00000040|00004040|360|360|360'")
     lu.assertEquals(decodeResult, false)
     lu.assertEquals(decodeData, self.expectedDecodeResultUpdate)
 end
 
 function testRcon:testDecodeDelete()
-    local decodeResult, decodeData = OnRcon("'#d;1234'")
+    local decodeResult, decodeData = OnRcon("'#d|1234'")
     lu.assertEquals(decodeResult, false)
     lu.assertEquals(decodeData, self.expectedDecodeResultDelete)
 end
@@ -119,9 +119,9 @@ end
 testRequest = {}
 
 function testRequest:setUp()
-    self.expectedEncodeSpawnResult = "#s;d2040000;0000803f;00000040;00004040;360;360;360"
-    self.expectedEncodeUpdateResult = "#u;1234;0000803f;00000040;00004040;360;360;360"
-    self.expectedEncodeDeleteResult = "#d;1234"
+    self.expectedEncodeSpawnResult = "#s|d2040000|0000803f|00000040|00004040|360|360|360"
+    self.expectedEncodeUpdateResult = "#u|1234|0000803f|00000040|00004040|360|360|360"
+    self.expectedEncodeDeleteResult = "#d|1234"
 end
 
 function testRequest:testSpawnRequestAsClient()

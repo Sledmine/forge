@@ -32,7 +32,7 @@ local function forgeReducer(state, action)
                 currentBarSize = 0
             },
             loadingMenu = {
-                currentLoadingObjectPath = "",
+                loadingObjectPath = "",
                 currentBarSize = 422,
                 expectedObjects = 1
             },
@@ -184,42 +184,42 @@ local function forgeReducer(state, action)
         return state
     elseif (action.type == "UPDATE_MAP_INFO") then
         if (action.payload) then
-            -- dprint(inspect(action.payload))
             local expectedObjects = action.payload.expectedObjects
             local mapName = action.payload.mapName
             local mapDescription = action.payload.mapDescription
             if (expectedObjects) then
                 state.loadingMenu.expectedObjects = expectedObjects
             end
-
             if (mapName) then
                 state.currentMap.name = mapName
             end
             if (mapDescription) then
-
                 state.currentMap.description = mapDescription
             end
-
-            --[[if (action.payload.currentLoadingObjectPath) then
-                state.loadingMenu.currentLoadingObjectPath = action.payload.currentLoadingObjectPath
-            end]]
+            if (action.payload.loadingObjectPath) then
+                state.loadingMenu.loadingObjectPath = action.payload.loadingObjectPath
+            end
         end
         if (server_type ~= "sapp") then
             if (eventsStore) then
-                -- Set current budget bar data
-                local objectState = eventsStore:getState().forgeObjects
-                local currentObjects = #glue.keys(objectState)
-                local newBarSize = currentObjects * constants.maximumProgressBarSize /
-                                       constants.maximumBudget
-                state.forgeMenu.currentBarSize = glue.floor(newBarSize)
-                state.forgeMenu.currentBudget = tostring(currentObjects)
+                if (state.loadingMenu.expectedObjects > 0) then
+                    -- Set current budget bar data
+                    local objectState = eventsStore:getState().forgeObjects
+                    local currentObjects = #glue.keys(objectState)
+                    local newBarSize = currentObjects * constants.maximumProgressBarSize /
+                                           constants.maximumBudget
+                    state.forgeMenu.currentBarSize = glue.floor(newBarSize)
+                    state.forgeMenu.currentBudget = tostring(currentObjects)
 
-                -- Set loading map bar data
-                local expectedObjects = state.loadingMenu.expectedObjects
-                local newBarSize = currentObjects * constants.maximumLoadingProgressBarSize /
-                                       expectedObjects
-                state.loadingMenu.currentBarSize = glue.floor(newBarSize)
-                if (state.loadingMenu.currentBarSize >= constants.maximumLoadingProgressBarSize) then
+                    -- Set loading map bar data
+                    local expectedObjects = state.loadingMenu.expectedObjects
+                    local newBarSize = currentObjects * constants.maximumLoadingProgressBarSize /
+                                           expectedObjects
+                    state.loadingMenu.currentBarSize = glue.floor(newBarSize)
+                    if (state.loadingMenu.currentBarSize >= constants.maximumLoadingProgressBarSize) then
+                        menu.close(constants.uiWidgetDefinitions.loadingMenu)
+                    end
+                else
                     menu.close(constants.uiWidgetDefinitions.loadingMenu)
                 end
             end

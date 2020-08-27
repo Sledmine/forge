@@ -16,21 +16,21 @@ local function eventsReducer(state, action)
         dprint("-> [Events Store]")
         dprint("Action: " .. action.type, "category")
     end
-    if (action.type == constants.actionTypes.SPAWN_OBJECT) then
+    if (action.type == constants.requests.spawnObject.actionType) then
         dprint("SPAWNING object to store...", "warning")
         local requestObject = action.payload.requestObject
 
         -- Create a new object rather than passing it as "reference"
-        local composedObject = glue.update({}, requestObject)
+        local forgeObject = glue.update({}, requestObject)
 
-        local tagPath = get_tag_path(composedObject.tagId)
+        local tagPath = get_tag_path(requestObject.tagId)
 
         -- Get all the existent objects in the game before object spawn
         local objectsBeforeSpawn = get_objects()
 
         -- Spawn object in the game
-        local localObjectId = core.spawnObject("scen", tagPath, composedObject.x, composedObject.y,
-                                               composedObject.z)
+        local localObjectId = core.spawnObject("scen", tagPath, forgeObject.x, forgeObject.y,
+                                               forgeObject.z)
 
         -- Get all the existent objects in the game after object spawn
         local objectsAfterSpawn = get_objects()
@@ -43,22 +43,15 @@ local function eventsReducer(state, action)
         end
 
         -- Set object rotation after creating the object
-        core.rotateObject(localObjectId, composedObject.yaw, composedObject.pitch,
-                          composedObject.roll)
-
-        -- Clean and prepare object
-        -- composedObject.object = blam.object(get_object(localObjectId))
-        composedObject.tagId = nil
-        composedObject.requestType = nil
-        composedObject.objectId = localObjectId
+        core.rotateObject(localObjectId, forgeObject.yaw, forgeObject.pitch, forgeObject.roll)
 
         -- We are the server so the remote id is the local objectId
         if (server_type == "local" or server_type == "sapp") then
-            composedObject.remoteId = composedObject.objectId
+            forgeObject.remoteId = localObjectId
         end
 
-        dprint("objectId: " .. composedObject.objectId)
-        dprint("remoteId: " .. composedObject.remoteId)
+        dprint("objectId: " .. localObjectId)
+        dprint("remoteId: " .. forgeObject.remoteId)
 
         -- Check and take actions if the object is a special netgame object
         if (tagPath:find("spawning")) then
@@ -66,23 +59,26 @@ local function eventsReducer(state, action)
             if (tagPath:find("gametypes")) then
                 dprint("GAMETYPE_SPAWN", "category")
                 -- Make needed modifications to game spawn points
-                core.updatePlayerSpawnPoint(tagPath, composedObject)
+                core.updatePlayerSpawnPoint(tagPath, forgeObject)
             elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
-                core.updateVehicleSpawn(tagPath, composedObject)
+                core.updateVehicleSpawn(tagPath, forgeObject)
             end
         elseif (tagPath:find("objectives")) then
             dprint("-> [Reflecting Flag]", "warning")
-            core.updateNetgameFlagSpawnPoint(tagPath, composedObject)
+            core.updateNetgameFlagSpawnPoint(tagPath, forgeObject)
         end
-
+        
+        -- Clean and prepare object
+        forgeObject.tagId = nil
+        
+        -- Store the object in our state
+        state.forgeObjects[localObjectId] = forgeObject
+        
         -- As a server we have to send back a response/request to the players in the server
         if (server_type == "sapp") then
-            local response = core.createRequest(composedObject)
+            local response = core.createRequest(forgeObject)
             core.sendRequest(response)
         end
-
-        -- Store the object in our state
-        state.forgeObjects[localObjectId] = composedObject
 
         -- Update the current map information
         forgeStore:dispatch({
@@ -90,53 +86,57 @@ local function eventsReducer(state, action)
         })
 
         return state
-    elseif (action.type == constants.actionTypes.UPDATE_OBJECT) then
+    elseif (action.type == constants.requests.updateObject.actionType) then
         local requestObject = action.payload.requestObject
         local targetObjectId =
             core.getObjectIdByRemoteId(state.forgeObjects, requestObject.objectId)
-        local composedObject = state.forgeObjects[targetObjectId]
+        local forgeObject = state.forgeObjects[targetObjectId]
 
-        if (composedObject) then
+        if (forgeObject) then
             dprint("UPDATING object from store...", "warning")
-            composedObject.x = requestObject.x
-            composedObject.y = requestObject.y
-            composedObject.z = requestObject.z
-            composedObject.yaw = requestObject.yaw
-            composedObject.pitch = requestObject.pitch
-            composedObject.roll = requestObject.roll
+
+            forgeObject.x = requestObject.x
+            forgeObject.y = requestObject.y
+            forgeObject.z = requestObject.z
+            forgeObject.yaw = requestObject.yaw
+            forgeObject.pitch = requestObject.pitch
+            forgeObject.roll = requestObject.roll
 
             -- Update object rotation
-            core.rotateObject(composedObject.objectId, composedObject.yaw, composedObject.pitch,
-                              composedObject.roll)
+            core.rotateObject(targetObjectId, forgeObject.yaw, forgeObject.pitch,
+                              forgeObject.roll)
 
             -- Update object position
-            blam.object(get_object(composedObject.objectId), {
-                x = composedObject.x,
-                y = composedObject.y,
-                z = composedObject.z
+            blam.object(get_object(targetObjectId), {
+                x = forgeObject.x,
+                y = forgeObject.y,
+                z = forgeObject.z
             })
 
             -- Check and take actions if the object is reflecting a netgame point
-            if (composedObject.reflectionId) then
-                local tagPath = get_tag_path(targetObjectId)
+            if (forgeObject.reflectionId) then
+                console_out("Reflection id:")
+                local tempObject = blam.object(get_object(targetObjectId))
+                local tagPath = get_tag_path(tempObject.tagId)
                 if (tagPath:find("spawning")) then
                     dprint("-> [Reflecting Spawn]", "warning")
                     if (tagPath:find("gametypes")) then
                         dprint("GAMETYPE_SPAWN", "category")
                         -- Make needed modifications to game spawn points
-                        core.updatePlayerSpawnPoint(tagPath, composedObject)
+                        core.updatePlayerSpawnPoint(tagPath, forgeObject)
                     elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
-                        core.updateVehicleSpawn(tagPath, composedObject)
+                        core.updateVehicleSpawn(tagPath, forgeObject)
                     end
                 elseif (tagPath:find("objectives")) then
                     dprint("-> [Reflecting Flag]", "warning")
-                    core.updateNetgameFlagSpawnPoint(tagPath, composedObject)
+                    core.updateNetgameFlagSpawnPoint(tagPath, forgeObject)
                 end
             end
 
             -- As a server we have to send back a response/request to the players in the server
             if (server_type == "sapp") then
-                local response = core.createRequest(composedObject)
+                print(inspect(requestObject))
+                local response = core.createRequest(requestObject)
                 core.sendRequest(response)
             end
         else
@@ -144,36 +144,37 @@ local function eventsReducer(state, action)
                        "does not exist.", "error")
         end
         return state
-    elseif (action.type == constants.actionTypes.DELETE_OBJECT) then
+    elseif (action.type == constants.requests.deleteObject.actionType) then
         local requestObject = action.payload.requestObject
         local targetObjectId =
             core.getObjectIdByRemoteId(state.forgeObjects, requestObject.objectId)
-        local composedObject = state.forgeObjects[targetObjectId]
+        local forgeObject = state.forgeObjects[targetObjectId]
 
-        if (composedObject) then
-            if (composedObject.reflectionId) then
-                local tagPath = get_tag_path(targetObjectId)
+        if (forgeObject) then
+            if (forgeObject.reflectionId) then
+                local tempObject = blam.object(get_object(targetObjectId))
+                local tagPath = get_tag_path(tempObject.tagId)
                 if (tagPath:find("spawning")) then
                     dprint("-> [Reflecting Spawn]", "warning")
                     if (tagPath:find("gametypes")) then
                         dprint("GAMETYPE_SPAWN", "category")
                         -- Make needed modifications to game spawn points
-                        core.updatePlayerSpawnPoint(tagPath, composedObject, true)
+                        core.updatePlayerSpawnPoint(tagPath, forgeObject, true)
                     elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
-                        core.updateVehicleSpawn(tagPath, composedObject, true)
+                        core.updateVehicleSpawn(tagPath, forgeObject, true)
                     end
                 end
             end
 
             dprint("Deleting object from store...", "warning")
             -- // TODO: Add validation to this erasement!
-            delete_object(composedObject.objectId)
+            delete_object(targetObjectId)
             state.forgeObjects[targetObjectId] = nil
             dprint("Done.", "success")
 
             -- As a server we have to send back a response/request to the players in the server
             if (server_type == "sapp") then
-                local response = core.createRequest(composedObject)
+                local response = core.createRequest(requestObject)
                 core.sendRequest(response)
             end
         else
@@ -186,7 +187,7 @@ local function eventsReducer(state, action)
         })
 
         return state
-    elseif (action.type == constants.actionTypes.LOAD_MAP_SCREEN) then
+    elseif (action.type == constants.requests.loadMapScreen.actionType) then
         -- // TODO: This is not ok, this must be split in different reducers
         local requestObject = action.payload.requestObject
 
@@ -209,7 +210,8 @@ local function eventsReducer(state, action)
         features.openMenu(constants.uiWidgetDefinitions.loadingMenu)
 
         return state
-    elseif (action.type == constants.actionTypes.FLUSH_FORGE) then
+        -- // FIXME: We need a request for this just in case!
+    elseif (action.type == "FLUSH_FORGE") then
         state = {forgeObjects = {}}
         return state
     else

@@ -22,10 +22,10 @@ local glue = require "glue"
 local redux = require "lua-redux"
 
 -- Specific Halo Custom Edition libraries
+local maeth = require "maethrillian"
 blam = require "nlua-blam"
 tagClasses = blam.tagClasses
 blam = blam.compat35()
-local maethrillian = require "maethrillian"
 
 -- Forge modules
 local constants = require "forge.constants"
@@ -36,7 +36,7 @@ local eventsReducer = require "forge.reducers.eventsReducer"
 local forgeReducer = require "forge.reducers.forgeReducer"
 
 -- Variable used to store the current forge map in memory
-local forgeMap
+local forgeMapName
 
 -- Default debug mode state
 debugMode = true
@@ -107,16 +107,16 @@ function OnScriptLoad()
     for index, command in pairs(forgeCommands) do
         execute_command("lua_call rcon_bypass submitCommand " .. command)
     end
-    register_callback(cb["EVENT_COMMAND"], "onRcon")
-    register_callback(cb["EVENT_OBJECT_SPAWN"], "onObjectSpawn")
-    register_callback(cb["EVENT_JOIN"], "onPlayerJoin")
-    register_callback(cb["EVENT_GAME_START"], "onGameStart")
-    register_callback(cb["EVENT_GAME_END"], "onGameEnd")
-    register_callback(cb["EVENT_PRESPAWN"], "onPlayerSpawn")
+    register_callback(cb["EVENT_COMMAND"], "OnRcon")
+    register_callback(cb["EVENT_OBJECT_SPAWN"], "OnObjectSpawn")
+    register_callback(cb["EVENT_JOIN"], "OnPlayerJoin")
+    register_callback(cb["EVENT_GAME_START"], "OnGameStart")
+    register_callback(cb["EVENT_GAME_END"], "OnGameEnd")
+    register_callback(cb["EVENT_PRESPAWN"], "OnPlayerSpawn")
 end
 
 -- Change biped tag id from players and store their object ids
-function onObjectSpawn(playerIndex, tagId, parentId, objectId)
+function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
     if (not player_present(playerIndex)) then
         return true
     else
@@ -145,7 +145,7 @@ function onObjectSpawn(playerIndex, tagId, parentId, objectId)
 end
 
 -- Update object data after spawning
-function onPlayerSpawn(playerIndex)
+function OnPlayerSpawn(playerIndex)
     local player = blam.biped(get_dynamic_player(playerIndex))
     if (player) then
         -- Provide better movement to monitors
@@ -166,129 +166,105 @@ function onPlayerSpawn(playerIndex)
     end
 end
 
--- Sync preoviosly forged stuff for upcoming players
-function onPlayerJoin(playerIndex)
+-- Sync all the required stuff to new players
+function OnPlayerJoin(playerIndex)
     local forgeState = forgeStore:getState()
     local forgeObjects = eventsStore:getState().forgeObjects
-    local objectCount = #glue.keys(forgeObjects)
+    local countableForgeObjects = glue.keys(forgeObjects)
+    --local objectCount = #countableForgeObjects
 
     -- There are objects to sync
-    if (objectCount > 0) then
+    if (forgeMapName) then --and objectCount > 0) then
+        print("Sending map info")
         dprint("Sending sync responses for: " .. playerIndex)
 
-        -- Create a temporal composed object like
-        local tempObject = {}
-        tempObject.objectCount = objectCount
-        tempObject.mapName = forgeState.currentMap.name
-        tempObject.mapDescription = forgeState.currentMap.description
+        -- Create a temporal forge map object like to force data sync
+        local onMemoryForgeMap = {}
+        onMemoryForgeMap.objects = countableForgeObjects
+        onMemoryForgeMap.name = forgeState.currentMap.name
+        onMemoryForgeMap.description = forgeState.currentMap.description
+        core.sendMapData(onMemoryForgeMap, playerIndex)
 
-        local response = core.createRequest(tempObject, constants.requestTypes.LOAD_MAP_SCREEN)
-        core.sendRequest(response, playerIndex)
-
-        for objectId, composedObject in pairs(forgeObjects) do
-            local response = core.createRequest(composedObject, constants.requestTypes.SPAWN_OBJECT)
+        -- Send to new players all the current forged objects
+        for objectId, forgeObject in pairs(forgeObjects) do
+            local instanceObject = glue.update({}, forgeObject)
+            instanceObject.requestType = constants.requests.spawnObject.requestType
+            instanceObject.tagId = blam.object(get_object(objectId)).tagId
+            local response = core.createRequest(instanceObject)
             core.sendRequest(response, playerIndex)
         end
     end
 end
 
 function OnRcon(playerIndex, message, environment, rconPassword)
-    -- TO DO: Check rcon environment
-    if (environment) then
-        dprint("Triggering rcon...")
-        -- TO DO: Check if we have to avoid returning true or false
-        dprint("Incoming rcon message:", "warning")
-        dprint(message)
-        local request = string.gsub(message, "'", "")
-        local splitData = glue.string.split(request, ",")
-        local command = splitData[1]
-        local requestType = constants.requestTypes[command]
-        if (requestType) then
-            dprint("Decoding incoming " .. requestType .. " ...", "warning")
-
-            local requestObject = maethrillian.convertRequestToObject(request,
-                                                                      constants.requestFormats[requestType])
-
-            if (requestObject) then
-                dprint("Done.", "success")
-            else
-                dprint("Error at converting request.", "error")
-                return false, nil
-            end
-
-            dprint("Decompressing ...", "warning")
-            local compressionFormat = constants.compressionFormats[requestType]
-            requestObject = maethrillian.decompressObject(requestObject, compressionFormat)
-
-            if (requestObject) then
-                dprint("Done.", "success")
-            else
-                dprint("Error at decompressing request.", "error")
-                return false, nil
-            end
-            dprint("Error at decompressing request.", "error")
-            if (not ftestingMode) then
-                eventsStore:dispatch({
-                    type = requestType,
-                    payload = {
-                        requestObject = requestObject
-                    }
-                })
-            end
-            return false, requestObject
-        elseif (command == "#b") then
-            dprint("Trying to process a biped swap request...")
-            if (playersObjectIds[playerIndex]) then
-                local playerObjectId = playersObjectIds[playerIndex]
-                dprint("playerObjectId: " .. tostring(playerObjectId))
-                local player = blam.object(get_object(playerObjectId))
-                if (player) then
-                    dprint("lua-blam rocks!!!")
-                    playerObjectTempPos[playerIndex] =
-                        {
-                            player.x,
-                            player.y,
-                            player.z
-                        }
-                    if (player.tagId == get_tag_id("bipd", constants.bipeds.monitor)) then
-                        bipedChangeRequest[playerIndex] = "spartan"
-                    else
-                        bipedChangeRequest[playerIndex] = "monitor"
-                    end
-                    delete_object(playerObjectId)
-                end
-            end
-        elseif (command == "#v") then
-            gprint("A player has voted for map .. " .. splitData[2])
-        elseif (command == "fload") then
-            local mapName = splitData[2]
-            local gameType = splitData[3]
-            if (mapName) then
-                local forgeObjects = eventsStore:getState().forgeObjects
-                if (#glue.keys(forgeObjects) > 0) then
-                    forgeMap = mapName
-                    execute_script("sv_map forge_island " .. gameType)  
+    -- // TODO: Check rcon environment
+    dprint("Triggering rcon...")
+    -- // TODO: Check if we have to avoid returning true or false
+    dprint("Incoming rcon message:", "warning")
+    dprint(message)
+    local request = string.gsub(message, "'", "")
+    local splitData = glue.string.split(request, "|")
+    local incomingRequest = splitData[1]
+    local actionType
+    local currentRequest
+    for requestName, request in pairs(constants.requests) do
+        if (incomingRequest and incomingRequest == request.requestType) then
+            currentRequest = request
+            actionType = request.actionType
+        end
+    end
+    if (actionType) then
+        return core.processRequest(actionType, request, currentRequest)
+    elseif (incomingRequest == "#b") then
+        dprint("Trying to process a biped swap request...")
+        if (playersObjectIds[playerIndex]) then
+            local playerObjectId = playersObjectIds[playerIndex]
+            dprint("playerObjectId: " .. tostring(playerObjectId))
+            local player = blam.object(get_object(playerObjectId))
+            if (player) then
+                playerObjectTempPos[playerIndex] =
+                    {player.x, player.y, player.z}
+                if (player.tagId == get_tag_id("bipd", constants.bipeds.monitor)) then
+                    bipedChangeRequest[playerIndex] = "spartan"
                 else
-                    core.loadForgeMap(mapName)
+                    bipedChangeRequest[playerIndex] = "monitor"
                 end
-            else
-                rprint(playerIndex, "You must specify a forge map name.")
+                delete_object(playerObjectId)
             end
+        end
+    elseif (incomingRequest == "#v") then
+        gprint("A player has voted for map .. " .. splitData[2])
+    elseif (incomingRequest == "fload") then
+        local mapName = splitData[2]
+        local gameType = splitData[3]
+        if (mapName) then
+            local forgeObjects = eventsStore:getState().forgeObjects
+            -- // FIXME: This control block is not ok, is just a patch!
+            if (true) then
+                forgeMapName = mapName
+                execute_script("sv_map forge_island " .. gameType)
+            end
+        else
+            rprint(playerIndex, "You must specify a forge map name.")
         end
     end
 end
 
-function onGameStart()
+function OnGameStart()
     -- Load current forge map
-    if (forgeMap) then
-        core.loadForgeMap(forgeMap)
+    if (forgeMapName) then
+        core.loadForgeMap(forgeMapName)
     end
 end
 
-function onGameEnd()
+function OnGameEnd()
     eventsStore:dispatch({
         type = constants.actionTypes.FLUSH_FORGE
     })
+end
+
+function OnError()
+    print(debug.traceback())
 end
 
 function OnScriptUnload()

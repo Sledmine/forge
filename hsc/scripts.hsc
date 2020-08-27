@@ -42,8 +42,6 @@
     (set map_vote_menu_close_hook true)
 )
 
-
-
 ;; Loading Menu
 (script static void set_loading_menu_close_hook
     (begin
@@ -52,8 +50,6 @@
         (cinematic_stop)
     )
 )
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Menus Widget Triggers
 ;; Function name: set_<menu_name>_trigger

@@ -174,27 +174,23 @@ end
 ---@return string request
 function core.sendRequest(request, playerIndex)
     dprint("-> [ Sending request ]")
-    local requestType = glue.string.split(request, ";")[1]
+    local requestType = glue.string.split(request, "|")[1]
     dprint("Request type: " .. requestType)
     if (requestType) then
         request = "rcon forge '" .. request .. "'"
-
         dprint("Request: " .. request)
         if (server_type == "local") then
             -- We need to mockup the server response in local mode
             local mockedResponse = string.gsub(string.gsub(request, "rcon forge '", ""), "'", "")
-            dprint("Local Request: " .. mockedResponse)
             OnRcon(mockedResponse)
             return true, mockedResponse
         elseif (server_type == "dedicated") then
             -- Player is connected to a server
-            dprint("Dedicated Request: " .. request)
             execute_script(request)
             return true, request
         elseif (server_type == "sapp") then
             local fixedRequest = string.gsub(request, "rcon forge '", "")
-            dprint("Server Request: " .. fixedRequest)
-
+            dprint("Server request: " .. fixedRequest)
             -- We want to broadcast to every player in the server
             if (not playerIndex) then
                 gprint(fixedRequest)
@@ -213,35 +209,74 @@ end
 ---@param requestTable table
 function core.createRequest(requestTable)
     local instanceObject = glue.update({}, requestTable)
+    local request
     if (instanceObject) then
         -- Create an object instance to avoid wrong reference asignment
         local requestType = instanceObject.requestType
-        if (requestType == constants.requests.spawnObject.requestType) then
-            if (server_type == "sapp") then
-                instanceObject.remoteId = requestTable.remoteId
+        if (requestType) then
+            if (requestType == constants.requests.spawnObject.requestType) then
+                if (server_type == "sapp") then
+                    instanceObject.remoteId = requestTable.remoteId
+                end
+            elseif (requestType == constants.requests.updateObject.requestType) then
+                if (server_type ~= "sapp") then
+                    -- Desired object id is our remote id
+                    instanceObject.objectId = requestTable.remoteId
+                end
+            elseif (requestType == constants.requests.deleteObject.requestType) then
+                if (server_type ~= "sapp") then
+                    -- Desired object id is our remote id
+                    instanceObject.objectId = requestTable.remoteId
+                end
             end
-        elseif (requestType == constants.requests.updateObject.requestType) then
-            if (server_type ~= "sapp") then
-                -- Desired object id is our remote id
-                instanceObject.objectId = requestTable.remoteId
+            local requestFormat
+            for requestIndex, request in pairs(constants.requests) do
+                if (requestType == request.requestType) then
+                    requestFormat = request.requestFormat
+                end
             end
-        elseif (requestType == constants.requests.deleteObject.requestType) then
-            if (server_type ~= "sapp") then
-                -- Desired object id is our remote id
-                instanceObject.objectId = requestTable.remoteId
-            end
+            local encodedTable = maeth.encodeTable(instanceObject, requestFormat)
+            print(inspect(requestTable))
+            request = maeth.tableToRequest(encodedTable, requestFormat, "|")
+        else
+            print(inspect(instanceObject))
+            error("There is no request type in this request!")
         end
-        local requestFormat
-        for requestIndex, request in pairs(constants.requests) do
-            if (requestType == request.requestType) then
-                requestFormat = request.requestFormat
-            end
-        end
-        local encodedTable = maeth.encodeTable(instanceObject, requestFormat)
-        local request = maeth.tableToRequest(encodedTable, requestFormat)
         return request
     end
     return nil
+end
+
+--- Process every request as a server
+function core.processRequest(actionType, request, currentRequest)
+    dprint("-> [ Receiving request ]")
+    dprint("Incoming request: " .. request)
+    dprint("Parsing incoming " .. actionType .. " ...", "warning")
+    local requestTable = maeth.requestToTable(request, currentRequest.requestFormat, "|")
+    if (requestTable) then
+        dprint("Done.", "success")
+        dprint(inspect(requestTable))
+    else
+        dprint("Error at converting request.", "error")
+        return false, nil
+    end
+    dprint("Decoding incoming " .. actionType .. " ...", "warning")
+    local requestObject = maeth.decodeTable(requestTable, currentRequest.requestFormat)
+    if (requestObject) then
+        dprint("Done.", "success")
+    else
+        dprint("Error at decoding request.", "error")
+        return false, nil
+    end
+    if (not ftestingMode) then
+        eventsStore:dispatch({
+            type = actionType,
+            payload = {
+                requestObject = requestObject
+            }
+        })
+    end
+    return false, requestObject
 end
 
 function core.resetSpawnPoints()
@@ -266,6 +301,7 @@ function core.resetSpawnPoints()
     end
     local vehicleLocationList = scenario.vehicleLocationList
     for i = 2, vehicleLocationCount do
+        -- Disable spawn and try to erase object from the map
         vehicleLocationList[i].type = 65535
         execute_script("object_destroy v" .. vehicleLocationList[i].nameIndex)
     end
@@ -285,9 +321,21 @@ function core.flushForge()
                 delete_object(objectId)
             end
             eventsStore:dispatch({
-                type = constants.actionTypes.FLUSH_FORGE
+                type = "FLUSH_FORGE"
             })
         end
+    end
+end
+
+function core.sendMapData(forgeMap)
+    if (server_type == "sapp") then
+        local mapDataResponse = {}
+        mapDataResponse.requestType = constants.requests.loadMapScreen.requestType
+        mapDataResponse.objectCount = #forgeMap.objects
+        mapDataResponse.mapName = forgeMap.name
+        mapDataResponse.mapDescription = forgeMap.description
+        local response = core.createRequest(mapDataResponse)
+        core.sendRequest(response)
     end
 end
 
@@ -300,7 +348,8 @@ function core.loadForgeMap(mapName)
     if (fmapContent) then
         dprint("Loading forge map...")
         local forgeMap = json.decode(fmapContent)
-        if (forgeMap and forgeMap.objects and #forgeMap.objects > 0) then
+        if (forgeMap and forgeMap.objects) then
+            -- Load data into store
             forgeStore:dispatch({
                 type = "SET_MAP_DATA",
                 payload = {
@@ -308,15 +357,7 @@ function core.loadForgeMap(mapName)
                     mapDescription = forgeMap.description
                 }
             })
-            if (server_type == "sapp") then
-                local tempObject = {}
-                tempObject.objectCount = #forgeMap.objects
-                tempObject.mapName = forgeMap.name
-                tempObject.mapDescription = forgeMap.description
-                local response = core.createRequest(tempObject,
-                                                    constants.requestTypes.LOAD_MAP_SCREEN)
-                core.sendRequest(response)
-            end
+            core.sendMapData(forgeMap)
 
             -- Reset all spawn points to default
             core.resetSpawnPoints()
@@ -328,18 +369,20 @@ function core.loadForgeMap(mapName)
             end
 
             for objectId, forgeObject in pairs(forgeMap.objects) do
-                local objectTagId = get_tag_id(tagClasses.scenery, forgeObject.tagPath)
+                local spawnRequest = glue.update({}, forgeObject)
+                local objectTagId = get_tag_id(tagClasses.scenery, spawnRequest.tagPath)
                 if (objectTagId) then
-                    forgeObject.tagPath = nil
-                    forgeObject.tagId = objectTagId
+                    spawnRequest.requestType = constants.requests.spawnObject.requestType
+                    spawnRequest.tagPath = nil
+                    spawnRequest.tagId = objectTagId
                     eventsStore:dispatch({
                         type = constants.requests.spawnObject.actionType,
                         payload = {
-                            requestObject = forgeObject
+                            requestObject = spawnRequest
                         }
                     })
                 else
-                    dprint("WARNING!! Object with path '" .. forgeObject.tagPath ..
+                    dprint("WARNING!! Object with path '" .. spawnRequest.tagPath ..
                                "' can't be spawn...", "warning")
                 end
             end
@@ -351,7 +394,7 @@ function core.loadForgeMap(mapName)
 
             return true
         else
-            dprint("ERROR!! At decoding data from '" .. mapName .. "' forge map...", "error")
+            dprint("Error at decoding data from '" .. mapName .. "' forge map...", "error")
         end
     else
         dprint("ERROR!! At trying to load '" .. mapName .. "' as a forge map...", "error")
@@ -392,7 +435,6 @@ function core.saveForgeMap()
         local fmapObject = glue.update({}, forgeObject)
 
         -- Remove all the unimportant data
-        fmapObject.object = nil
         fmapObject.objectId = nil
         fmapObject.reflectionId = nil
         fmapObject.remoteId = nil
@@ -589,8 +631,8 @@ end
 
 --- Apply updates to netgame flags spawn points based on a tag path
 ---@param tagPath string
----@param composedObject table
-function core.updateNetgameFlagSpawnPoint(tagPath, composedObject)
+---@param forgeObject table
+function core.updateNetgameFlagSpawnPoint(tagPath, forgeObject)
     -- // TODO: Review if some flags use team index as "group index"!
     local teamIndex = 0
     local flagType = 0
@@ -637,37 +679,37 @@ function core.updateNetgameFlagSpawnPoint(tagPath, composedObject)
     local mapNetgameFlagsPoints = scenario.netgameFlagsList
 
     -- Object is not already reflecting a flag point
-    if (not composedObject.reflectionId) then
+    if (not forgeObject.reflectionId) then
         for flagId = 1, #mapNetgameFlagsPoints do
             -- // FIXME: This control block is not neccessary but needs improvements!
             -- If this flag point is using the same flag type
             if (mapNetgameFlagsPoints[flagId].type == flagType and
                 mapNetgameFlagsPoints[flagId].teamIndex == teamIndex) then
                 -- Replace spawn point values
-                mapNetgameFlagsPoints[flagId].x = composedObject.x
-                mapNetgameFlagsPoints[flagId].y = composedObject.y
+                mapNetgameFlagsPoints[flagId].x = forgeObject.x
+                mapNetgameFlagsPoints[flagId].y = forgeObject.y
                 -- Z plus an offset to prevent flag from falling in lower bsp values
-                mapNetgameFlagsPoints[flagId].z = composedObject.z + 0.135
-                mapNetgameFlagsPoints[flagId].rotation = math.rad(composedObject.yaw)
+                mapNetgameFlagsPoints[flagId].z = forgeObject.z + 0.15
+                mapNetgameFlagsPoints[flagId].rotation = math.rad(forgeObject.yaw)
                 mapNetgameFlagsPoints[flagId].teamIndex = teamIndex
                 mapNetgameFlagsPoints[flagId].type = flagType
 
                 -- Debug spawn index
                 dprint("Creating flag replacing index: " .. flagId, "warning")
-                composedObject.reflectionId = flagId
+                forgeObject.reflectionId = flagId
                 break
             end
         end
     else
-        dprint("Reflection id:" .. composedObject.reflectionId)
+        dprint("Reflection id:" .. forgeObject.reflectionId)
         -- Replace spawn point values
-        mapNetgameFlagsPoints[composedObject.reflectionId].x = composedObject.x
-        mapNetgameFlagsPoints[composedObject.reflectionId].y = composedObject.y
-        mapNetgameFlagsPoints[composedObject.reflectionId].z = composedObject.z
-        mapNetgameFlagsPoints[composedObject.reflectionId].rotation = math.rad(composedObject.yaw)
-        dprint(mapNetgameFlagsPoints[composedObject.reflectionId].type)
+        mapNetgameFlagsPoints[forgeObject.reflectionId].x = forgeObject.x
+        mapNetgameFlagsPoints[forgeObject.reflectionId].y = forgeObject.y
+        mapNetgameFlagsPoints[forgeObject.reflectionId].z = forgeObject.z
+        mapNetgameFlagsPoints[forgeObject.reflectionId].rotation = math.rad(forgeObject.yaw)
+        dprint(mapNetgameFlagsPoints[forgeObject.reflectionId].type)
         -- Debug spawn index
-        dprint("Updating flag replacing index: " .. composedObject.reflectionId)
+        dprint("Updating flag replacing index: " .. forgeObject.reflectionId, "warning")
     end
     -- Update spawn point list
     blam.scenario(scenarioAddress, {
@@ -678,7 +720,7 @@ end
 --- Enable, update and disable vehicle spawns
 -- Must be called after adding scenery object to the store!!
 -- @return true if found an available spawn
-function core.updateVehicleSpawn(tagPath, composedObject, disable)
+function core.updateVehicleSpawn(tagPath, forgeObject, disable)
     if (server_type == "dedicated") then
         return true
     end
@@ -721,22 +763,22 @@ function core.updateVehicleSpawn(tagPath, composedObject, disable)
     local vehicleLocationList = scenario.vehicleLocationList
 
     -- Object exists, it's synced
-    if (not composedObject.reflectionId) then
+    if (not forgeObject.reflectionId) then
         for spawnId = 2, #vehicleLocationList do
             if (vehicleLocationList[spawnId].type == 65535) then
                 -- Replace spawn point values
-                vehicleLocationList[spawnId].x = composedObject.x
-                vehicleLocationList[spawnId].y = composedObject.y
-                vehicleLocationList[spawnId].z = composedObject.z
-                vehicleLocationList[spawnId].yaw = math.rad(composedObject.yaw)
-                vehicleLocationList[spawnId].pitch = math.rad(composedObject.pitch)
-                vehicleLocationList[spawnId].roll = math.rad(composedObject.roll)
+                vehicleLocationList[spawnId].x = forgeObject.x
+                vehicleLocationList[spawnId].y = forgeObject.y
+                vehicleLocationList[spawnId].z = forgeObject.z
+                vehicleLocationList[spawnId].yaw = math.rad(forgeObject.yaw)
+                vehicleLocationList[spawnId].pitch = math.rad(forgeObject.pitch)
+                vehicleLocationList[spawnId].roll = math.rad(forgeObject.roll)
 
                 vehicleLocationList[spawnId].type = vehicleType
 
                 -- Debug spawn index
                 dprint("Creating spawn replacing index: " .. spawnId)
-                composedObject.reflectionId = spawnId
+                forgeObject.reflectionId = spawnId
 
                 -- Update spawn point list
                 blam.scenario(scenarioAddress, {
@@ -749,29 +791,29 @@ function core.updateVehicleSpawn(tagPath, composedObject, disable)
             end
         end
     else
-        dprint(composedObject.reflectionId)
+        dprint(forgeObject.reflectionId)
         if (disable) then
             -- Disable or "delete" spawn point by setting type as 65535
-            vehicleLocationList[composedObject.reflectionId].type = 65535
+            vehicleLocationList[forgeObject.reflectionId].type = 65535
             -- Update spawn point list
             blam.scenario(scenarioAddress, {
                 vehicleLocationList = vehicleLocationList
             })
             dprint("object_create_anew v" ..
-                       vehicleLocationList[composedObject.reflectionId].nameIndex)
+                       vehicleLocationList[forgeObject.reflectionId].nameIndex)
             execute_script("object_destroy v" ..
-                               vehicleLocationList[composedObject.reflectionId].nameIndex)
+                               vehicleLocationList[forgeObject.reflectionId].nameIndex)
             return true
         end
         -- Replace spawn point values
-        vehicleLocationList[composedObject.reflectionId].x = composedObject.x
-        vehicleLocationList[composedObject.reflectionId].y = composedObject.y
-        vehicleLocationList[composedObject.reflectionId].z = composedObject.z
+        vehicleLocationList[forgeObject.reflectionId].x = forgeObject.x
+        vehicleLocationList[forgeObject.reflectionId].y = forgeObject.y
+        vehicleLocationList[forgeObject.reflectionId].z = forgeObject.z
 
         -- REMINDER!!! Check vehicle rotation
 
         -- Debug spawn index
-        dprint("Updating spawn replacing index: " .. composedObject.reflectionId)
+        dprint("Updating spawn replacing index: " .. forgeObject.reflectionId)
 
         -- Update spawn point list
         blam.scenario(scenarioAddress, {

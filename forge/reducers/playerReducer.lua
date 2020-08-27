@@ -7,13 +7,17 @@ local constants = require "forge.constants"
 function playerReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
+        ---@class position
+        ---@field x number
+        ---@field y number
+        ---@field z number
         ---@class playerState
-        ---@field object biped
+        ---@field position position
         state = {
             lockDistance = true,
             distance = 5,
             attachedObjectId = nil,
-            object = nil,
+            position = nil,
             xOffset = 0,
             yOffset = 0,
             zOffset = 0,
@@ -196,10 +200,15 @@ function playerReducer(state, action)
         return state
     elseif (action.type == "SAVE_POSITION") then
         -- Do not forget to migrate this to dumpObject or getAll
-        state.object = blam.biped(get_dynamic_player())
+        local tempObject = blam.biped(get_dynamic_player())
+        state.position = {
+            x = tempObject.x,
+            y = tempObject.y,
+            z = tempObject.z
+        }
         return state
     elseif (action.type == "RESET_POSITION") then
-        state.object = nil
+        state.position = nil
         return state
     else
         return state

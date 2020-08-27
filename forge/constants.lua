@@ -55,12 +55,23 @@ constants.requests = {
     },
     loadMapScreen = {
         actionType = "LOAD_MAP_SCREEN",
-        requestType = "#l",
+        requestType = "#lm",
         requestFormat = {
             {"requestType"},
             {"objectCount"},
             {"mapName"},
             {"mapDescription"}
+        }
+    },
+    -- // TODO: Finish this request!
+    loadVoteMapScreen = {
+        actionType = "LOAD_VOTE_MAP_SCREEN",
+        requestType = "#lv",
+        requestFormat = {
+            {"requestType"},
+            {"voteCount"},
+            {"maps"},
+            {"gametypes"}
         }
     }
 }
@@ -72,75 +83,6 @@ constants.actionTypes = {
     LOAD_MAP_SCREEN = "LOAD_MAP_SCREEN",
     FLUSH_FORGE = "FLUSH_FORGE"
 }
-
--- Request types definition
-constants.requestTypes = {
-    ["SPAWN_OBJECT"] = "#s",
-    ["UPDATE_OBJECT"] = "#u",
-    ["DELETE_OBJECT"] = "#d",
-    ["LOAD_MAP_SCREEN"] = "#l",
-    -- We have to provide reverse typing for fast coding
-    -- Ok.. never mind, // TODO: review implementations of this that need glue index reverse function
-    ["#s"] = "SPAWN_OBJECT",
-    ["#u"] = "UPDATE_OBJECT",
-    ["#d"] = "DELETE_OBJECT",
-    ["#l"] = "LOAD_MAP_SCREEN",
-    ["#ff"] = "FLUSH_FORGE"
-}
-
---- Request formats for rcon communication
-constants.requestFormats = {
-    ["SPAWN_OBJECT"] = {
-        "requestType",
-        "tagId",
-        "x",
-        "y",
-        "z",
-        "yaw",
-        "pitch",
-        "roll",
-        "remoteId"
-    },
-    ["UPDATE_OBJECT"] = {
-        "requestType",
-        "objectId",
-        "x",
-        "y",
-        "z",
-        "yaw",
-        "pitch",
-        "roll"
-    },
-    ["DELETE_OBJECT"] = {
-        "requestType",
-        "objectId"
-    },
-    ["LOAD_MAP_SCREEN"] = {
-        "requestType",
-        "objectCount",
-        "mapName",
-        "mapDescription"
-    },
-    ["FLUSH_FORGE"] = {"requestType"}
-}
-
-constants.compressionFormats = {
-    ["SPAWN_OBJECT"] = {
-        tagId = "I4",
-        x = "f",
-        y = "f",
-        z = "f",
-        remoteId = "I4"
-    },
-    ["UPDATE_OBJECT"] = {
-        x = "f",
-        y = "f",
-        z = "f"
-    }
-}
-
-constants.testObjectPath =
-    "[shm]\\halo_4\\scenery\\spawning\\vehicles\\scorpion spawn\\scorpion spawn"
 
 -- Biped tag definitions
 constants.bipeds = {

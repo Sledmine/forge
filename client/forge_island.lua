@@ -225,7 +225,7 @@ function onMapLoad()
         end
 
         set_callback("tick", "onTick")
-        set_callback("rcon message", "onRcon")
+        set_callback("rcon message", "OnRcon")
         set_callback("command", "onCommand")
 
     else
@@ -238,10 +238,12 @@ function onTick()
     -- Get player object
     ---@type biped
     local player = blam.biped(get_dynamic_player())
+
+    -- Get player forge state
     ---@type playerState
     local playerState = playerStore:getState()
     if (player) then
-        local oldPosition = playerState.object
+        local oldPosition = playerState.position
         if (oldPosition) then
             blam.biped(get_dynamic_player(), {
                 x = oldPosition.x,
@@ -410,11 +412,12 @@ function onTick()
                                                 roll = composedObject.roll
                                             }
                                         })
+                                    local tagId = blam.object(get_object(objectId)).tagId
                                     playerStore:dispatch(
                                         {
                                             type = "CREATE_AND_ATTACH_OBJECT",
                                             payload = {
-                                                path = get_tag_path(composedObject.object.tagId)
+                                                path = get_tag_path(tagId)
                                             }
                                         })
                                 end
@@ -562,7 +565,7 @@ end
 
 function OnRcon(message)
     local request = string.gsub(message, "'", "")
-    local splitData = glue.string.split(request, ";")
+    local splitData = glue.string.split(request, "|")
     local incomingRequest = splitData[1]
     local actionType
     local currentRequest
@@ -573,34 +576,7 @@ function OnRcon(message)
         end
     end
     if (actionType) then
-        dprint("-> [ Receiving request ]")
-        dprint("Incoming request: " .. request)
-        dprint("Parsing incoming " .. actionType .. " ...", "warning")
-        local requestTable = maeth.requestToTable(request, currentRequest.requestFormat)
-        if (requestTable) then
-            dprint("Done.", "success")
-        else
-            dprint("Error at converting request.", "error")
-            return false, nil
-        end
-        dprint("Decoding incoming " .. actionType .. " ...", "warning")
-        local requestObject = maeth.decodeTable(requestTable, currentRequest.requestFormat)
-        if (requestObject) then
-            dprint("Done.", "success")
-            console_out(requestObject.x .. " " .. requestObject.y .. " " .. requestObject.z)
-        else
-            dprint("Error at decoding request.", "error")
-            return false, nil
-        end
-        if (not ftestingMode) then
-            eventsStore:dispatch({
-                type = actionType,
-                payload = {
-                    requestObject = requestObject
-                }
-            })
-        end
-        return false, requestObject
+        return core.processRequest(actionType, request, currentRequest)
     end
     return true
 end
