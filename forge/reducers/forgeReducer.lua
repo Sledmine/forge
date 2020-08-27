@@ -45,8 +45,8 @@ local function forgeReducer(state, action)
         }
     end
     if (action.type) then
-        dprint("Forge Store, dispatched event:")
-        dprint(action.type, "category")
+        dprint("[Forge Store]:")
+        dprint("Action: " .. action.type, "category")
     end
     if (action.type == "UPDATE_MAP_LIST") then
         state.mapsMenu.mapsList = action.payload.mapsList
@@ -69,7 +69,6 @@ local function forgeReducer(state, action)
             state.mapsMenu.sidebar.overflow = fullSize - constants.maximumSidebarSize
             state.mapsMenu.sidebar.height = sidebarHeight - state.mapsMenu.sidebar.overflow
         end
-        dprint(inspect(state.mapsMenu))
         return state
     elseif (action.type == "INCREMENT_MAPS_MENU_PAGE") then
         if (state.mapsMenu.currentPage < #state.mapsMenu.currentMapsList) then
@@ -123,7 +122,6 @@ local function forgeReducer(state, action)
         -- Create list pagination
         state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
 
-        dprint(inspect(state.forgeMenu))
         return state
     elseif (action.type == "INCREMENT_FORGE_MENU_PAGE") then
         dprint("Page:" .. inspect(state.forgeMenu.currentPage))
@@ -169,7 +167,6 @@ local function forgeReducer(state, action)
         -- Create list pagination
         state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
 
-        dprint(inspect(state.forgeMenu))
         return state
     elseif (action.type == "SET_MAP_NAME") then
         state.currentMap.name = action.payload.mapName

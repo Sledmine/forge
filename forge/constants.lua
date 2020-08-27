@@ -15,6 +15,56 @@ constants.minimumSidebarSize = 40
 constants.scenarioPath = "[shm]\\halo_4\\maps\\forge_island\\forge_island"
 constants.scenerysTagCollectionPath = "[shm]\\halo_4\\maps\\forge_island\\forge_island_scenerys"
 
+constants.requests = {
+    spawnObject = {
+        actionType = "SPAWN_OBJECT",
+        requestType = "#s",
+        requestFormat = {
+            {"requestType"},
+            {"tagId", "I4"},
+            {"x", "f"},
+            {"y", "f"},
+            {"z", "f"},
+            {"yaw"},
+            {"pitch"},
+            {"roll"},
+            {"remoteId", "I4"}
+        }
+    },
+    updateObject = {
+        actionType = "UPDATE_OBJECT",
+        requestType = "#u",
+        requestFormat = {
+            {"requestType"},
+            {"objectId"},
+            {"x", "f"},
+            {"y", "f"},
+            {"z", "f"},
+            {"yaw"},
+            {"pitch"},
+            {"roll"}
+        }
+    },
+    deleteObject = {
+        actionType = "DELETE_OBJECT",
+        requestType = "#d",
+        requestFormat = {
+            {"requestType"},
+            {"objectId"}
+        }
+    },
+    loadMapScreen = {
+        actionType = "LOAD_MAP_SCREEN",
+        requestType = "#l",
+        requestFormat = {
+            {"requestType"},
+            {"objectCount"},
+            {"mapName"},
+            {"mapDescription"}
+        }
+    }
+}
+
 constants.actionTypes = {
     SPAWN_OBJECT = "SPAWN_OBJECT",
     UPDATE_OBJECT = "UPDATE_OBJECT",
@@ -86,10 +136,7 @@ constants.compressionFormats = {
         x = "f",
         y = "f",
         z = "f"
-    },
-    ["DELETE_OBJECT"] = {},
-    ["LOAD_MAP_SCREEN"] = {},
-    ["FLUSH_FORGE"] = {}
+    }
 }
 
 constants.testObjectPath =

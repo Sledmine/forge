@@ -10,7 +10,7 @@ local json = require "json"
 local glue = require "glue"
 
 -- Halo libraries
-local maethrillian = require "maethrillian"
+local maeth = require "maethrillian"
 
 -- Forge modules
 local features = require "forge.features"
@@ -97,12 +97,12 @@ function core.eulerToMatrix(yaw, pitch, roll)
 end
 ]]
 
---- Covert euler rotation into game rotation array, optional rotation matrix
+--- Covert euler into game rotation array, optional rotation matrix
 ---@param yaw number
 ---@param pitch number
 ---@param roll number
 ---@return table, table
-function core.eulerRotation(yaw, pitch, roll)
+function core.eulerToRotation(yaw, pitch, roll)
     local matrix = {
         {1, 0, 0},
         {0, 1, 0},
@@ -140,7 +140,7 @@ end
 ---@param pitch number
 ---@param roll number
 function core.rotateObject(objectId, yaw, pitch, roll)
-    local rotation = core.eulerRotation(yaw, pitch, roll)
+    local rotation = core.eulerToRotation(yaw, pitch, roll)
     blam.object(get_object(objectId), {
         vX = rotation[1],
         vY = rotation[2],
@@ -170,31 +170,13 @@ function core.isPlayerMonitor(playerIndex)
 end
 
 --- Send a request to the server throug rcon
----@param data table
----@param playerIndex number
 ---@return boolean success
 ---@return string request
-function core.sendRequest(data, playerIndex)
-    dprint("Request data: ")
-    dprint(inspect(data))
+function core.sendRequest(request, playerIndex)
     dprint("-> [ Sending request ]")
-    local requestType = constants.requestTypes[data.requestType]
+    local requestType = glue.string.split(request, ";")[1]
+    dprint("Request type: " .. requestType)
     if (requestType) then
-        dprint("Type: " .. requestType, "category")
-        local compressionFormat = constants.compressionFormats[requestType]
-
-        if (not compressionFormat) then
-            dprint("There is no format compression for this request!!!!", "error")
-            return false
-        end
-
-        dprint("Compression: " .. inspect(compressionFormat))
-
-        local requestObject = maethrillian.compressObject(data, compressionFormat, true)
-
-        local requestOrder = constants.requestFormats[requestType]
-        local request = maethrillian.convertObjectToRequest(requestObject, requestOrder)
-
         request = "rcon forge '" .. request .. "'"
 
         dprint("Request: " .. request)
@@ -202,7 +184,7 @@ function core.sendRequest(data, playerIndex)
             -- We need to mockup the server response in local mode
             local mockedResponse = string.gsub(string.gsub(request, "rcon forge '", ""), "'", "")
             dprint("Local Request: " .. mockedResponse)
-            onRcon(mockedResponse)
+            OnRcon(mockedResponse)
             return true, mockedResponse
         elseif (server_type == "dedicated") then
             -- Player is connected to a server
@@ -210,66 +192,54 @@ function core.sendRequest(data, playerIndex)
             execute_script(request)
             return true, request
         elseif (server_type == "sapp") then
-            local fixedResponse = string.gsub(request, "rcon forge '", "")
-            dprint("Server Request: " .. fixedResponse)
+            local fixedRequest = string.gsub(request, "rcon forge '", "")
+            dprint("Server Request: " .. fixedRequest)
 
             -- We want to broadcast to every player in the server
             if (not playerIndex) then
-                for i = 1, 16 do
-                    if (player_present(i)) then
-                        rprint(i, fixedResponse)
-                    end
-                end
+                gprint(fixedRequest)
             else
                 -- We are looking to send data to a specific player
-                rprint(playerIndex, fixedResponse)
+                rprint(playerIndex, fixedRequest)
             end
-            return true, fixedResponse
+            return true, fixedRequest
         end
     end
     dprint("Error at trying to send request!!!!", "error")
     return false
 end
 
---- Create a request for an object action
----@param composedObject number
----@param requestType string
-function core.createRequest(composedObject, requestType)
-    local objectData = {}
-    if (composedObject) then
-        objectData.requestType = requestType
-        if (requestType == constants.requestTypes.SPAWN_OBJECT) then
-            objectData.tagId = composedObject.object.tagId
+--- Create a request from a request object
+---@param requestTable table
+function core.createRequest(requestTable)
+    local instanceObject = glue.update({}, requestTable)
+    if (instanceObject) then
+        -- Create an object instance to avoid wrong reference asignment
+        local requestType = instanceObject.requestType
+        if (requestType == constants.requests.spawnObject.requestType) then
             if (server_type == "sapp") then
-                objectData.remoteId = composedObject.remoteId
+                instanceObject.remoteId = requestTable.remoteId
             end
-        elseif (requestType == constants.requestTypes.UPDATE_OBJECT) then
-            composedObject.object = blam.object(get_object(composedObject.objectId))
+        elseif (requestType == constants.requests.updateObject.requestType) then
             if (server_type ~= "sapp") then
-                objectData.objectId = composedObject.remoteId
-            else
-                objectData.objectId = composedObject.objectId
+                -- Desired object id is our remote id
+                instanceObject.objectId = requestTable.remoteId
             end
-        elseif (requestType == constants.requestTypes.DELETE_OBJECT) then
+        elseif (requestType == constants.requests.deleteObject.requestType) then
             if (server_type ~= "sapp") then
-                objectData.objectId = composedObject.remoteId
-            else
-                objectData.objectId = composedObject.objectId
+                -- Desired object id is our remote id
+                instanceObject.objectId = requestTable.remoteId
             end
-            return objectData
-        elseif (requestType == constants.requestTypes.LOAD_MAP_SCREEN) then
-            objectData.objectCount = composedObject.objectCount
-            objectData.mapName = composedObject.mapName
-            objectData.mapDescription = composedObject.mapDescription
-            return objectData
         end
-        objectData.x = composedObject.object.x
-        objectData.y = composedObject.object.y
-        objectData.z = composedObject.object.z
-        objectData.yaw = composedObject.yaw
-        objectData.pitch = composedObject.pitch
-        objectData.roll = composedObject.roll
-        return objectData
+        local requestFormat
+        for requestIndex, request in pairs(constants.requests) do
+            if (requestType == request.requestType) then
+                requestFormat = request.requestFormat
+            end
+        end
+        local encodedTable = maeth.encodeTable(instanceObject, requestFormat)
+        local request = maeth.tableToRequest(encodedTable, requestFormat)
+        return request
     end
     return nil
 end
@@ -348,27 +318,28 @@ function core.loadForgeMap(mapName)
                 core.sendRequest(response)
             end
 
-            -- TO DO: Create flush system or features to load objects on map load
+            -- Reset all spawn points to default
             core.resetSpawnPoints()
 
-            -- Remove blur after reloading server on local mode
+            -- Remove menu blur after reloading server on local mode
             if (server_type == "local") then
                 execute_script("menu_blur_off")
                 core.flushForge()
             end
 
-            for objectIndex, composedObject in pairs(forgeMap.objects) do
-                composedObject.tagId = get_tag_id("scen", composedObject.tagPath)
-                if (composedObject.tagId) then
-                    composedObject.tagPath = nil
+            for objectId, forgeObject in pairs(forgeMap.objects) do
+                local objectTagId = get_tag_id(tagClasses.scenery, forgeObject.tagPath)
+                if (objectTagId) then
+                    forgeObject.tagPath = nil
+                    forgeObject.tagId = objectTagId
                     eventsStore:dispatch({
-                        type = constants.actionTypes.SPAWN_OBJECT,
+                        type = constants.requests.spawnObject.actionType,
                         payload = {
-                            requestObject = composedObject
+                            requestObject = forgeObject
                         }
                     })
                 else
-                    dprint("WARNING!! Object with path '" .. composedObject.tagPath ..
+                    dprint("WARNING!! Object with path '" .. forgeObject.tagPath ..
                                "' can't be spawn...", "warning")
                 end
             end
@@ -412,38 +383,35 @@ function core.saveForgeMap()
     local objectsState = eventsStore:getState().forgeObjects
 
     -- Iterate through all the forge objects
-    for objectId, composedObject in pairs(objectsState) do
+    for objectId, forgeObject in pairs(objectsState) do
         -- Get scenery tag path to keep compatibility between versions
-        local sceneryPath = get_tag_path(composedObject.object.tagId)
-        dprint(sceneryPath)
+        local tempObject = blam.object(get_object(objectId))
+        local sceneryPath = get_tag_path(tempObject.tagId)
 
         -- Create a copy of the composed object in the store to avoid replacing useful values
-        local fmapComposedObject = {}
-        for k, v in pairs(composedObject) do
-            fmapComposedObject[k] = v
-        end
+        local fmapObject = glue.update({}, forgeObject)
 
         -- Remove all the unimportant data
-        fmapComposedObject.object = nil
-        fmapComposedObject.objectId = nil
-        fmapComposedObject.reflectionId = nil
-        fmapComposedObject.remoteId = nil
+        fmapObject.object = nil
+        fmapObject.objectId = nil
+        fmapObject.reflectionId = nil
+        fmapObject.remoteId = nil
 
         -- Add tag path property
-        fmapComposedObject.tagPath = sceneryPath
+        fmapObject.tagPath = sceneryPath
 
         -- Add forge object to list
-        glue.append(forgeMap.objects, fmapComposedObject)
+        glue.append(forgeMap.objects, fmapObject)
     end
 
-    -- Encode map info as JSON
+    -- Encode map info as json
     local fmapContent = json.encode(forgeMap)
 
-    -- Update map name
+    -- Fix map name
     mapName = string.gsub(mapName, " ", "_")
 
-    local forgeMapFile = glue.writefile(forgeMapsFolder .. "\\" .. mapName .. ".fmap", fmapContent,
-                                        "t")
+    local forgeMapPath = forgeMapsFolder .. "\\" .. mapName .. ".fmap"
+    local forgeMapFile = glue.writefile(forgeMapPath, fmapContent, "t")
 
     -- Check if file was created
     if (forgeMapFile) then
@@ -461,15 +429,21 @@ function core.saveForgeMap()
 end
 
 --- Super function for debug printing and non self blocking spawning
+---@param type string
 ---@param tagPath string
----@param x number @param y number @param Z number
+---@param x number
+---@param y number
+---@param z number
 ---@return number | nil objectId
-function core.cspawn_object(type, tagPath, x, y, z)
+function core.spawnObject(type, tagPath, x, y, z)
     dprint(" -> [ Object Spawning ]")
     dprint("Type:", "category")
     dprint(type)
     dprint("Tag  Path:", "category")
     dprint(tagPath)
+    dprint("Position:", "category")
+    local positionString = "%s: %s: %s:"
+    dprint(positionString:format(x, y, z))
     dprint("Trying to spawn object...", "warning")
     -- Prevent objects from phantom spawning!
     local objectId = spawn_object(type, tagPath, x, y, z)
@@ -509,7 +483,7 @@ function core.cspawn_object(type, tagPath, x, y, z)
         end
 
         dprint("-> Object: " .. objectId .. " succesfully spawned!!!", "success")
-        return objectId, x, y, z
+        return objectId
     end
     dprint("Error at trying to spawn object!!!!", "error")
     return nil
@@ -632,7 +606,7 @@ function core.updateNetgameFlagSpawnPoint(tagPath, composedObject)
         6 = teleport from
         7 = teleport to
         8 = hill flag
-    ]]  
+    ]]
     if (tagPath:find("flag stand")) then
         dprint("FLAG POINT")
         flagType = 0
@@ -667,7 +641,8 @@ function core.updateNetgameFlagSpawnPoint(tagPath, composedObject)
         for flagId = 1, #mapNetgameFlagsPoints do
             -- // FIXME: This control block is not neccessary but needs improvements!
             -- If this flag point is using the same flag type
-            if (mapNetgameFlagsPoints[flagId].type == flagType and mapNetgameFlagsPoints[flagId].teamIndex == teamIndex) then
+            if (mapNetgameFlagsPoints[flagId].type == flagType and
+                mapNetgameFlagsPoints[flagId].teamIndex == teamIndex) then
                 -- Replace spawn point values
                 mapNetgameFlagsPoints[flagId].x = composedObject.x
                 mapNetgameFlagsPoints[flagId].y = composedObject.y

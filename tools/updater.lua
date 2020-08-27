@@ -96,8 +96,8 @@ if (args.baseMapOrUpdate and args.targetMap) then
     local targetMapPath = '"' .. args.targetMap .. '"'
     local updatePath =
         '"' .. path.dir(args.targetMap) .. '\\' .. path.file(args.targetMap):gsub('.map', '.update') .. '"'
-    os.execute('xdelta3 -e -f -s' .. baseMapPath .. ' ' .. targetMapPath .. ' ' .. updatePath)
-
+        
+        os.execute('xdelta3 -e -f -s' .. baseMapPath .. ' ' .. targetMapPath .. ' ' .. updatePath)
     print('\nDone!')
     print('Update file: ' .. updatePath)
 elseif (args.baseMapOrUpdate) then

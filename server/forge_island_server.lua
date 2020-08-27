@@ -66,7 +66,7 @@ function dprint(message, color)
     end
 end
 
---- Print text console to every player in the server
+--- Print console text to every player in the server
 ---@param message string
 function gprint(message)
     for i = 1, 16 do
@@ -192,7 +192,7 @@ function onPlayerJoin(playerIndex)
     end
 end
 
-function onRcon(playerIndex, message, environment, rconPassword)
+function OnRcon(playerIndex, message, environment, rconPassword)
     -- TO DO: Check rcon environment
     if (environment) then
         dprint("Triggering rcon...")

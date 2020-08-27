@@ -28,21 +28,21 @@ function playerReducer(state, action)
         state.lockDistance = action.payload.lockDistance
         return state
     elseif (action.type == "CREATE_AND_ATTACH_OBJECT") then
-        -- TO DO: Send a request to attach this object to a player in the server side
+        -- // TODO: Send a request to attach this object to a player in the server side
         if (state.attachedObjectId) then
             if (get_object(state.attachedObjectId)) then
                 delete_object(state.attachedObjectId)
-                state.attachedObjectId = core.cspawn_object("scen", action.payload.path,
-                                                            state.xOffset, state.yOffset,
-                                                            state.zOffset)
+                state.attachedObjectId = core.spawnObject("scen", action.payload.path,
+                                                          state.xOffset, state.yOffset,
+                                                          state.zOffset)
             else
-                state.attachedObjectId = core.cspawn_object("scen", action.payload.path,
-                                                            state.xOffset, state.yOffset,
-                                                            state.zOffset)
+                state.attachedObjectId = core.spawnObject("scen", action.payload.path,
+                                                          state.xOffset, state.yOffset,
+                                                          state.zOffset)
             end
         else
-            state.attachedObjectId = core.cspawn_object("scen", action.payload.path, state.xOffset,
-                                                        state.yOffset, state.zOffset)
+            state.attachedObjectId = core.spawnObject("scen", action.payload.path, state.xOffset,
+                                                      state.yOffset, state.zOffset)
         end
         core.rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
         return state
@@ -69,48 +69,58 @@ function playerReducer(state, action)
             state.roll = composedObject.roll
         end
         return state
+    elseif (action.type == "DETACH_OBJECT") then
+        -- Update request if needed
+        if (state.attachedObjectId and get_object(state.attachedObjectId)) then
+            local forgeObjects = eventsStore:getState().forgeObjects
+            local composedObject = forgeObjects[state.attachedObjectId]
+            if (not composedObject) then
+                -- Object does not exist, create request table and send request
+                local requestTable = {}
+                requestTable.requestType = constants.requests.spawnObject.requestType
+                local tempObject = blam.object(get_object(state.attachedObjectId))
+                requestTable.tagId = tempObject.tagId
+                requestTable.x = state.xOffset
+                requestTable.y = state.yOffset
+                requestTable.z = state.zOffset
+                requestTable.yaw = state.yaw
+                requestTable.pitch = state.pitch
+                requestTable.roll = state.roll
+                core.sendRequest(core.createRequest(requestTable))
+                delete_object(state.attachedObjectId)
+            else
+                local requestTable = composedObject
+                requestTable.requestType = constants.requests.updateObject.requestType
+                local tempObject = blam.object(get_object(state.attachedObjectId))
+                requestTable.x = tempObject.x
+                requestTable.y = tempObject.y
+                requestTable.z = tempObject.z
+                requestTable.yaw = state.yaw
+                requestTable.pitch = state.pitch
+                requestTable.roll = state.roll
+                -- Object already exists, send update request
+                core.sendRequest(core.createRequest(requestTable))
+            end
+            state.attachedObjectId = nil
+        end
+        return state
     elseif (action.type == "ROTATE_OBJECT") then
         if (state.attachedObjectId and get_object(state.attachedObjectId)) then
             core.rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
         end
         return state
-    elseif (action.type == "DETACH_OBJECT") then -- Update request if needed
+    elseif (action.type == "DESTROY_OBJECT") then
+        -- Delete attached object
         if (state.attachedObjectId and get_object(state.attachedObjectId)) then
             local forgeObjects = eventsStore:getState().forgeObjects
             local composedObject = forgeObjects[state.attachedObjectId]
-            if (composedObject) then
-                -- Object already exists, send update request
-                composedObject.object = blam.object(get_object(state.attachedObjectId))
-                composedObject.yaw = state.yaw
-                composedObject.pitch = state.pitch
-                composedObject.roll = state.roll
-                core.sendRequest(core.createRequest(composedObject,
-                                                    constants.requestTypes.UPDATE_OBJECT))
-            else
+            if (not composedObject) then
                 delete_object(state.attachedObjectId)
-                -- Object does not exist, create composed object and send request
-                composedObject = {
-                    object = blam.object(get_object(state.attachedObjectId)),
-                    objectId = state.attachedObjectId,
-                    yaw = state.yaw,
-                    pitch = state.pitch,
-                    roll = state.roll
-                }
-                core.sendRequest(core.createRequest(composedObject,
-                                                    constants.requestTypes.SPAWN_OBJECT))
-            end
-            state.attachedObjectId = nil
-        end
-        return state
-    elseif (action.type == "DESTROY_OBJECT") then -- Delete request if needed
-        if (state.attachedObjectId and get_object(state.attachedObjectId)) then
-            local forgeObjects = eventsStore:getState().forgeObjects
-            local composedObject = forgeObjects[state.attachedObjectId]
-            if (composedObject) then
-                core.sendRequest(core.createRequest(composedObject,
-                                                    constants.requestTypes.DELETE_OBJECT))
             else
-                delete_object(state.attachedObjectId)
+                local requestTable = composedObject
+                requestTable.requestType = constants.requests.deleteObject.requestType
+                requestTable.remoteId = composedObject.remoteId
+                core.sendRequest(core.createRequest(requestTable))
             end
         end
         state.attachedObjectId = nil
@@ -131,14 +141,16 @@ function playerReducer(state, action)
         end
         return state
     elseif (action.type == "UPDATE_DISTANCE") then
-        local player = blam.biped(get_dynamic_player())
-        local tempObject = blam.object(get_object(state.attachedObjectId))
-        if (tempObject) then
-            local distance = core.calculateDistanceFromObject(player, tempObject)
-            if (configuration.snapMode) then
-                state.distance = glue.round(distance)
-            else
-                state.distance = distance
+        if (state.attachedObjectId) then
+            local player = blam.biped(get_dynamic_player())
+            local tempObject = blam.object(get_object(state.attachedObjectId))
+            if (tempObject) then
+                local distance = core.calculateDistanceFromObject(player, tempObject)
+                if (configuration.snapMode) then
+                    state.distance = glue.round(distance)
+                else
+                    state.distance = distance
+                end
             end
         end
         return state

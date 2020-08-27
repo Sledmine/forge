@@ -19,8 +19,9 @@ console_out = blam.consoleOutput
 -- Create global reference to tagClasses
 tagClasses = blam.tagClasses
 -- Bring old api compatibility
+blam42 = blam
 blam = blam.compat35()
-local maethrillian = require "maethrillian"
+local maeth = require "maethrillian"
 hfs = require "hcefs"
 
 -- Forge modules
@@ -64,11 +65,11 @@ function dprint(message, color)
         if (color == "category") then
             console_out(message, 0.31, 0.631, 0.976)
         elseif (color == "warning") then
-            console_out(message)
+            console_out(message, blam42.consoleColors.warning)
         elseif (color == "error") then
-            console_out(message)
+            console_out(message, blam42.consoleColors.error)
         elseif (color == "success") then
-            console_out(message, 0.235, 0.82, 0)
+            console_out(message, blam42.consoleColors.success)
         else
             console_out(message)
         end
@@ -304,6 +305,15 @@ function onTick()
                     else
                         features.printHUD("Closer or further.")
                     end
+                elseif (player.jumpHold) then
+                    playerStore:dispatch({
+                        type = "DESTROY_OBJECT"
+                    })
+                elseif (player.weaponSTH) then
+                    playerStore:dispatch({
+                        type = "DETACH_OBJECT"
+                    })
+
                 end
 
                 if (not playerState.lockDistance) then
@@ -314,6 +324,12 @@ function onTick()
                         type = "UPDATE_OFFSETS"
                     })
                 end
+                -- Update object position
+                blam.object(get_object(attachedObjectId), {
+                    x = playerState.xOffset,
+                    y = playerState.yOffset,
+                    z = playerState.zOffset
+                })
 
                 -- Unhighlight objects
                 features.unhighlightAll()
@@ -327,21 +343,6 @@ function onTick()
                 --    features.setCrosshairState(3)
                 -- end
 
-                -- Update object position
-                blam.object(get_object(attachedObjectId), {
-                    x = playerState.xOffset,
-                    y = playerState.yOffset,
-                    z = playerState.zOffset
-                })
-                if (player.jumpHold) then
-                    playerStore:dispatch({
-                        type = "DESTROY_OBJECT"
-                    })
-                elseif (player.weaponSTH) then
-                    playerStore:dispatch({
-                        type = "DETACH_OBJECT"
-                    })
-                end
             else
 
                 -- Set crosshair to not selected state
@@ -356,15 +357,15 @@ function onTick()
                 for objectId, composedObject in pairs(forgeObjects) do
                     -- Object exists
                     if (composedObject) then
-                        local tagType = get_tag_type(composedObject.object.tagId)
+                        local tempObject = blam.object(get_object(objectId))
+                        local tagType = get_tag_type(tempObject.tagId)
                         if (tagType == tagClasses.scenery) then
                             local isPlayerLookingAt = core.playerIsLookingAt(objectId, 0.047, 0)
                             if (isPlayerLookingAt) then
 
                                 -- Get and parse object name
                                 local objectPath =
-                                    glue.string.split(get_tag_path(composedObject.object.tagId),
-                                                      "\\")
+                                    glue.string.split(get_tag_path(tempObject.tagId), "\\")
                                 local objectName = objectPath[#objectPath - 1]
                                 local objectCategory = objectPath[#objectPath - 2]
 
@@ -439,8 +440,8 @@ function onTick()
             if (player.flashlightKey) then
                 features.swapBiped()
             elseif (player.actionKey and player.crouchHold and server_type == "local") then
-                core.cspawn_object(tagClasses.biped, constants.bipeds.spartan, player.x, player.y,
-                                   player.z)
+                core.spawnObject(tagClasses.biped, constants.bipeds.spartan, player.x, player.y,
+                                 player.z)
             end
         end
     end
@@ -529,7 +530,7 @@ function onTick()
         dprint("Button " .. voteMapMenuPressedButton .. " was pressed!", "category")
     end
 
-    -- Attach respective hooks for menus!
+    -- Attach respective hooks for menus
     hook.attach("maps_menu", menu.stop, constants.uiWidgetDefinitions.mapsList)
     hook.attach("forge_menu", menu.stop, constants.uiWidgetDefinitions.forgeList)
     hook.attach("forge_menu_close", menu.stop, constants.uiWidgetDefinitions.forgeMenu)
@@ -539,6 +540,7 @@ end
 
 -- This is not a mistake... right?
 function forgeAnimation()
+    -- // TODO: Update this logic, it is awful!
     if (not lastImage) then
         lastImage = 0
     else
@@ -548,7 +550,7 @@ function forgeAnimation()
             lastImage = 0
         end
     end
-
+    -- // TODO: Split this in a better way, it looks horrible!
     -- Animate forge logo
     blam.uiWidgetDefinition(get_tag("ui_widget_definition",
                                     constants.uiWidgetDefinitions.loadingAnimation), {
@@ -558,38 +560,41 @@ function forgeAnimation()
     return true
 end
 
-function onRcon(message)
+function OnRcon(message)
     local request = string.gsub(message, "'", "")
-    local splitData = glue.string.split(request, ",")
-    local requestType = constants.requestTypes[splitData[1]]
-    if (requestType) then
-        dprint("Decoding incoming " .. requestType .. " ...", "warning")
-
-        local requestObject = maethrillian.convertRequestToObject(request,
-                                                                  constants.requestFormats[requestType])
-
-        -- // TODO: Add better in game validation for these objects!!!!!!!
-        if (requestObject) then
+    local splitData = glue.string.split(request, ";")
+    local incomingRequest = splitData[1]
+    local actionType
+    local currentRequest
+    for requestName, request in pairs(constants.requests) do
+        if (incomingRequest and incomingRequest == request.requestType) then
+            currentRequest = request
+            actionType = request.actionType
+        end
+    end
+    if (actionType) then
+        dprint("-> [ Receiving request ]")
+        dprint("Incoming request: " .. request)
+        dprint("Parsing incoming " .. actionType .. " ...", "warning")
+        local requestTable = maeth.requestToTable(request, currentRequest.requestFormat)
+        if (requestTable) then
             dprint("Done.", "success")
         else
             dprint("Error at converting request.", "error")
             return false, nil
         end
-
-        dprint("Decompressing ...", "warning")
-        local compressionFormat = constants.compressionFormats[requestType]
-        requestObject = maethrillian.decompressObject(requestObject, compressionFormat)
-
+        dprint("Decoding incoming " .. actionType .. " ...", "warning")
+        local requestObject = maeth.decodeTable(requestTable, currentRequest.requestFormat)
         if (requestObject) then
             dprint("Done.", "success")
+            console_out(requestObject.x .. " " .. requestObject.y .. " " .. requestObject.z)
         else
-            dprint("Error at decompressing request.", "error")
+            dprint("Error at decoding request.", "error")
             return false, nil
         end
-
         if (not ftestingMode) then
             eventsStore:dispatch({
-                type = requestType,
+                type = actionType,
                 payload = {
                     requestObject = requestObject
                 }

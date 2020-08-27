@@ -131,7 +131,7 @@ local function forgeCommands(command)
             local player = blam.biped(get_dynamic_player())
             local weaponResult = weaponsList[weaponName]
             if (weaponResult) then
-                core.cspawn_object(tagClasses.weapon, weaponResult, player.x, player.y, player.z)
+                core.spawnObject(tagClasses.weapon, weaponResult, player.x, player.y, player.z)
             end
             return false
         elseif (forgeCommand == "ftest") then
