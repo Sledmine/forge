@@ -15,9 +15,8 @@ local json = require "json"
 -- Halo Custom Edition libraries
 blam = require "nlua-blam"
 -- Bind legacy console out to better lua-blam printing function
---console_out = blam.consoleOutput
+console_out = blam.consoleOutput
 -- Create global reference to tagClasses
-objectClasses = blam.objectClasses
 tagClasses = blam.tagClasses
 -- Bring old api compatibility
 blam35 = blam.compat35()
@@ -77,7 +76,7 @@ end
 
 ---@return boolean
 function validateMapName()
-    return map == "forge_island_local" or map == "forge_island" or map == "forge_island_beta"
+    return map == "forge_world_local" or map == "forge_world" or map == "forge_world_beta"
 end
 
 function loadForgeConfiguration()
@@ -127,8 +126,7 @@ end
 function onMapLoad()
     -- Dinamically load constansts for the current forge map
     constants = require "forge.constants"
-    constants.scenarioPath = "[shm]\\halo_4\\maps\\forge_island\\forge_island"
-    constants.scenerysTagCollectionPath = "[shm]\\halo_4\\maps\\forge_island\\forge_island_scenerys"
+    constants.scenarioPath = "[shm]\\halo_reach\\maps\\forge_world\\forge_world"
 
     -- Like Redux we have some kind of store baby!! the rest is pure magic..
     playerStore = redux.createStore(playerReducer)

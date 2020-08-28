@@ -24,11 +24,11 @@ local redux = require "lua-redux"
 -- Specific Halo Custom Edition libraries
 local maeth = require "maethrillian"
 blam = require "nlua-blam"
-tagClasses = blam.tagClasses
-blam = blam.compat35()
+tagClasses = blam35.tagClasses
+blam = blam35.compat35()
 
 -- Forge modules
-local constants = require "forge.constants"
+
 local core = require "forge.core"
 
 -- Reducers importation
@@ -37,6 +37,7 @@ local forgeReducer = require "forge.reducers.forgeReducer"
 
 -- Variable used to store the current forge map in memory
 local forgeMapName
+local forgeAllowed = true
 
 -- Default debug mode state
 debugMode = true
@@ -84,6 +85,9 @@ local bipedChangeRequest = {}
 local playerObjectTempPos = {}
 
 function OnScriptLoad()
+    map = get_var(0, "$map")
+    constants = require "forge.constants"
+
     forgeStore = redux.createStore(forgeReducer) -- Isolated store for all the Forge 'app' data
     eventsStore = redux.createStore(eventsReducer) -- Unique store for all the Forge Objects
 
@@ -102,7 +106,8 @@ function OnScriptLoad()
         "#b",
         "#v",
         "fload",
-        "fsave"
+        "fsave",
+        "monitor"
     }
     for index, command in pairs(forgeCommands) do
         execute_command("lua_call rcon_bypass submitCommand " .. command)
@@ -128,7 +133,7 @@ function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
                 break
             end
         end
-        if (isBiped) then
+        if (isBiped and forgeAllowed) then
             -- Track objectId of every player
             playersObjectIds[playerIndex] = objectId
 
@@ -146,17 +151,17 @@ end
 
 -- Update object data after spawning
 function OnPlayerSpawn(playerIndex)
-    local player = blam.biped(get_dynamic_player(playerIndex))
+    local player = blam35.biped(get_dynamic_player(playerIndex))
     if (player) then
         -- Provide better movement to monitors
         if (core.isPlayerMonitor(playerIndex)) then
-            blam.biped(get_dynamic_player(playerIndex), {
+            blam35.biped(get_dynamic_player(playerIndex), {
                 ignoreCollision = true
             })
         end
         local playerPosition = playerObjectTempPos[playerIndex]
         if (playerPosition) then
-            blam.object(get_dynamic_player(playerIndex), {
+            blam35.object(get_dynamic_player(playerIndex), {
                 x = playerPosition[1],
                 y = playerPosition[2],
                 z = playerPosition[3]
@@ -171,10 +176,10 @@ function OnPlayerJoin(playerIndex)
     local forgeState = forgeStore:getState()
     local forgeObjects = eventsStore:getState().forgeObjects
     local countableForgeObjects = glue.keys(forgeObjects)
-    --local objectCount = #countableForgeObjects
+    -- local objectCount = #countableForgeObjects
 
     -- There are objects to sync
-    if (forgeMapName) then --and objectCount > 0) then
+    if (forgeMapName) then -- and objectCount > 0) then
         print("Sending map info")
         dprint("Sending sync responses for: " .. playerIndex)
 
@@ -189,7 +194,7 @@ function OnPlayerJoin(playerIndex)
         for objectId, forgeObject in pairs(forgeObjects) do
             local instanceObject = glue.update({}, forgeObject)
             instanceObject.requestType = constants.requests.spawnObject.requestType
-            instanceObject.tagId = blam.object(get_object(objectId)).tagId
+            instanceObject.tagId = blam35.object(get_object(objectId)).tagId
             local response = core.createRequest(instanceObject)
             core.sendRequest(response, playerIndex)
         end
@@ -217,23 +222,32 @@ function OnRcon(playerIndex, message, environment, rconPassword)
         return core.processRequest(actionType, request, currentRequest)
     elseif (incomingRequest == "#b") then
         dprint("Trying to process a biped swap request...")
-        if (playersObjectIds[playerIndex]) then
-            local playerObjectId = playersObjectIds[playerIndex]
-            dprint("playerObjectId: " .. tostring(playerObjectId))
-            local player = blam.object(get_object(playerObjectId))
-            if (player) then
-                playerObjectTempPos[playerIndex] =
-                    {player.x, player.y, player.z}
-                if (player.tagId == get_tag_id("bipd", constants.bipeds.monitor)) then
-                    bipedChangeRequest[playerIndex] = "spartan"
-                else
-                    bipedChangeRequest[playerIndex] = "monitor"
+        -- // TODO: Split this into different functions!
+        if (forgeAllowed) then
+            if (playersObjectIds[playerIndex]) then
+                local playerObjectId = playersObjectIds[playerIndex]
+                dprint("playerObjectId: " .. tostring(playerObjectId))
+                local player = blam35.object(get_object(playerObjectId))
+                if (player) then
+                    playerObjectTempPos[playerIndex] =
+                        {
+                            player.x,
+                            player.y,
+                            player.z
+                        }
+                    if (player.tagId == get_tag_id("bipd", constants.bipeds.monitor)) then
+                        bipedChangeRequest[playerIndex] = "spartan"
+                    else
+                        bipedChangeRequest[playerIndex] = "monitor"
+                    end
+                    delete_object(playerObjectId)
                 end
-                delete_object(playerObjectId)
             end
         end
     elseif (incomingRequest == "#v") then
         gprint("A player has voted for map .. " .. splitData[2])
+    elseif (incomingRequest == "monitor") then
+        forgeAllowed = not forgeAllowed
     elseif (incomingRequest == "fload") then
         local mapName = splitData[2]
         local gameType = splitData[3]

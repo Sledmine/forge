@@ -3,7 +3,7 @@
 -- Sledmine
 -- Function reflector for store
 ------------------------------------------------------------------------------
-local constants = require "forge.constants"
+
 local menu = require "forge.menu"
 
 local inspect = require "inspect"
@@ -22,20 +22,20 @@ local function forgeReflector()
     end
 
     -- Forge Menu
-    blam.unicodeStringList(get_tag("unicode_string_list", constants.unicodeStrings.forgeList),
+    blam35.unicodeStringList(get_tag("unicode_string_list", constants.unicodeStrings.forgeList),
                            {
         stringList = currentObjectsList
     })
-    menu.update(constants.uiWidgetDefinitions.forgeList, #currentObjectsList + 2)
+    menu.update(constants.uiWidgetDefinitions.objectsList, #currentObjectsList + 2)
 
     local paginationTextAddress =
         get_tag("unicode_string_list", constants.unicodeStrings.pagination)
     if (paginationTextAddress) then
-        local pagination = blam.unicodeStringList(paginationTextAddress)
+        local pagination = blam35.unicodeStringList(paginationTextAddress)
         local paginationStringList = pagination.stringList
         paginationStringList[2] = tostring(forgeState.forgeMenu.currentPage)
         paginationStringList[4] = tostring(#forgeState.forgeMenu.currentObjectsList)
-        blam.unicodeStringList(paginationTextAddress, {
+        blam35.unicodeStringList(paginationTextAddress, {
             stringList = paginationStringList
         })
     end
@@ -43,7 +43,7 @@ local function forgeReflector()
     -- Budget count
     -- Update unicode string with current budget value
     local budgetCountAddress = get_tag("unicode_string_list", constants.unicodeStrings.budgetCount)
-    local currentBudget = blam.unicodeStringList(budgetCountAddress)
+    local currentBudget = blam35.unicodeStringList(budgetCountAddress)
 
     currentBudget.stringList = {
         forgeState.forgeMenu.currentBudget,
@@ -51,18 +51,18 @@ local function forgeReflector()
     }
 
     -- Refresh budget count
-    blam.unicodeStringList(budgetCountAddress, currentBudget)
+    blam35.unicodeStringList(budgetCountAddress, currentBudget)
     
 
     -- Refresh budget bar status
-    blam.uiWidgetDefinition(
+    blam35.uiWidgetDefinition(
         get_tag("ui_widget_definition", constants.uiWidgetDefinitions.amountBar),
         {
             width = forgeState.forgeMenu.currentBarSize
         })
 
     -- Refresh loading bar size
-    blam.uiWidgetDefinition(get_tag("ui_widget_definition",
+    blam35.uiWidgetDefinition(get_tag("ui_widget_definition",
                                     constants.uiWidgetDefinitions.loadingProgress),
                             {
         width = forgeState.loadingMenu.currentBarSize
@@ -78,7 +78,7 @@ local function forgeReflector()
 
     -- Refresh available forge maps list
     -- TO DO: Merge unicode string updating with menus updating!
-    blam.unicodeStringList(get_tag("unicode_string_list", constants.unicodeStrings.mapsList),
+    blam35.unicodeStringList(get_tag("unicode_string_list", constants.unicodeStrings.mapsList),
                            {
         stringList = currentMapsList
     })
@@ -86,14 +86,14 @@ local function forgeReflector()
     menu.update(constants.uiWidgetDefinitions.mapsList, #currentMapsList + 3)
 
     -- Refresh fake sidebar in maps menu
-    blam.uiWidgetDefinition(get_tag("ui_widget_definition", constants.uiWidgetDefinitions.sidebar),
+    blam35.uiWidgetDefinition(get_tag("ui_widget_definition", constants.uiWidgetDefinitions.sidebar),
                             {
         height = forgeState.mapsMenu.sidebar.height,
         boundsY = forgeState.mapsMenu.sidebar.position
     })
 
     -- Refresh current forge map information
-    blam.unicodeStringList(
+    blam35.unicodeStringList(
         get_tag("unicode_string_list", constants.unicodeStrings.pauseGameStrings), {
             stringList = {
                 -- Bypass first 3 elements in the string list

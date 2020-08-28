@@ -2,7 +2,7 @@ local glue = require "glue"
 
 -- Forge modules
 local core = require "forge.core"
-local constants = require "forge.constants"
+
 
 function playerReducer(state, action)
     -- Create default state if it does not exist
@@ -54,8 +54,8 @@ function playerReducer(state, action)
         state.attachedObjectId = action.payload.objectId
         local fromPerspective = action.payload.fromPerspective
         if (fromPerspective) then
-            local player = blam.biped(get_dynamic_player())
-            local tempObject = blam.object(get_object(state.attachedObjectId))
+            local player = blam35.biped(get_dynamic_player())
+            local tempObject = blam35.object(get_object(state.attachedObjectId))
             if (tempObject) then
                 local distance = core.calculateDistanceFromObject(player, tempObject)
                 if (configuration.snapMode) then
@@ -82,7 +82,7 @@ function playerReducer(state, action)
                 -- Object does not exist, create request table and send request
                 local requestTable = {}
                 requestTable.requestType = constants.requests.spawnObject.requestType
-                local tempObject = blam.object(get_object(state.attachedObjectId))
+                local tempObject = blam35.object(get_object(state.attachedObjectId))
                 requestTable.tagId = tempObject.tagId
                 requestTable.x = state.xOffset
                 requestTable.y = state.yOffset
@@ -95,7 +95,7 @@ function playerReducer(state, action)
             else
                 local requestTable = composedObject
                 requestTable.requestType = constants.requests.updateObject.requestType
-                local tempObject = blam.object(get_object(state.attachedObjectId))
+                local tempObject = blam35.object(get_object(state.attachedObjectId))
                 requestTable.x = tempObject.x
                 requestTable.y = tempObject.y
                 requestTable.z = tempObject.z
@@ -130,7 +130,7 @@ function playerReducer(state, action)
         state.attachedObjectId = nil
         return state
     elseif (action.type == "UPDATE_OFFSETS") then
-        local player = blam.biped(get_dynamic_player())
+        local player = blam35.biped(get_dynamic_player())
         local xOffset = player.x + player.cameraX * state.distance
         local yOffset = player.y + player.cameraY * state.distance
         local zOffset = player.z + player.cameraZ * state.distance
@@ -146,8 +146,8 @@ function playerReducer(state, action)
         return state
     elseif (action.type == "UPDATE_DISTANCE") then
         if (state.attachedObjectId) then
-            local player = blam.biped(get_dynamic_player())
-            local tempObject = blam.object(get_object(state.attachedObjectId))
+            local player = blam35.biped(get_dynamic_player())
+            local tempObject = blam35.object(get_object(state.attachedObjectId))
             if (tempObject) then
                 local distance = core.calculateDistanceFromObject(player, tempObject)
                 if (configuration.snapMode) then
@@ -200,7 +200,7 @@ function playerReducer(state, action)
         return state
     elseif (action.type == "SAVE_POSITION") then
         -- Do not forget to migrate this to dumpObject or getAll
-        local tempObject = blam.biped(get_dynamic_player())
+        local tempObject = blam35.biped(get_dynamic_player())
         state.position = {
             x = tempObject.x,
             y = tempObject.y,

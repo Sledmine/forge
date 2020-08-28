@@ -3,21 +3,25 @@
 -- Sledmine
 -- Constants values
 ------------------------------------------------------------------------------
+local core = require "forge.core"
+
 local constants = {}
 
-constants.maximumProgressBarSize = 171
-constants.maximumLoadingProgressBarSize = 422
+-- Constant forge values
 constants.maximumBudget = 1024
 constants.minimumZSpawnPoint = -18.69
+constants.scenerysTagCollectionPath = core.findTag(map .. "_scenerys", tagClasses.tagCollection)
+
+-- Constant ui widget definition values
 constants.maximumSidebarSize = 249
 constants.minimumSidebarSize = 40
+constants.maximumProgressBarSize = 171
+constants.maximumLoadingProgressBarSize = 422
 
-constants.scenarioPath = "[shm]\\halo_4\\maps\\forge_island\\forge_island"
-constants.scenerysTagCollectionPath = "[shm]\\halo_4\\maps\\forge_island\\forge_island_scenerys"
-
+-- Constante forge requests data
 constants.requests = {
     spawnObject = {
-        actionType = "SPAWN_OBJECT",
+        actionType = "SPAWN_FORGE_OBJECT",
         requestType = "#s",
         requestFormat = {
             {"requestType"},
@@ -32,7 +36,7 @@ constants.requests = {
         }
     },
     updateObject = {
-        actionType = "UPDATE_OBJECT",
+        actionType = "UPDATE_FORGE_OBJECT",
         requestType = "#u",
         requestFormat = {
             {"requestType"},
@@ -46,7 +50,7 @@ constants.requests = {
         }
     },
     deleteObject = {
-        actionType = "DELETE_OBJECT",
+        actionType = "DELETE_FORGE_OBJECT",
         requestType = "#d",
         requestFormat = {
             {"requestType"},
@@ -76,23 +80,15 @@ constants.requests = {
     }
 }
 
-constants.actionTypes = {
-    SPAWN_OBJECT = "SPAWN_OBJECT",
-    UPDATE_OBJECT = "UPDATE_OBJECT",
-    DELETE_OBJECT = "DELETE_OBJECT",
-    LOAD_MAP_SCREEN = "LOAD_MAP_SCREEN",
-    FLUSH_FORGE = "FLUSH_FORGE"
-}
-
 -- Biped tag definitions
 constants.bipeds = {
-    monitor = "[shm]\\halo_4\\characters\\monitor\\monitor_mp",
-    spartan = "characters\\cyborg_mp\\cyborg_mp"
+    monitor = core.findTag("monitor", tagClasses.biped),
+    spartan = core.findTag("cyborg_mp", tagClasses.biped)
 }
 
 -- Weapon hud tag definitions
 constants.weaponHudInterfaces = {
-    forgeCrosshair = "[shm]\\halo_4\\ui\\hud\\forge"
+    forgeCrosshair = core.findTag("ui\\hud\\forge", tagClasses.weaponHudInterface)
 }
 
 constants.bitmaps = {
@@ -103,16 +99,15 @@ constants.bitmaps = {
 -- UI widget definitions
 constants.uiWidgetDefinitions = {
     forgeMenu = "[shm]\\halo_4\\ui\\shell\\forge_menu\\forge_menu",
-    votingMenu = "[shm]\\halo_4\\ui\\shell\\map_vote_menu\\map_vote_menu",
-    forgeList = "[shm]\\halo_4\\ui\\shell\\forge_menu\\category_menu\\category_list",
+    voteMenu = "[shm]\\halo_4\\ui\\shell\\map_vote_menu\\map_vote_menu",
+    objectsList = "[shm]\\halo_4\\ui\\shell\\forge_menu\\category_menu\\category_list",
     amountBar = "[shm]\\halo_4\\ui\\shell\\forge_menu\\budget_dialog\\budget_progress_bar",
     loadingMenu = "[shm]\\halo_4\\ui\\shell\\loading_menu\\loading_menu",
     loadingAnimation = "[shm]\\halo_4\\ui\\shell\\loading_menu\\loading_menu_progress_animation",
     loadingProgress = "[shm]\\halo_4\\ui\\shell\\loading_menu\\loading_progress_bar",
     loadoutMenu = "[shm]\\halo_4\\ui\\shell\\loadout_menu\\loadout_menu_no_background",
     mapsList = "[shm]\\halo_4\\ui\\shell\\pause_game\\forge_options_menu\\maps_list\\maps_list",
-    sidebar = "[shm]\\halo_4\\ui\\shell\\pause_game\\forge_options_menu\\forge_map_list_sidebar_bar",
-    errorNonmodalFullscreen = "ui\\shell\\error\\error_nonmodal_fullscreen"
+    sidebar = "[shm]\\halo_4\\ui\\shell\\pause_game\\forge_options_menu\\forge_map_list_sidebar_bar"
 }
 
 -- Unicode string definitions

@@ -14,7 +14,7 @@ local maeth = require "maethrillian"
 
 -- Forge modules
 local features = require "forge.features"
-local constants = require "forge.constants"
+
 
 -- Core module
 local core = {}
@@ -141,7 +141,7 @@ end
 ---@param roll number
 function core.rotateObject(objectId, yaw, pitch, roll)
     local rotation = core.eulerToRotation(yaw, pitch, roll)
-    blam.object(get_object(objectId), {
+    blam35.object(get_object(objectId), {
         vX = rotation[1],
         vY = rotation[2],
         vZ = rotation[3],
@@ -156,9 +156,9 @@ end
 function core.isPlayerMonitor(playerIndex)
     local tempObject
     if (playerIndex) then
-        tempObject = blam.object(get_dynamic_player(playerIndex))
+        tempObject = blam35.object(get_dynamic_player(playerIndex))
     else
-        tempObject = blam.object(get_dynamic_player())
+        tempObject = blam35.object(get_dynamic_player())
     end
     if (tempObject) then
         local monitorBipedTagId = get_tag_id(tagClasses.biped, constants.bipeds.monitor)
@@ -286,7 +286,7 @@ function core.resetSpawnPoints()
     else
         scenarioAddress = get_tag("scnr", constants.scenarioPath)
     end
-    local scenario = blam.scenario(scenarioAddress)
+    local scenario = blam35.scenario(scenarioAddress)
 
     local mapSpawnCount = scenario.spawnLocationCount
     local vehicleLocationCount = scenario.vehicleLocationCount
@@ -305,7 +305,7 @@ function core.resetSpawnPoints()
         vehicleLocationList[i].type = 65535
         execute_script("object_destroy v" .. vehicleLocationList[i].nameIndex)
     end
-    blam.scenario(scenarioAddress, {
+    blam35.scenario(scenarioAddress, {
         spawnLocationList = mapSpawnPoints,
         vehicleLocationList = vehicleLocationList
     })
@@ -428,7 +428,7 @@ function core.saveForgeMap()
     -- Iterate through all the forge objects
     for objectId, forgeObject in pairs(objectsState) do
         -- Get scenery tag path to keep compatibility between versions
-        local tempObject = blam.object(get_object(objectId))
+        local tempObject = blam35.object(get_object(objectId))
         local sceneryPath = get_tag_path(tempObject.tagId)
 
         -- Create a copy of the composed object in the store to avoid replacing useful values
@@ -490,11 +490,11 @@ function core.spawnObject(type, tagPath, x, y, z)
     -- Prevent objects from phantom spawning!
     local objectId = spawn_object(type, tagPath, x, y, z)
     if (objectId) then
-        local tempObject = blam.object(get_object(objectId))
+        local tempObject = blam35.object(get_object(objectId))
 
         -- Forces the object to render shadow
         if (configuration.objectsCastShadow) then
-            blam.object(get_object(objectId), {
+            blam35.object(get_object(objectId), {
                 isNotCastingShadow = false
             })
         end
@@ -509,7 +509,7 @@ function core.spawnObject(type, tagPath, x, y, z)
 
             if (objectId) then
                 -- Update new object position to match the original
-                blam.object(get_object(objectId), {
+                blam35.object(get_object(objectId), {
                     x = x,
                     y = y,
                     z = z
@@ -517,7 +517,7 @@ function core.spawnObject(type, tagPath, x, y, z)
 
                 -- Forces the object to render shadow
                 if (configuration.objectsCastShadow) then
-                    blam.object(get_object(objectId), {
+                    blam35.object(get_object(objectId), {
                         isNotCastingShadow = false
                     })
                 end
@@ -533,9 +533,9 @@ end
 
 --- Apply updates to player spawn points based on a given tag path
 ---@param tagPath string
----@param composedObject table
+---@param forgeObject table
 ---@param disable boolean
-function core.updatePlayerSpawnPoint(tagPath, composedObject, disable)
+function core.updatePlayerSpawnPoint(tagPath, forgeObject, disable)
     local teamIndex = 0
     local gameType = 0
 
@@ -579,52 +579,52 @@ function core.updatePlayerSpawnPoint(tagPath, composedObject, disable)
     end
 
     -- Get scenario data
-    local scenario = blam.scenario(scenarioAddress)
+    local scenario = blam35.scenario(scenarioAddress)
 
     -- Get scenario player spawn points
     local mapSpawnPoints = scenario.spawnLocationList
 
     -- Object is not already reflecting a spawn point
-    if (not composedObject.reflectionId) then
+    if (not forgeObject.reflectionId) then
         for spawnId = 1, #mapSpawnPoints do
             -- If this spawn point is disabled
             if (mapSpawnPoints[spawnId].type == 0) then
                 -- Replace spawn point values
-                mapSpawnPoints[spawnId].x = composedObject.x
-                mapSpawnPoints[spawnId].y = composedObject.y
-                mapSpawnPoints[spawnId].z = composedObject.z
-                mapSpawnPoints[spawnId].rotation = math.rad(composedObject.yaw)
+                mapSpawnPoints[spawnId].x = forgeObject.x
+                mapSpawnPoints[spawnId].y = forgeObject.y
+                mapSpawnPoints[spawnId].z = forgeObject.z
+                mapSpawnPoints[spawnId].rotation = math.rad(forgeObject.yaw)
                 mapSpawnPoints[spawnId].teamIndex = teamIndex
                 mapSpawnPoints[spawnId].type = gameType
 
                 -- Debug spawn index
                 dprint("Creating spawn replacing index: " .. spawnId, "warning")
-                composedObject.reflectionId = spawnId
+                forgeObject.reflectionId = spawnId
                 break
             end
         end
     else
-        dprint(composedObject.reflectionId)
+        dprint("Erasing spawn with index: " .. forgeObject.reflectionId)
         if (disable) then
             -- Disable or "delete" spawn point by setting type as 0
-            mapSpawnPoints[composedObject.reflectionId].type = 0
+            mapSpawnPoints[forgeObject.reflectionId].type = 0
             -- Update spawn point list
-            blam.scenario(scenarioAddress, {
+            blam35.scenario(scenarioAddress, {
                 spawnLocationList = mapSpawnPoints
             })
             return true
         end
         -- Replace spawn point values
-        mapSpawnPoints[composedObject.reflectionId].x = composedObject.x
-        mapSpawnPoints[composedObject.reflectionId].y = composedObject.y
-        mapSpawnPoints[composedObject.reflectionId].z = composedObject.z
-        mapSpawnPoints[composedObject.reflectionId].rotation = math.rad(composedObject.yaw)
-        dprint(mapSpawnPoints[composedObject.reflectionId].type)
+        mapSpawnPoints[forgeObject.reflectionId].x = forgeObject.x
+        mapSpawnPoints[forgeObject.reflectionId].y = forgeObject.y
+        mapSpawnPoints[forgeObject.reflectionId].z = forgeObject.z
+        mapSpawnPoints[forgeObject.reflectionId].rotation = math.rad(forgeObject.yaw)
+        dprint(mapSpawnPoints[forgeObject.reflectionId].type)
         -- Debug spawn index
-        dprint("Updating spawn replacing index: " .. composedObject.reflectionId)
+        dprint("Updating spawn replacing index: " .. forgeObject.reflectionId)
     end
     -- Update spawn point list
-    blam.scenario(scenarioAddress, {
+    blam35.scenario(scenarioAddress, {
         spawnLocationList = mapSpawnPoints
     })
 end
@@ -673,7 +673,7 @@ function core.updateNetgameFlagSpawnPoint(tagPath, forgeObject)
     end
 
     -- Get scenario data
-    local scenario = blam.scenario(scenarioAddress)
+    local scenario = blam35.scenario(scenarioAddress)
 
     -- Get scenario player spawn points
     local mapNetgameFlagsPoints = scenario.netgameFlagsList
@@ -701,19 +701,128 @@ function core.updateNetgameFlagSpawnPoint(tagPath, forgeObject)
             end
         end
     else
-        dprint("Reflection id:" .. forgeObject.reflectionId)
+        dprint("Erasing netgame flag with index: " .. forgeObject.reflectionId)
         -- Replace spawn point values
         mapNetgameFlagsPoints[forgeObject.reflectionId].x = forgeObject.x
         mapNetgameFlagsPoints[forgeObject.reflectionId].y = forgeObject.y
         mapNetgameFlagsPoints[forgeObject.reflectionId].z = forgeObject.z
         mapNetgameFlagsPoints[forgeObject.reflectionId].rotation = math.rad(forgeObject.yaw)
-        dprint(mapNetgameFlagsPoints[forgeObject.reflectionId].type)
         -- Debug spawn index
         dprint("Updating flag replacing index: " .. forgeObject.reflectionId, "warning")
     end
     -- Update spawn point list
-    blam.scenario(scenarioAddress, {
+    blam35.scenario(scenarioAddress, {
         netgameFlagsList = mapNetgameFlagsPoints
+    })
+end
+
+--- Apply updates to equipment netgame points based on a given tag path
+---@param tagPath string
+---@param forgeObject table
+---@param disable boolean
+function core.updateNetgameEquipmentSpawnPoint(tagPath, forgeObject, disable)
+    local itemCollection
+    -- Get equipment info from tag name
+    if (tagPath:find("assault rifle")) then
+        dprint("AR")
+        local itemCollectionTagPath = core.findTag("assault rifle", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("battle rifle")) then
+        dprint("BR")
+        local itemCollectionTagPath = core.findTag("battle rifle", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("dmr")) then
+        dprint("DMR")
+        local itemCollectionTagPath = core.findTag("dmr", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("needler")) then
+        dprint("DMR")
+        local itemCollectionTagPath = core.findTag("needler", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("plasma pistol")) then
+        dprint("DMR")
+        local itemCollectionTagPath = core.findTag("plasma pistol", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("rocket launcher")) then
+        dprint("DMR")
+        local itemCollectionTagPath = core.findTag("rocket launcher", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("shotgun")) then
+        dprint("DMR")
+        local itemCollectionTagPath = core.findTag("shotgun", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("sniper rifle")) then
+        dprint("DMR")
+        local itemCollectionTagPath = core.findTag("sniper rifle", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    end
+
+    -- SAPP and Chimera can't substract scenario tag in the same way
+    local scenarioAddress
+    if (server_type == "sapp") then
+        scenarioAddress = get_tag("scnr", constants.scenarioPath)
+    else
+        scenarioAddress = get_tag(0)
+    end
+
+    -- Get scenario data
+    local scenario = blam35.scenario(scenarioAddress)
+
+    -- Get scenario player spawn points
+    local netgameEquipmentPoints = scenario.netgameEquipmentList
+
+    -- Object is not already reflecting a spawn point
+    if (not forgeObject.reflectionId) then
+        for equipmentId = 1, #netgameEquipmentPoints do
+            -- If this spawn point is disabled
+            if (netgameEquipmentPoints[equipmentId].type1 == 0) then
+                -- Replace spawn point values
+                netgameEquipmentPoints[equipmentId].x = forgeObject.x
+                netgameEquipmentPoints[equipmentId].y = forgeObject.y
+                netgameEquipmentPoints[equipmentId].z = forgeObject.z + 0.2
+                netgameEquipmentPoints[equipmentId].facing = math.rad(forgeObject.yaw)
+                netgameEquipmentPoints[equipmentId].type1 = 12
+                netgameEquipmentPoints[equipmentId].levitate = true
+                netgameEquipmentPoints[equipmentId].itemCollection = itemCollection
+
+                -- Debug spawn index
+                dprint("Creating equipment replacing index: " .. equipmentId, "warning")
+                forgeObject.reflectionId = equipmentId
+                break
+            end
+        end
+    else
+        dprint("Erasing netgame equipment with index: " .. forgeObject.reflectionId)
+        if (disable) then
+            -- // FIXME: Weapon object is not being erased in fact, find a way to delete it!
+            -- Disable or "delete" equipment point by setting type as 0
+            netgameEquipmentPoints[forgeObject.reflectionId].type1 = 0
+            --netgameEquipmentPoints[forgeObject.reflectionId].type1 = 0
+            -- Update spawn point list
+            blam35.scenario(scenarioAddress, {
+                netgameEquipmentList = netgameEquipmentPoints
+            })
+            return true
+        end
+        -- Replace spawn point values
+        netgameEquipmentPoints[forgeObject.reflectionId].x = forgeObject.x
+        netgameEquipmentPoints[forgeObject.reflectionId].y = forgeObject.y
+        netgameEquipmentPoints[forgeObject.reflectionId].z = forgeObject.z + 0.2
+        netgameEquipmentPoints[forgeObject.reflectionId].facing = math.rad(forgeObject.yaw)
+        -- Debug spawn index
+        dprint("Updating equipment replacing index: " .. forgeObject.reflectionId)
+    end
+    -- Update equipment point list
+    blam35.scenario(scenarioAddress, {
+        netgameEquipmentList = netgameEquipmentPoints
     })
 end
 
@@ -755,7 +864,7 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
     end
 
     -- Get scenario data
-    local scenario = blam.scenario(scenarioAddress)
+    local scenario = blam35.scenario(scenarioAddress)
 
     local vehicleLocationCount = scenario.vehicleLocationCount
     dprint("Maximum count of vehicle spawn points: " .. vehicleLocationCount)
@@ -781,7 +890,7 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
                 forgeObject.reflectionId = spawnId
 
                 -- Update spawn point list
-                blam.scenario(scenarioAddress, {
+                blam35.scenario(scenarioAddress, {
                     vehicleLocationList = vehicleLocationList
                 })
                 dprint("object_create_anew v" .. vehicleLocationList[spawnId].nameIndex)
@@ -796,7 +905,7 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
             -- Disable or "delete" spawn point by setting type as 65535
             vehicleLocationList[forgeObject.reflectionId].type = 65535
             -- Update spawn point list
-            blam.scenario(scenarioAddress, {
+            blam35.scenario(scenarioAddress, {
                 vehicleLocationList = vehicleLocationList
             })
             dprint("object_create_anew v" ..
@@ -816,7 +925,7 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
         dprint("Updating spawn replacing index: " .. forgeObject.reflectionId)
 
         -- Update spawn point list
-        blam.scenario(scenarioAddress, {
+        blam35.scenario(scenarioAddress, {
             vehicleLocationList = vehicleLocationList
         })
     end
@@ -844,6 +953,16 @@ function core.calculateDistanceFromObject(baseObject, targetObject)
     local calculatedY = (targetObject.y - baseObject.y) ^ 2
     local calculatedZ = (targetObject.z - baseObject.z) ^ 2
     return math.sqrt(calulcatedX + calculatedY + calculatedZ)
+end
+function core.findTag(partialName, searchTagType)
+    for tagId = 1, get_tags_count() - 1 do
+        local tagPath = get_tag_path(tagId)
+        local tagType = get_tag_type(tagId)
+        if (tagPath and tagPath:find(partialName) and tagType == searchTagType) then
+            return tagPath
+        end 
+    end
+    return nil
 end
 
 -- Module export

@@ -1,7 +1,7 @@
 -- Lua libraries
 local glue = require "glue"
 local inspect = require "inspect"
-local constants = require "forge.constants"
+
 
 -- Forge modules
 local core = require "forge.core"
@@ -61,7 +61,11 @@ local function eventsReducer(state, action)
                 -- Make needed modifications to game spawn points
                 core.updatePlayerSpawnPoint(tagPath, forgeObject)
             elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
+                dprint("VEHICLE_SPAWN", "category")
                 core.updateVehicleSpawn(tagPath, forgeObject)
+            elseif (tagPath:find("weapons")) then
+                dprint("WEAPON_SPAWN", "category")
+                core.updateNetgameEquipmentSpawnPoint(tagPath, forgeObject)
             end
         elseif (tagPath:find("objectives")) then
             dprint("-> [Reflecting Flag]", "warning")
@@ -107,7 +111,7 @@ local function eventsReducer(state, action)
                               forgeObject.roll)
 
             -- Update object position
-            blam.object(get_object(targetObjectId), {
+            blam35.object(get_object(targetObjectId), {
                 x = forgeObject.x,
                 y = forgeObject.y,
                 z = forgeObject.z
@@ -116,7 +120,7 @@ local function eventsReducer(state, action)
             -- Check and take actions if the object is reflecting a netgame point
             if (forgeObject.reflectionId) then
                 console_out("Reflection id:")
-                local tempObject = blam.object(get_object(targetObjectId))
+                local tempObject = blam35.object(get_object(targetObjectId))
                 local tagPath = get_tag_path(tempObject.tagId)
                 if (tagPath:find("spawning")) then
                     dprint("-> [Reflecting Spawn]", "warning")
@@ -125,7 +129,11 @@ local function eventsReducer(state, action)
                         -- Make needed modifications to game spawn points
                         core.updatePlayerSpawnPoint(tagPath, forgeObject)
                     elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
+                        dprint("VEHICLE_SPAWN", "category")
                         core.updateVehicleSpawn(tagPath, forgeObject)
+                    elseif (tagPath:find("weapons")) then
+                        dprint("WEAPON_SPAWN", "category")
+                        core.updateNetgameEquipmentSpawnPoint(tagPath, forgeObject)
                     end
                 elseif (tagPath:find("objectives")) then
                     dprint("-> [Reflecting Flag]", "warning")
@@ -152,7 +160,7 @@ local function eventsReducer(state, action)
 
         if (forgeObject) then
             if (forgeObject.reflectionId) then
-                local tempObject = blam.object(get_object(targetObjectId))
+                local tempObject = blam35.object(get_object(targetObjectId))
                 local tagPath = get_tag_path(tempObject.tagId)
                 if (tagPath:find("spawning")) then
                     dprint("-> [Reflecting Spawn]", "warning")
@@ -161,7 +169,11 @@ local function eventsReducer(state, action)
                         -- Make needed modifications to game spawn points
                         core.updatePlayerSpawnPoint(tagPath, forgeObject, true)
                     elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
+                        dprint("VEHICLE_SPAWN", "category")
                         core.updateVehicleSpawn(tagPath, forgeObject, true)
+                    elseif (tagPath:find("weapons")) then
+                        dprint("WEAPON_SPAWN", "category")
+                        core.updateNetgameEquipmentSpawnPoint(tagPath, forgeObject, true)
                     end
                 end
             end

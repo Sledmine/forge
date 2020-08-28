@@ -9,7 +9,7 @@ local inspect = require "inspect"
 
 -- Forge modules
 local core = require "forge.core"
-local constants = require "forge.constants"
+
 local features = require "forge.features"
 
 -- Mocked function to redirect print calls to test print
@@ -109,7 +109,7 @@ function testObjects:testSpawnAndRotateObjects()
 end
 
 function testObjects:testGetNetgameSpawnPoints()
-    local scenario = blam.scenario(get_tag(0))
+    local scenario = blam35.scenario(get_tag(0))
     console_out(scenario.vehicleLocationCount)
     lu.assertEquals(scenario.vehicleLocationCount, 33)
 end
@@ -170,14 +170,6 @@ testMenus = {}
 function testMenus:setUp()
     local forgeMenuTagPath = constants.uiWidgetDefinitions.forgeMenu
     self.expectedTagId = get_simple_tag_id(tagClasses.uiWidgetDefinition, forgeMenuTagPath)
-end
-
-function testMenus:testForgeMenu()
-    local menuTagPath = constants.uiWidgetDefinitions.forgeMenu
-    local bridgeWidget = get_tag("DeLa", constants.uiWidgetDefinitions.errorNonmodalFullscreen)
-    features.openMenu(menuTagPath, true)
-    local bridgeWidgetData = blam.uiWidgetDefinition(bridgeWidget)
-    lu.assertEquals(bridgeWidgetData.tagReference, self.expectedTagId)
 end
 
 ----------------- Core Functions Tests -----------------------

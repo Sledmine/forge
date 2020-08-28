@@ -3,7 +3,7 @@ local inspect = require "inspect"
 local glue = require "glue"
 
 -- Forge modules
-local constants = require "forge.constants"
+
 local menu = require "forge.menu"
 
 local function forgeReducer(state, action)

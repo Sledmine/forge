@@ -109,6 +109,31 @@ local function forgeCommands(command)
                 end
             end
             return false
+        elseif (forgeCommand == "fit") then
+            for objectId = 0, #get_objects() - 1 do
+                local tempObject = blam35.object(get_object(objectId))
+                if (tempObject and tempObject.type == objectClasses.weapon) then
+                    delete_object(objectId)
+                end
+            end
+            for tagId = 0, get_tags_count() - 1 do
+                local tagType = get_tag_type(tagId)
+                if (tagType == tagClasses.itemCollection) then
+                    local tagPath = get_tag_path(tagId)
+                    console_out(tagPath .. " " .. tagId)
+                end
+            end
+            return false
+        elseif (forgeCommand == "fnet") then
+            local scenarioAddress = get_tag(0)
+            -- Get scenario data
+            local scenario = blam35.scenario(scenarioAddress)
+
+            -- Get scenario player spawn points
+            local netgameEquipmentPoints = scenario.netgameEquipmentList
+            dprint(inspect(scenario.netgameEquipmentCount))
+            dprint(inspect(netgameEquipmentPoints))
+            return false
         elseif (forgeCommand == "fsize") then
             dprint(collectgarbage("count") / 1024)
             return false
@@ -128,7 +153,7 @@ local function forgeCommands(command)
             end
 
             local weaponName = table.concat(glue.shift(splitCommand, 1, -1), " ")
-            local player = blam.biped(get_dynamic_player())
+            local player = blam35.biped(get_dynamic_player())
             local weaponResult = weaponsList[weaponName]
             if (weaponResult) then
                 core.spawnObject(tagClasses.weapon, weaponResult, player.x, player.y, player.z)
@@ -179,18 +204,18 @@ local function forgeCommands(command)
 
             return false
         elseif (forgeCommand == "fblam") then
-            console_out("lua-blam " .. blam.version)
+            console_out("lua-blam " .. blam35.version)
             return false
         elseif (forgeCommand == "fspawn") then
             -- Get scenario data
-            local scenario = blam.scenario(get_tag(0))
+            local scenario = blam35.scenario(get_tag(0))
 
             -- Get scenario player spawn points
             local mapSpawnPoints = scenario.spawnLocationList
 
             mapSpawnPoints[1].type = 12
 
-            blam.scenario(get_tag(0), {
+            blam35.scenario(get_tag(0), {
                 spawnLocationList = mapSpawnPoints
             })
             return false

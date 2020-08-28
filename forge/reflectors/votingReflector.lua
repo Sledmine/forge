@@ -3,7 +3,7 @@
 -- Sledmine
 -- Function reflector for store
 ------------------------------------------------------------------------------
-local constants = require "forge.constants"
+
 local menu = require "forge.menu"
 
 local function votingReflector()
@@ -31,14 +31,14 @@ local function votingReflector()
                                            constants.unicodeStrings.votingList)
 
     -- Update string list
-    blam.unicodeStringList(unideStringListAddress, {
+    blam35.unicodeStringList(unideStringListAddress, {
         stringList = currentMapsList
     })
 
     unideStringListAddress = get_tag(tagClasses.unicodeStringList,
                                      constants.unicodeStrings.votingCountList)
 
-    blam.unicodeStringList(unideStringListAddress, {
+    blam35.unicodeStringList(unideStringListAddress, {
         stringList = votesList
     })
 
