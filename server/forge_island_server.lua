@@ -24,8 +24,7 @@ local redux = require "lua-redux"
 -- Specific Halo Custom Edition libraries
 local maeth = require "maethrillian"
 blam = require "nlua-blam"
-tagClasses = blam35.tagClasses
-blam = blam35.compat35()
+blam35 = blam.compat35()
 
 -- Forge modules
 
@@ -127,7 +126,7 @@ function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
     else
         local isBiped = false
         for index, tagPath in pairs(constants.bipeds) do
-            local bipedTagId = get_tag_id(tagClasses.biped, tagPath)
+            local bipedTagId = get_tag_id(blam.tagClasses.biped, tagPath)
             if (tagId == bipedTagId) then
                 isBiped = true
                 break
@@ -141,7 +140,7 @@ function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
             if (bipedChangeRequest[playerIndex]) then
                 local requestedBipedName = bipedChangeRequest[playerIndex]
                 local requestedBipedTagPath = constants.bipeds[requestedBipedName]
-                local requestedBipedTagId = get_tag_id(tagClasses.biped, requestedBipedTagPath)
+                local requestedBipedTagId = get_tag_id(blam.tagClasses.biped, requestedBipedTagPath)
                 return true, requestedBipedTagId
             end
         end

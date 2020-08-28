@@ -10,7 +10,7 @@ local constants = {}
 -- Constant forge values
 constants.maximumBudget = 1024
 constants.minimumZSpawnPoint = -18.69
-constants.scenerysTagCollectionPath = core.findTag(map .. "_scenerys", tagClasses.tagCollection)
+constants.scenerysTagCollectionPath = core.findTag(map .. "_scenerys", blam.tagClasses.tagCollection)
 
 -- Constant ui widget definition values
 constants.maximumSidebarSize = 249
@@ -82,13 +82,13 @@ constants.requests = {
 
 -- Biped tag definitions
 constants.bipeds = {
-    monitor = core.findTag("monitor", tagClasses.biped),
-    spartan = core.findTag("cyborg_mp", tagClasses.biped)
+    monitor = core.findTag("monitor", blam.tagClasses.biped),
+    spartan = core.findTag("cyborg_mp", blam.tagClasses.biped)
 }
 
 -- Weapon hud tag definitions
 constants.weaponHudInterfaces = {
-    forgeCrosshair = core.findTag("ui\\hud\\forge", tagClasses.weaponHudInterface)
+    forgeCrosshair = core.findTag("ui\\hud\\forge", blam.tagClasses.weaponHudInterface)
 }
 
 constants.bitmaps = {
