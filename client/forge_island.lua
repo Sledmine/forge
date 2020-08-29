@@ -21,7 +21,6 @@ objectClasses = blam.objectClasses
 tagClasses = blam.tagClasses
 -- Bring old api compatibility
 blam35 = blam.compat35()
-local maeth = require "maethrillian"
 hfs = require "hcefs"
 
 -- Forge modules
