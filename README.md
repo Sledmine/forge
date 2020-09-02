@@ -54,11 +54,13 @@ Every scenery stored in the scenery database is automatically split into categor
 - Forge permission system, deny Forge requests to the server for specific players.
 
 ## Help needed with
+We are giving our best effort to make this project as complete and useful as possible, but there is some stuff out of our knowledge where you can probably give us a hand to concentrate in other key less demanding features.
+
 - Object placement features, grid, magnetisim, etc.
 - Object history placement, provide undo, redo operations along time.
 - Better controls implementation, multi input devices is key, keyboard, mouse and joystick support are must have features.
 
-## Long way to Forge
+# Long way to Forge
 
 This project is part of something just much bigger than creating a project with an Island and Forge for Halo Custom Edition, here are some points that can help this to grow a lot!
 
@@ -68,7 +70,7 @@ This project is part of something just much bigger than creating a project with 
 
 - Forge is now an open source project for anything your mind can create, with Forge came different concepts and libraries to help you to expand Halo Custom Edition (just took us like 15 years to reach this point of content lol)
 
-## Special Thanks and Credits
+# Special Thanks and Credits
 
 - Visual Studio Code and EmmyLua for the fast workflow for Lua
 - Kepler Project for the lua file system and the lua 5.3 compatibility
