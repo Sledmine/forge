@@ -18,6 +18,12 @@ constants.minimumSidebarSize = 40
 constants.maximumProgressBarSize = 171
 constants.maximumLoadingProgressBarSize = 422
 
+local fontTagPath, fontTagId = core.findTag("blender_pro_12", tagClasses.font)
+constants.hudFont = fontTagId
+
+local projectileTagPath, projectileTagId = core.findTag("mp_needle", tagClasses.projectile)
+constants.forgeProjectileSelector = projectileTagPath
+
 -- Constante forge requests data
 constants.requests = {
     spawnObject = {
@@ -57,6 +63,7 @@ constants.requests = {
             {"objectId"}
         }
     },
+    flushForge = {actionType = "FLUSH_FORGE"},
     loadMapScreen = {
         actionType = "LOAD_MAP_SCREEN",
         requestType = "#lm",
@@ -67,17 +74,41 @@ constants.requests = {
             {"mapDescription"}
         }
     },
-    -- // TODO: Finish this request!
     loadVoteMapScreen = {
         actionType = "LOAD_VOTE_MAP_SCREEN",
         requestType = "#lv",
+        requestFormat = {{"requestType"}}
+    },
+    appendVoteMap = {
+        actionType = "APPEND_VOTE_MAP",
+        requestType = "#av",
         requestFormat = {
             {"requestType"},
-            {"voteCount"},
-            {"maps"},
-            {"gametypes"}
+            {"mapName"},
+            {"mapGametype"},
+            {"mapIndex"}
         }
-    }
+    },
+    sendMapVote = {
+        actionType = "SEND_MAP_VOTE",
+        requestType = "#v",
+        requestFormat = {
+            {"requestType"},
+            {"mapVoted"}
+        }
+    },
+    sendTotalMapVotes = {
+        actionType = "SEND_TOTAL_MAP_VOTES",
+        requestType = "#sv",
+        requestFormat = {
+            {"requestType"},
+            {"votesMap1"},
+            {"votesMap2"},
+            {"votesMap3"},
+            {"votesMap4"}
+        }
+    },
+    flushVotes = {actionType = "FLUSH_VOTES"}
 }
 
 -- Biped tag definitions

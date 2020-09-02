@@ -109,7 +109,7 @@ function testObjects:testSpawnAndRotateObjects()
 end
 
 function testObjects:testGetNetgameSpawnPoints()
-    local scenario = blam35.scenario(get_tag(0))
+    local scenario = blam.scenario(0)
     console_out(scenario.vehicleLocationCount)
     lu.assertEquals(scenario.vehicleLocationCount, 33)
 end

@@ -7,7 +7,8 @@ local features = require "forge.features"
 local function forgeCommands(command)
     if (command == "fdebug") then
         debugMode = not debugMode
-        console_out("Debug Forge: " .. tostring(debugMode))
+        configuration.debugMode = debugMode
+        console_out("Debug mode: " .. tostring(debugMode))
         return false
     else
         -- Split all the data in the command input
@@ -64,6 +65,18 @@ local function forgeCommands(command)
             return false
         elseif (forgeCommand == "fsave") then
             core.saveForgeMap()
+            return false
+        elseif (forgeCommand == "fsnap") then
+            configuration.snapMode = not configuration.snapMode
+            console_out("Snap Mode: " .. tostring(configuration.snapMode))
+            return false
+        elseif (forgeCommand == "fauto") then
+            configuration.autoSave = not configuration.autoSave
+            console_out("Auto Save: " .. tostring(configuration.autoSave))
+            return false
+        elseif (forgeCommand == "fcast") then
+            configuration.objectsCastShadow = not configuration.objectsCastShadow
+            console_out("Objects Cast Shadow: " .. tostring(configuration.objectsCastShadow))
             return false
         elseif (forgeCommand == "fload") then
             local mapName = table.concat(glue.shift(splitCommand, 1, -1), " ")
@@ -124,16 +137,14 @@ local function forgeCommands(command)
                 end
             end
             return false
-        elseif (forgeCommand == "fnet") then
-            local scenarioAddress = get_tag(0)
-            -- Get scenario data
-            local scenario = blam35.scenario(scenarioAddress)
-
-            -- Get scenario player spawn points
-            local netgameEquipmentPoints = scenario.netgameEquipmentList
-            dprint(inspect(scenario.netgameEquipmentCount))
-            dprint(inspect(netgameEquipmentPoints))
-            return false
+        elseif (forgeCommand == "fonts") then
+            for tagId = 0, get_tags_count() - 1 do
+                local tagType = get_tag_type(tagId)
+                if (tagType == tagClasses.font) then
+                    local tagPath = get_tag_path(tagId)
+                    console_out(tagPath .. " " .. tagId)
+                end
+            end
         elseif (forgeCommand == "fsize") then
             dprint(collectgarbage("count") / 1024)
             return false
@@ -153,10 +164,10 @@ local function forgeCommands(command)
             end
 
             local weaponName = table.concat(glue.shift(splitCommand, 1, -1), " ")
-            local player = blam35.biped(get_dynamic_player())
+            local player = blam.biped(get_dynamic_player())
             local weaponResult = weaponsList[weaponName]
             if (weaponResult) then
-                core.spawnObject(tagClasses.weapon, weaponResult, player.x, player.y, player.z)
+                local weaponObjectId = core.spawnObject(tagClasses.weapon, weaponResult, player.x, player.y, player.z + 0.5)
             end
             return false
         elseif (forgeCommand == "ftest") then
@@ -166,12 +177,27 @@ local function forgeCommands(command)
                 tests.run(true)
                 return false
             end
+        elseif (forgeCommand == "fbiped") then
+            local player = blam.biped(get_dynamic_player())
+            console_out(player.weaponId)
+            return false
         elseif (forgeCommand == "fobject") then
-            local objectId = tonumber(splitCommand[2])
-            console_out(tostring(get_object(objectId)))
-            local eraseConfirm = splitCommand[3]
-            if (eraseConfirm) then
-                delete_object(objectId)
+            local weaponsList = {}
+            for tagId = 0, get_tags_count() - 1 do
+                local tagType = get_tag_type(tagId)
+                if (tagType == tagClasses.biped) then
+                    local tagPath = get_tag_path(tagId)
+                    local splitPath = glue.string.split(tagPath, "\\")
+                    local weaponTagName = splitPath[#splitPath]
+                    weaponsList[weaponTagName] = tagPath
+                end
+            end
+
+            local weaponName = table.concat(glue.shift(splitCommand, 1, -1), " ")
+            local player = blam35.biped(get_dynamic_player())
+            local weaponResult = weaponsList[weaponName]
+            if (weaponResult) then
+                core.spawnObject(tagClasses.biped, weaponResult, player.x, player.y, player.z)
             end
             return false
         elseif (forgeCommand == "fdump") then
@@ -208,16 +234,14 @@ local function forgeCommands(command)
             return false
         elseif (forgeCommand == "fspawn") then
             -- Get scenario data
-            local scenario = blam35.scenario(get_tag(0))
+            local scenario = blam.scenario(0)
 
             -- Get scenario player spawn points
             local mapSpawnPoints = scenario.spawnLocationList
 
             mapSpawnPoints[1].type = 12
 
-            blam35.scenario(get_tag(0), {
-                spawnLocationList = mapSpawnPoints
-            })
+            scenario.spawnLocationList = mapSpawnPoints
             return false
         end
     end

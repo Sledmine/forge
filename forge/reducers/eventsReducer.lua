@@ -2,7 +2,6 @@
 local glue = require "glue"
 local inspect = require "inspect"
 
-
 -- Forge modules
 local core = require "forge.core"
 local features = require "forge.features"
@@ -10,7 +9,32 @@ local features = require "forge.features"
 local function eventsReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
-        state = {forgeObjects = {}}
+        state = {
+            forgeObjects = {},
+            playerVotes = {},
+            mapsList = {
+                {
+                    mapName = "Begotten",
+                    mapGametype = "Team Slayer",
+                    mapIndex = 1
+                },
+                {
+                    mapName = "Octagon",
+                    mapGametype = "Slayer",
+                    mapIndex = 1
+                },
+                {
+                    mapName = "Strong Enough",
+                    mapGametype = "CTF",
+                    mapIndex = 1
+                },
+                {
+                    mapName = "Castle",
+                    mapGametype = "CTF",
+                    mapIndex = 1
+                }
+            }
+        }
     end
     if (action.type) then
         dprint("-> [Events Store]")
@@ -59,30 +83,30 @@ local function eventsReducer(state, action)
             if (tagPath:find("gametypes")) then
                 dprint("GAMETYPE_SPAWN", "category")
                 -- Make needed modifications to game spawn points
-                core.updatePlayerSpawnPoint(tagPath, forgeObject)
+                core.updatePlayerSpawn(tagPath, forgeObject)
             elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
                 dprint("VEHICLE_SPAWN", "category")
                 core.updateVehicleSpawn(tagPath, forgeObject)
             elseif (tagPath:find("weapons")) then
                 dprint("WEAPON_SPAWN", "category")
-                core.updateNetgameEquipmentSpawnPoint(tagPath, forgeObject)
+                core.updateNetgameEquipmentSpawn(tagPath, forgeObject)
             end
         elseif (tagPath:find("objectives")) then
             dprint("-> [Reflecting Flag]", "warning")
-            core.updateNetgameFlagSpawnPoint(tagPath, forgeObject)
+            core.updateNetgameFlagSpawn(tagPath, forgeObject)
         end
-        
-        -- Clean and prepare object
-        forgeObject.tagId = nil
-        
-        -- Store the object in our state
-        state.forgeObjects[localObjectId] = forgeObject
-        
+
         -- As a server we have to send back a response/request to the players in the server
         if (server_type == "sapp") then
             local response = core.createRequest(forgeObject)
             core.sendRequest(response)
         end
+
+        -- Clean and prepare object
+        forgeObject.tagId = nil
+
+        -- Store the object in our state
+        state.forgeObjects[localObjectId] = forgeObject
 
         -- Update the current map information
         forgeStore:dispatch({
@@ -107,8 +131,7 @@ local function eventsReducer(state, action)
             forgeObject.roll = requestObject.roll
 
             -- Update object rotation
-            core.rotateObject(targetObjectId, forgeObject.yaw, forgeObject.pitch,
-                              forgeObject.roll)
+            core.rotateObject(targetObjectId, forgeObject.yaw, forgeObject.pitch, forgeObject.roll)
 
             -- Update object position
             blam35.object(get_object(targetObjectId), {
@@ -119,7 +142,6 @@ local function eventsReducer(state, action)
 
             -- Check and take actions if the object is reflecting a netgame point
             if (forgeObject.reflectionId) then
-                console_out("Reflection id:")
                 local tempObject = blam35.object(get_object(targetObjectId))
                 local tagPath = get_tag_path(tempObject.tagId)
                 if (tagPath:find("spawning")) then
@@ -127,17 +149,17 @@ local function eventsReducer(state, action)
                     if (tagPath:find("gametypes")) then
                         dprint("GAMETYPE_SPAWN", "category")
                         -- Make needed modifications to game spawn points
-                        core.updatePlayerSpawnPoint(tagPath, forgeObject)
+                        core.updatePlayerSpawn(tagPath, forgeObject)
                     elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
                         dprint("VEHICLE_SPAWN", "category")
                         core.updateVehicleSpawn(tagPath, forgeObject)
                     elseif (tagPath:find("weapons")) then
                         dprint("WEAPON_SPAWN", "category")
-                        core.updateNetgameEquipmentSpawnPoint(tagPath, forgeObject)
+                        core.updateNetgameEquipmentSpawn(tagPath, forgeObject)
                     end
                 elseif (tagPath:find("objectives")) then
                     dprint("-> [Reflecting Flag]", "warning")
-                    core.updateNetgameFlagSpawnPoint(tagPath, forgeObject)
+                    core.updateNetgameFlagSpawn(tagPath, forgeObject)
                 end
             end
 
@@ -167,13 +189,13 @@ local function eventsReducer(state, action)
                     if (tagPath:find("gametypes")) then
                         dprint("GAMETYPE_SPAWN", "category")
                         -- Make needed modifications to game spawn points
-                        core.updatePlayerSpawnPoint(tagPath, forgeObject, true)
+                        core.updatePlayerSpawn(tagPath, forgeObject, true)
                     elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
                         dprint("VEHICLE_SPAWN", "category")
                         core.updateVehicleSpawn(tagPath, forgeObject, true)
                     elseif (tagPath:find("weapons")) then
                         dprint("WEAPON_SPAWN", "category")
-                        core.updateNetgameEquipmentSpawnPoint(tagPath, forgeObject, true)
+                        core.updateNetgameEquipmentSpawn(tagPath, forgeObject, true)
                     end
                 end
             end
@@ -222,9 +244,86 @@ local function eventsReducer(state, action)
         features.openMenu(constants.uiWidgetDefinitions.loadingMenu)
 
         return state
-        -- // FIXME: We need a request for this just in case!
-    elseif (action.type == "FLUSH_FORGE") then
-        state = {forgeObjects = {}}
+    elseif (action.type == constants.requests.flushForge.actionType) then
+        state.forgeObjects = {}
+        return state
+    elseif (action.type == constants.requests.loadVoteMapScreen.actionType) then
+        if (server_type ~= "sapp") then
+            function preventClose()
+                features.openMenu(constants.uiWidgetDefinitions.voteMenu)
+                return false
+            end
+            set_timer(5000, "preventClose")
+        else
+            -- Send vote map menu open request
+            local loadMapVoteMenuRequest = {
+                requestType = constants.requests.loadVoteMapScreen.requestType
+            }
+            core.sendRequest(core.createRequest(loadMapVoteMenuRequest))
+            -- Send list of all available vote maps
+            for mapIndex, map in pairs(state.mapsList) do
+                local voteMapOpenRequest = {
+                    requestType = constants.requests.appendVoteMap.requestType
+                }
+                glue.update(voteMapOpenRequest, map)
+                core.sendRequest(core.createRequest(voteMapOpenRequest))
+            end
+        end
+        return state
+    elseif (action.type == constants.requests.appendVoteMap.actionType) then
+        if (server_type ~= "sapp") then
+            local params = action.payload.requestObject
+            votingStore:dispatch({
+                type = "APPEND_MAP_VOTE",
+                payload = {
+                    map = {
+                        name = params.mapName,
+                        gametype = params.mapGametype
+                    }
+                }
+            })
+        end
+        return state
+    elseif (action.type == constants.requests.sendTotalMapVotes.actionType) then
+        if (server_type == "sapp") then
+            local mapVotes = {0, 0, 0, 0}
+            for playerIndex, mapIndex in pairs(state.playerVotes) do
+                mapVotes[mapIndex] = mapVotes[mapIndex] + 1
+            end
+            -- Send vote map menu open request
+            local sendTotalMapVotesRequest = {
+                requestType = constants.requests.sendTotalMapVotes.requestType
+
+            }
+            for mapIndex, votes in pairs(mapVotes) do
+                sendTotalMapVotesRequest["votesMap" .. mapIndex] = votes
+            end
+            core.sendRequest(core.createRequest(sendTotalMapVotesRequest))
+        else
+            local params = action.payload.requestObject
+            local votesList = {params.votesMap1, params.votesMap2, params.votesMap3, params.votesMap4}
+            votingStore:dispatch({type = "SET_MAP_VOTES_LIST", payload = {votesList = votesList}})
+        end
+        return state
+    elseif (action.type == constants.requests.sendMapVote.actionType) then
+        -- // TODO: Add vote map logic to handle player votes
+        if (action.playerIndex and server_type == "sapp") then
+            local playerName = get_var(action.playerIndex, "$name")
+            if (not state.playerVotes[action.playerIndex]) then
+                local params = action.payload.requestObject
+                state.playerVotes[action.playerIndex] = params.mapVoted
+                local mapName = state.mapsList[params.mapVoted].mapName
+                local mapGametype = state.mapsList[params.mapVoted].mapGametype
+                gprint(playerName .. " voted for " .. mapName .. " " .. mapGametype)
+                eventsStore:dispatch({
+                    type = constants.requests.sendTotalMapVotes.actionType
+                })
+                print(inspect(state))
+            end
+        end
+        return state
+    elseif (action.type == constants.requests.flushVotes.actionType) then
+        state.playerVotes = {}
         return state
     else
         if (action.type == "@@lua-redux/INIT") then

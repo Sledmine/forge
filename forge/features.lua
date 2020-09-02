@@ -3,6 +3,10 @@
 -- Sledmine
 -- Set of different forge features
 ------------------------------------------------------------------------------
+local glue = require "glue"
+
+local core = require "forge.core"
+
 local features = {}
 
 --- Changes default crosshair values
@@ -130,19 +134,32 @@ end
 --- Print formatted text into HUD message output
 ---@param message string
 ---@param optional string
-function features.printHUD(message, optional)
-    if (not debugMode) then
-        local cleanLimit = 3
-        if (optional) then
-            cleanLimit = 2
-        end
-        for i = 1, cleanLimit do
-            execute_script("cls")
-        end
-        console_out(message)
-        if (optional) then
-            console_out(optional)
-        end
+function features.printHUD(message, optional, forcedTickCount)
+    textRefreshCount = forcedTickCount or 0
+    
+    local color = {1, 0.890, 0.949, 0.992}
+    if (optional) then
+        drawTextBuffer = {
+            message:upper() .. "\r" .. optional:upper(),
+            0,
+            290,
+            640,
+            480,
+            constants.hudFont,
+            "center",
+            table.unpack(color)
+        }
+    else
+        drawTextBuffer = {
+            message:upper(),
+            0,
+            285,
+            640,
+            480,
+            constants.hudFont,
+            "center",
+            table.unpack(color)
+        }
     end
 end
 

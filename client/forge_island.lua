@@ -15,7 +15,7 @@ local json = require "json"
 -- Halo Custom Edition libraries
 blam = require "nlua-blam"
 -- Bind legacy console out to better lua-blam printing function
---console_out = blam.consoleOutput
+console_out = blam.consoleOutput
 -- Create global reference to tagClasses
 objectClasses = blam.objectClasses
 tagClasses = blam.tagClasses
@@ -53,11 +53,15 @@ configuration = {
 
 -- Internal functions
 debugBuffer = ""
+textRefreshCount = 0
 
 --- Function to send debug messages to console output
 ---@param message string
 ---@param color string | "'category'" | "'warning'" | "'error'" | "'success'"
 function dprint(message, color)
+    if (type(message) == "table") then
+        return console_out(inspect(message))
+    end
     debugBuffer = debugBuffer .. message .. "\n"
     if (debugMode) then
         if (color == "category") then
@@ -76,7 +80,7 @@ end
 
 ---@return boolean
 function validateMapName()
-    return map == "forge_island_local" or map == "forge_island" or map == "forge_island_beta"
+    return map == "forge_island_dev" or map == "forge_island" or map == "forge_island_beta"
 end
 
 function loadForgeConfiguration()
@@ -189,20 +193,21 @@ function onMapLoad()
         }
     })
 
-    local testVoteMaps = {
-        {mapName = "Forge", gametype = "Slayer"},
-        {mapName = "Forge", gametype = "Slayer"},
-        {mapName = "Forge", gametype = "Slayer"},
-        {mapName = "Forge", gametype = "Slayer"}
-    }
-
     votingStore:subscribe(votingReflector)
 
     -- Dispatch forge objects list update
     votingStore:dispatch({
-        type = "UPDATE_VOTE_LIST",
-        payload = {mapsList = testVoteMaps}
+        type = "FLUSH_MAP_VOTES"
     })
+    --[[votingStore:dispatch({
+        type = "APPEND_MAP_VOTE",
+        payload = {
+            map = {
+                name = "Forge",
+                gametype = "Slayer"
+            }
+        }
+    })]]
 
     local isForgeMap = validateMapName()
     if (isForgeMap) then
@@ -228,7 +233,8 @@ function onMapLoad()
             autoSaveTimer = set_timer(configuration.autoSaveTime, "autoSaveForgeMap")
         end
 
-        set_callback("tick", "onTick")
+        set_callback("tick", "OnTick")
+        set_callback("preframe", "OnPreFrame")
         set_callback("rcon message", "OnRcon")
         set_callback("command", "onCommand")
 
@@ -237,11 +243,18 @@ function onMapLoad()
     end
 end
 
+function OnPreFrame()
+    if (drawTextBuffer) then
+        draw_text(table.unpack(drawTextBuffer))
+    end
+end
+weldObject = {source = nil, target = nil}
+
 -- Where the magick happens, tiling!
-function onTick()
+function OnTick()
     -- Get player object
     ---@type biped
-    local player = blam35.biped(get_dynamic_player())
+    local player = blam.biped(get_dynamic_player())
 
     -- Get player forge state
     ---@type playerState
@@ -274,6 +287,12 @@ function onTick()
             -- Check if monitor has an object attached
             local attachedObjectId = playerState.attachedObjectId
             if (attachedObjectId) then
+                -- Update object position
+                blam35.object(get_object(attachedObjectId), {
+                    x = playerState.xOffset,
+                    y = playerState.yOffset,
+                    z = playerState.zOffset
+                })
                 -- Change rotation angle
                 if (player.flashlightKey) then
                     playerStore:dispatch({
@@ -297,6 +316,25 @@ function onTick()
                     playerStore:dispatch({
                         type = "ROTATE_OBJECT"
                     })
+                elseif (player.weaponPTH and player.jumpHold) then
+                    local forgeObjects = eventsStore:getState().forgeObjects
+                    local forgeObject = forgeObjects[attachedObjectId]
+                    if (forgeObject) then
+                        -- Update object position
+                        blam35.object(get_object(attachedObjectId), {
+                            x = forgeObject.x,
+                            y = forgeObject.y,
+                            z = forgeObject.z
+                        })
+                        core.rotateObject(attachedObjectId, forgeObject.yaw, forgeObject.pitch,
+                                          forgeObject.roll)
+                        playerStore:dispatch({
+                            type = "DETACH_OBJECT",
+                            payload = {
+                                undo = true
+                            }
+                        })
+                    end
                 elseif (player.meleeKey) then
                     playerStore:dispatch({
                         type = "SET_LOCK_DISTANCE",
@@ -319,7 +357,6 @@ function onTick()
                     playerStore:dispatch({
                         type = "DETACH_OBJECT"
                     })
-
                 end
 
                 if (not playerState.lockDistance) then
@@ -330,12 +367,6 @@ function onTick()
                         type = "UPDATE_OFFSETS"
                     })
                 end
-                -- Update object position
-                blam35.object(get_object(attachedObjectId), {
-                    x = playerState.xOffset,
-                    y = playerState.yOffset,
-                    z = playerState.zOffset
-                })
 
                 -- Unhighlight objects
                 features.unhighlightAll()
@@ -383,7 +414,7 @@ function onTick()
                                 objectCategory = objectCategory:gsub("^%l", string.upper)
 
                                 features.printHUD("NAME:  " .. objectName,
-                                                  "CATEGORY:  " .. objectCategory)
+                                                  "CATEGORY:  " .. objectCategory, 25)
 
                                 -- Update crosshair state
                                 if (features.setCrosshairState) then
@@ -396,7 +427,7 @@ function onTick()
                                 end
 
                                 -- Player is taking the object
-                                if (player.weaponPTH) then
+                                if (player.weaponPTH and not player.jumpHold) then
                                     -- Set lock distance to true, to take object from perspective
                                     playerStore:dispatch(
                                         {
@@ -532,7 +563,11 @@ function onTick()
     -- Trigger prefix and how many triggers are being read
     local voteMapMenuPressedButton = triggers.get("map_vote_menu", 5)
     if (voteMapMenuPressedButton) then
-        execute_script("rcon forge #v," .. voteMapMenuPressedButton)
+        local voteMapRequest = {
+            requestType = constants.requests.sendMapVote.requestType,
+            mapVoted = voteMapMenuPressedButton
+        }
+        core.sendRequest(core.createRequest(voteMapRequest))
         dprint("Vote Map menu:")
         dprint("Button " .. voteMapMenuPressedButton .. " was pressed!", "category")
     end
@@ -543,6 +578,12 @@ function onTick()
     hook.attach("forge_menu_close", menu.stop, constants.uiWidgetDefinitions.forgeMenu)
     hook.attach("loading_menu_close", menu.stop, constants.uiWidgetDefinitions.loadingMenu)
 
+    textRefreshCount = textRefreshCount + 1
+    -- We need to draw new text this time
+    if (textRefreshCount > 30) then
+        textRefreshCount = 0
+        drawTextBuffer = nil
+    end
 end
 
 -- This is not a mistake... right?
@@ -560,7 +601,7 @@ function forgeAnimation()
     -- // TODO: Split this in a better way, it looks horrible!
     -- Animate forge logo
     blam35.uiWidgetDefinition(get_tag("ui_widget_definition",
-                                    constants.uiWidgetDefinitions.loadingAnimation), {
+                                      constants.uiWidgetDefinitions.loadingAnimation), {
         backgroundBitmap = get_tag_id("bitm", constants.bitmaps["forgeLoadingProgress" ..
                                           tostring(lastImage)])
     })

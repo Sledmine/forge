@@ -1,31 +1,29 @@
 {
-    "project": {
-        "name": "Forge Island",
-        "version": "3.0",
-        "include": [
-            "Your libraries path goes here!"
-        ],
-        "requires": [
-            "forge.core",
-            "forge.reducers.forgeReducers",
-            "forge.reducers.eventsReducer",
-            "forge.reducers.playerReducer",
-            "forge.commands",
-            "forge.tests",
-            "forge.features",
-            "forge.triggers",
-            "forge.hook",
-            "forge.constants",
-            "forge.menu",
-            "inspect",
-            "lua-redux",
-            "json",
-            "glue",
-            "luaunit",
-            "maethrillian",
-            "lua-blam",
-            "forge_island"
-        ],
-        "output": "forge_island"
-    }
+    "name": "Forge Island",
+    "include": [
+    ],
+    "modules": [
+        "inspect",
+        "glue",
+        "json",
+        "lua-redux",
+        "nlua-blam",
+        "maethrillian",
+        "forge.commands",
+        "forge.constants",
+        "forge.core",
+        "forge.features",
+        "forge.hook",
+        "forge.menu",
+        "forge.tests",
+        "forge.triggers",
+        "forge.reducers.forgeReducers",
+        "forge.reducers.eventsReducer",
+        "forge.reducers.playerReducer",
+        "forge.reducers.votingReducer",
+        "forge.reflectors.forgeReflector",
+        "forge.reflectors.votingReflector"
+    ],
+    "main":"client\\forge_island",
+    "output": "forge_island_bundle"
 }

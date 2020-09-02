@@ -74,7 +74,14 @@ function playerReducer(state, action)
         end
         return state
     elseif (action.type == "DETACH_OBJECT") then
-        -- Update request if needed
+        if (action.payload) then
+            local payload = action.payload
+            if (payload.undo) then
+                state.attachedObjectId = nil
+                return state
+            end
+        end
+        -- Send update request in case of needed
         if (state.attachedObjectId and get_object(state.attachedObjectId)) then
             local forgeObjects = eventsStore:getState().forgeObjects
             local composedObject = forgeObjects[state.attachedObjectId]

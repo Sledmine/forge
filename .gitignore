@@ -43,4 +43,10 @@ luac.out
 .vscode
 
 # Sym links
+inspect.lua
+glue.lua
+json.lua
+lua-redux.lua
+maethrillian.lua
 nlua-blam.lua
+luaunit.lua

@@ -1,0 +1,1 @@
+lua53 updater.lua %1

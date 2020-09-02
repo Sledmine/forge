@@ -12,10 +12,6 @@ local glue = require "glue"
 -- Halo libraries
 local maeth = require "maethrillian"
 
--- Forge modules
-local features = require "forge.features"
-
-
 -- Core module
 local core = {}
 
@@ -248,7 +244,7 @@ function core.createRequest(requestTable)
 end
 
 --- Process every request as a server
-function core.processRequest(actionType, request, currentRequest)
+function core.processRequest(actionType, request, currentRequest, playerIndex)
     dprint("-> [ Receiving request ]")
     dprint("Incoming request: " .. request)
     dprint("Parsing incoming " .. actionType .. " ...", "warning")
@@ -273,20 +269,15 @@ function core.processRequest(actionType, request, currentRequest)
             type = actionType,
             payload = {
                 requestObject = requestObject
-            }
+            },
+            playerIndex = playerIndex
         })
     end
     return false, requestObject
 end
 
 function core.resetSpawnPoints()
-    local scenarioAddress
-    if (server_type ~= "sapp") then
-        scenarioAddress = get_tag(0)
-    else
-        scenarioAddress = get_tag("scnr", constants.scenarioPath)
-    end
-    local scenario = blam35.scenario(scenarioAddress)
+    local scenario = blam.scenario(0)
 
     local mapSpawnCount = scenario.spawnLocationCount
     local vehicleLocationCount = scenario.vehicleLocationCount
@@ -305,10 +296,9 @@ function core.resetSpawnPoints()
         vehicleLocationList[i].type = 65535
         execute_script("object_destroy v" .. vehicleLocationList[i].nameIndex)
     end
-    blam35.scenario(scenarioAddress, {
-        spawnLocationList = mapSpawnPoints,
-        vehicleLocationList = vehicleLocationList
-    })
+
+    scenario.spawnLocationList = mapSpawnPoints
+    scenario.vehicleLocationList = vehicleLocationList
 end
 
 function core.flushForge()
@@ -327,7 +317,7 @@ function core.flushForge()
     end
 end
 
-function core.sendMapData(forgeMap)
+function core.sendMapData(forgeMap, playerIndex)
     if (server_type == "sapp") then
         local mapDataResponse = {}
         mapDataResponse.requestType = constants.requests.loadMapScreen.requestType
@@ -335,7 +325,7 @@ function core.sendMapData(forgeMap)
         mapDataResponse.mapName = forgeMap.name
         mapDataResponse.mapDescription = forgeMap.description
         local response = core.createRequest(mapDataResponse)
-        core.sendRequest(response)
+        core.sendRequest(response, playerIndex)
     end
 end
 
@@ -406,7 +396,7 @@ function core.loadForgeMap(mapName)
 end
 
 function core.saveForgeMap()
-    dprint("Saving forge map...")
+    console_out("Saving forge map...")
 
     local forgeState = forgeStore:getState()
 
@@ -457,13 +447,13 @@ function core.saveForgeMap()
 
     -- Check if file was created
     if (forgeMapFile) then
-        dprint("Forge map '" .. mapName .. "' has been succesfully saved!", "success")
+        console_out("Forge map '" .. mapName .. "' has been succesfully saved!", "success")
 
         -- Reload forge maps list
         loadForgeMaps()
 
         if (server_type == "local") then
-            features.printHUD("Done.", "Saving " .. mapName .. "..")
+            console_out("Done.", "Saving " .. mapName .. "..", blam.consoleColors.success)
         end
     else
         dprint("ERROR!! At saving '" .. mapName .. "' as a forge map...", "error")
@@ -497,6 +487,9 @@ function core.spawnObject(type, tagPath, x, y, z)
             blam35.object(get_object(objectId), {
                 isNotCastingShadow = false
             })
+        end
+        if (server_type == "sapp") then
+            print("Object is outside map: " .. tostring(tempObject.isOutSideMap))
         end
         if (tempObject.isOutSideMap) then
             dprint("-> Object: " .. objectId .. " is INSIDE map!!!", "warning")
@@ -535,7 +528,7 @@ end
 ---@param tagPath string
 ---@param forgeObject table
 ---@param disable boolean
-function core.updatePlayerSpawnPoint(tagPath, forgeObject, disable)
+function core.updatePlayerSpawn(tagPath, forgeObject, disable)
     local teamIndex = 0
     local gameType = 0
 
@@ -570,16 +563,8 @@ function core.updatePlayerSpawnPoint(tagPath, forgeObject, disable)
         teamIndex = 1
     end
 
-    -- SAPP and Chimera can't substract scenario tag in the same way
-    local scenarioAddress
-    if (server_type == "sapp") then
-        scenarioAddress = get_tag("scnr", constants.scenarioPath)
-    else
-        scenarioAddress = get_tag(0)
-    end
-
     -- Get scenario data
-    local scenario = blam35.scenario(scenarioAddress)
+    local scenario = blam.scenario(0)
 
     -- Get scenario player spawn points
     local mapSpawnPoints = scenario.spawnLocationList
@@ -609,9 +594,7 @@ function core.updatePlayerSpawnPoint(tagPath, forgeObject, disable)
             -- Disable or "delete" spawn point by setting type as 0
             mapSpawnPoints[forgeObject.reflectionId].type = 0
             -- Update spawn point list
-            blam35.scenario(scenarioAddress, {
-                spawnLocationList = mapSpawnPoints
-            })
+            scenario.spawnLocationList = mapSpawnPoints
             return true
         end
         -- Replace spawn point values
@@ -624,15 +607,13 @@ function core.updatePlayerSpawnPoint(tagPath, forgeObject, disable)
         dprint("Updating spawn replacing index: " .. forgeObject.reflectionId)
     end
     -- Update spawn point list
-    blam35.scenario(scenarioAddress, {
-        spawnLocationList = mapSpawnPoints
-    })
+    scenario.spawnLocationList = mapSpawnPoints
 end
 
 --- Apply updates to netgame flags spawn points based on a tag path
 ---@param tagPath string
 ---@param forgeObject table
-function core.updateNetgameFlagSpawnPoint(tagPath, forgeObject)
+function core.updateNetgameFlagSpawn(tagPath, forgeObject)
     -- // TODO: Review if some flags use team index as "group index"!
     local teamIndex = 0
     local flagType = 0
@@ -664,16 +645,8 @@ function core.updateNetgameFlagSpawnPoint(tagPath, forgeObject)
         -- // TODO: Check and add weapon based netgame flags like oddball!
     end
 
-    -- SAPP and Chimera can't substract scenario tag in the same way
-    local scenarioAddress
-    if (server_type == "sapp") then
-        scenarioAddress = get_tag("scnr", constants.scenarioPath)
-    else
-        scenarioAddress = get_tag(0)
-    end
-
     -- Get scenario data
-    local scenario = blam35.scenario(scenarioAddress)
+    local scenario = blam.scenario(0)
 
     -- Get scenario player spawn points
     local mapNetgameFlagsPoints = scenario.netgameFlagsList
@@ -711,16 +684,14 @@ function core.updateNetgameFlagSpawnPoint(tagPath, forgeObject)
         dprint("Updating flag replacing index: " .. forgeObject.reflectionId, "warning")
     end
     -- Update spawn point list
-    blam35.scenario(scenarioAddress, {
-        netgameFlagsList = mapNetgameFlagsPoints
-    })
+    scenario.netgameFlagsList = mapNetgameFlagsPoints
 end
 
 --- Apply updates to equipment netgame points based on a given tag path
 ---@param tagPath string
 ---@param forgeObject table
 ---@param disable boolean
-function core.updateNetgameEquipmentSpawnPoint(tagPath, forgeObject, disable)
+function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
     local itemCollection
     -- Get equipment info from tag name
     if (tagPath:find("assault rifle")) then
@@ -765,16 +736,8 @@ function core.updateNetgameEquipmentSpawnPoint(tagPath, forgeObject, disable)
         itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
     end
 
-    -- SAPP and Chimera can't substract scenario tag in the same way
-    local scenarioAddress
-    if (server_type == "sapp") then
-        scenarioAddress = get_tag("scnr", constants.scenarioPath)
-    else
-        scenarioAddress = get_tag(0)
-    end
-
     -- Get scenario data
-    local scenario = blam35.scenario(scenarioAddress)
+    local scenario = blam.scenario(0)
 
     -- Get scenario player spawn points
     local netgameEquipmentPoints = scenario.netgameEquipmentList
@@ -805,11 +768,8 @@ function core.updateNetgameEquipmentSpawnPoint(tagPath, forgeObject, disable)
             -- // FIXME: Weapon object is not being erased in fact, find a way to delete it!
             -- Disable or "delete" equipment point by setting type as 0
             netgameEquipmentPoints[forgeObject.reflectionId].type1 = 0
-            --netgameEquipmentPoints[forgeObject.reflectionId].type1 = 0
             -- Update spawn point list
-            blam35.scenario(scenarioAddress, {
-                netgameEquipmentList = netgameEquipmentPoints
-            })
+            scenario.netgameEquipmentList = netgameEquipmentPoints
             return true
         end
         -- Replace spawn point values
@@ -821,9 +781,7 @@ function core.updateNetgameEquipmentSpawnPoint(tagPath, forgeObject, disable)
         dprint("Updating equipment replacing index: " .. forgeObject.reflectionId)
     end
     -- Update equipment point list
-    blam35.scenario(scenarioAddress, {
-        netgameEquipmentList = netgameEquipmentPoints
-    })
+    scenario.netgameEquipmentList = netgameEquipmentPoints
 end
 
 --- Enable, update and disable vehicle spawns
@@ -855,46 +813,37 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
         vehicleType = 5
     end
 
-    -- SAPP and Chimera can't substract scenario tag in the same way
-    local scenarioAddress
-    if (server_type == "sapp") then
-        scenarioAddress = get_tag("scnr", constants.scenarioPath)
-    else
-        scenarioAddress = get_tag(0)
-    end
-
     -- Get scenario data
-    local scenario = blam35.scenario(scenarioAddress)
+    local scenario = blam.scenario(0)
 
     local vehicleLocationCount = scenario.vehicleLocationCount
     dprint("Maximum count of vehicle spawn points: " .. vehicleLocationCount)
 
-    local vehicleLocationList = scenario.vehicleLocationList
+    local vehicleSpawnPoints = scenario.vehicleLocationList
 
     -- Object exists, it's synced
     if (not forgeObject.reflectionId) then
-        for spawnId = 2, #vehicleLocationList do
-            if (vehicleLocationList[spawnId].type == 65535) then
+        for spawnId = 2, #vehicleSpawnPoints do
+            if (vehicleSpawnPoints[spawnId].type == 65535) then
                 -- Replace spawn point values
-                vehicleLocationList[spawnId].x = forgeObject.x
-                vehicleLocationList[spawnId].y = forgeObject.y
-                vehicleLocationList[spawnId].z = forgeObject.z
-                vehicleLocationList[spawnId].yaw = math.rad(forgeObject.yaw)
-                vehicleLocationList[spawnId].pitch = math.rad(forgeObject.pitch)
-                vehicleLocationList[spawnId].roll = math.rad(forgeObject.roll)
+                vehicleSpawnPoints[spawnId].x = forgeObject.x
+                vehicleSpawnPoints[spawnId].y = forgeObject.y
+                vehicleSpawnPoints[spawnId].z = forgeObject.z
+                vehicleSpawnPoints[spawnId].yaw = math.rad(forgeObject.yaw)
+                vehicleSpawnPoints[spawnId].pitch = math.rad(forgeObject.pitch)
+                vehicleSpawnPoints[spawnId].roll = math.rad(forgeObject.roll)
 
-                vehicleLocationList[spawnId].type = vehicleType
+                vehicleSpawnPoints[spawnId].type = vehicleType
 
                 -- Debug spawn index
                 dprint("Creating spawn replacing index: " .. spawnId)
                 forgeObject.reflectionId = spawnId
 
                 -- Update spawn point list
-                blam35.scenario(scenarioAddress, {
-                    vehicleLocationList = vehicleLocationList
-                })
-                dprint("object_create_anew v" .. vehicleLocationList[spawnId].nameIndex)
-                execute_script("object_create_anew v" .. vehicleLocationList[spawnId].nameIndex)
+                scenario.vehicleLocationList = vehicleSpawnPoints
+
+                dprint("object_create_anew v" .. vehicleSpawnPoints[spawnId].nameIndex)
+                execute_script("object_create_anew v" .. vehicleSpawnPoints[spawnId].nameIndex)
                 -- Stop looking for "available" spawn slots
                 break
             end
@@ -903,21 +852,18 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
         dprint(forgeObject.reflectionId)
         if (disable) then
             -- Disable or "delete" spawn point by setting type as 65535
-            vehicleLocationList[forgeObject.reflectionId].type = 65535
+            vehicleSpawnPoints[forgeObject.reflectionId].type = 65535
             -- Update spawn point list
-            blam35.scenario(scenarioAddress, {
-                vehicleLocationList = vehicleLocationList
-            })
-            dprint("object_create_anew v" ..
-                       vehicleLocationList[forgeObject.reflectionId].nameIndex)
+            scenario.vehicleLocationList = vehicleSpawnPoints
+            dprint("object_create_anew v" .. vehicleSpawnPoints[forgeObject.reflectionId].nameIndex)
             execute_script("object_destroy v" ..
-                               vehicleLocationList[forgeObject.reflectionId].nameIndex)
+                               vehicleSpawnPoints[forgeObject.reflectionId].nameIndex)
             return true
         end
         -- Replace spawn point values
-        vehicleLocationList[forgeObject.reflectionId].x = forgeObject.x
-        vehicleLocationList[forgeObject.reflectionId].y = forgeObject.y
-        vehicleLocationList[forgeObject.reflectionId].z = forgeObject.z
+        vehicleSpawnPoints[forgeObject.reflectionId].x = forgeObject.x
+        vehicleSpawnPoints[forgeObject.reflectionId].y = forgeObject.y
+        vehicleSpawnPoints[forgeObject.reflectionId].z = forgeObject.z
 
         -- REMINDER!!! Check vehicle rotation
 
@@ -925,9 +871,7 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
         dprint("Updating spawn replacing index: " .. forgeObject.reflectionId)
 
         -- Update spawn point list
-        blam35.scenario(scenarioAddress, {
-            vehicleLocationList = vehicleLocationList
-        })
+        scenario.vehicleLocationList = vehicleSpawnPoints
     end
 end
 
@@ -955,12 +899,12 @@ function core.calculateDistanceFromObject(baseObject, targetObject)
     return math.sqrt(calulcatedX + calculatedY + calculatedZ)
 end
 function core.findTag(partialName, searchTagType)
-    for tagId = 1, get_tags_count() - 1 do
+    for tagId = 0, get_tags_count() - 1 do
         local tagPath = get_tag_path(tagId)
         local tagType = get_tag_type(tagId)
         if (tagPath and tagPath:find(partialName) and tagType == searchTagType) then
-            return tagPath
-        end 
+            return tagPath, tagId
+        end
     end
     return nil
 end

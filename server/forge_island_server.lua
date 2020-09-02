@@ -36,8 +36,8 @@ local eventsReducer = require "forge.reducers.eventsReducer"
 local forgeReducer = require "forge.reducers.forgeReducer"
 
 -- Variable used to store the current forge map in memory
-local forgeMapName
-local forgeAllowed = true
+forgeMapName = nil
+forgeAllowed = true
 
 -- Default debug mode state
 debugMode = true
@@ -85,11 +85,22 @@ local bipedChangeRequest = {}
 local playerObjectTempPos = {}
 
 function OnScriptLoad()
+    register_callback(cb["EVENT_GAME_START"], "OnGameStart")
+    register_callback(cb["EVENT_GAME_END"], "OnGameEnd")
+    register_callback(cb["EVENT_COMMAND"], "OnRcon")
+    register_callback(cb["EVENT_OBJECT_SPAWN"], "OnObjectSpawn")
+    register_callback(cb["EVENT_JOIN"], "OnPlayerJoin")
+    register_callback(cb["EVENT_PRESPAWN"], "OnPlayerSpawn")
+end
+
+function OnGameStart()
+    -- Provide compatibily with Chimera by setting this as a global variable
     map = get_var(0, "$map")
     constants = require "forge.constants"
 
-    forgeStore = redux.createStore(forgeReducer) -- Isolated store for all the Forge 'app' data
-    eventsStore = redux.createStore(eventsReducer) -- Unique store for all the Forge Objects
+    -- Store for all the forge and events data
+    forgeStore = forgeStore or redux.createStore(forgeReducer)
+    eventsStore = eventsStore or redux.createStore(eventsReducer)
 
     -- Forge folders creation
     forgeMapsFolder = "fmaps"
@@ -107,17 +118,43 @@ function OnScriptLoad()
         "#v",
         "fload",
         "fsave",
-        "monitor"
+        "fmon"
     }
     for index, command in pairs(forgeCommands) do
         execute_command("lua_call rcon_bypass submitCommand " .. command)
     end
-    register_callback(cb["EVENT_COMMAND"], "OnRcon")
-    register_callback(cb["EVENT_OBJECT_SPAWN"], "OnObjectSpawn")
-    register_callback(cb["EVENT_JOIN"], "OnPlayerJoin")
-    register_callback(cb["EVENT_GAME_START"], "OnGameStart")
-    register_callback(cb["EVENT_GAME_END"], "OnGameEnd")
-    register_callback(cb["EVENT_PRESPAWN"], "OnPlayerSpawn")
+
+    eventsState = eventsStore:getState()
+    local playerVotes = eventsState.playerVotes
+    print(inspect(playerVotes))
+    if (#playerVotes > 0) then
+        local mapsList = eventsState.mapsList
+        local mapVotes = {0, 0, 0, 0}
+        for playerIndex, mapIndex in pairs(playerVotes) do
+            mapVotes[mapIndex] = mapVotes[mapIndex] + 1
+        end
+        local mostVotedMapIndex = 1
+        local topVotes = 0
+        for mapIndex, votes in pairs(mapVotes) do
+            if (votes > topVotes) then
+                topVotes = votes
+                mostVotedMapIndex = mapIndex
+            end
+        end
+        local winnerMap = mapsList[mostVotedMapIndex].mapName:gsub(" ", "_"):lower()
+        local winnerGametype = mapsList[mostVotedMapIndex].mapGametype:gsub(" ", "_"):lower()
+        print("Most voted map is: " .. winnerMap)
+        forgeMapName = winnerMap
+        --execute_command("sv_map forge_island " .. winnerGametype)
+        -- Load current forge map
+        if (forgeMapName) then
+            core.loadForgeMap(forgeMapName)
+        end
+    end
+
+    eventsStore:dispatch({
+        type = constants.requests.flushVotes.actionType
+    })
 end
 
 -- Change biped tag id from players and store their object ids
@@ -219,11 +256,11 @@ function OnRcon(playerIndex, message, environment, rconPassword)
         end
     end
     if (actionType) then
-        return core.processRequest(actionType, request, currentRequest)
+        return core.processRequest(actionType, request, currentRequest, playerIndex)
     elseif (incomingRequest == "#b") then
-        dprint("Trying to process a biped swap request...")
-        -- // TODO: Split this into different functions!
         if (forgeAllowed) then
+            -- // TODO: Split this into different functions!
+            dprint("Trying to process a biped swap request...")
             if (playersObjectIds[playerIndex]) then
                 local playerObjectId = playersObjectIds[playerIndex]
                 dprint("playerObjectId: " .. tostring(playerObjectId))
@@ -244,15 +281,10 @@ function OnRcon(playerIndex, message, environment, rconPassword)
                 end
             end
         end
-    elseif (incomingRequest == "#v") then
-        gprint("A player has voted for map .. " .. splitData[2])
-    elseif (incomingRequest == "monitor") then
-        forgeAllowed = not forgeAllowed
     elseif (incomingRequest == "fload") then
         local mapName = splitData[2]
         local gameType = splitData[3]
         if (mapName) then
-            local forgeObjects = eventsStore:getState().forgeObjects
             -- // FIXME: This control block is not ok, is just a patch!
             if (true) then
                 forgeMapName = mapName
@@ -261,20 +293,23 @@ function OnRcon(playerIndex, message, environment, rconPassword)
         else
             rprint(playerIndex, "You must specify a forge map name.")
         end
-    end
-end
-
-function OnGameStart()
-    -- Load current forge map
-    if (forgeMapName) then
-        core.loadForgeMap(forgeMapName)
+    elseif (incomingRequest == "fmon") then
+        forgeAllowed = not forgeAllowed
+        print(forgeAllowed)
     end
 end
 
 function OnGameEnd()
-    eventsStore:dispatch({
-        type = constants.actionTypes.FLUSH_FORGE
-    })
+    -- Start vote map screen
+    if (eventsStore) then
+        -- Clean all forge objects
+        eventsStore:dispatch({
+            type = constants.requests.flushForge.actionType
+        })
+        eventsStore:dispatch({
+            type = constants.requests.loadVoteMapScreen.actionType
+        })
+    end
 end
 
 function OnError()
