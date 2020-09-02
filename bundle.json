@@ -17,7 +17,7 @@
         "forge.menu",
         "forge.tests",
         "forge.triggers",
-        "forge.reducers.forgeReducers",
+        "forge.reducers.forgeReducer",
         "forge.reducers.eventsReducer",
         "forge.reducers.playerReducer",
         "forge.reducers.votingReducer",
@@ -25,5 +25,5 @@
         "forge.reflectors.votingReflector"
     ],
     "main":"client\\forge_island",
-    "output": "forge_island_bundle"
+    "output": "client\\bundled\\forge_island.lua"
 }
