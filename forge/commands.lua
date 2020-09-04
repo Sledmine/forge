@@ -178,8 +178,23 @@ local function forgeCommands(command)
                 return false
             end
         elseif (forgeCommand == "fbiped") then
+            local weaponsList = {}
+            for tagId = 0, get_tags_count() - 1 do
+                local tagType = get_tag_type(tagId)
+                if (tagType == tagClasses.biped) then
+                    local tagPath = get_tag_path(tagId)
+                    local splitPath = glue.string.split(tagPath, "\\")
+                    local weaponTagName = splitPath[#splitPath]
+                    weaponsList[weaponTagName] = tagPath
+                end
+            end
+
+            local weaponName = table.concat(glue.shift(splitCommand, 1, -1), " ")
             local player = blam.biped(get_dynamic_player())
-            console_out(player.weaponId)
+            local weaponResult = weaponsList[weaponName]
+            if (weaponResult) then
+                local weaponObjectId = core.spawnObject(tagClasses.biped, weaponResult, player.x, player.y, player.z + 0.5)
+            end
             return false
         elseif (forgeCommand == "fobject") then
             local weaponsList = {}

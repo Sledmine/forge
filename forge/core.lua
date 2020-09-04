@@ -898,6 +898,7 @@ function core.calculateDistanceFromObject(baseObject, targetObject)
     local calculatedZ = (targetObject.z - baseObject.z) ^ 2
     return math.sqrt(calulcatedX + calculatedY + calculatedZ)
 end
+
 function core.findTag(partialName, searchTagType)
     for tagId = 0, get_tags_count() - 1 do
         local tagPath = get_tag_path(tagId)
@@ -909,5 +910,4 @@ function core.findTag(partialName, searchTagType)
     return nil
 end
 
--- Module export
 return core

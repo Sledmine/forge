@@ -83,7 +83,7 @@ end
 function features.swapBiped()
     features.unhighlightAll()
     if (server_type == "local") then
-        local player = blam35.biped(get_dynamic_player())
+        local player = blam.biped(get_dynamic_player())
         if (player) then
             playerStore:dispatch({
                 type = "SAVE_POSITION"
@@ -91,26 +91,26 @@ function features.swapBiped()
         end
 
         -- Avoid annoying low health/shield bug after swaping bipeds
-        blam35.biped(get_dynamic_player(), {
-            health = 1,
-            shield = 1
-        })
+        player.health = 1
+        player.shield = 1
 
         -- Needs kinda refactoring, probably splitting this into LuaBlam
         local globalsTagAddress = get_tag("matg", "globals\\globals")
         local globalsTagData = read_dword(globalsTagAddress + 0x14)
         local globalsTagMultiplayerBipedTagIdAddress = globalsTagData + 0x9BC + 0xC
-        local currentGlobalsBipedTagId = read_dword(globalsTagMultiplayerBipedTagIdAddress)
-        for i = 0, 2043 do
-            local tempObject = blam35.object(get_object(i))
-            if (tempObject and tempObject.tagId == get_tag_id("bipd", constants.bipeds.spartan)) then
-                write_dword(globalsTagMultiplayerBipedTagIdAddress,
-                            get_tag_id("bipd", constants.bipeds.monitor))
-                delete_object(i)
-            elseif (tempObject and tempObject.tagId == get_tag_id("bipd", constants.bipeds.monitor)) then
-                write_dword(globalsTagMultiplayerBipedTagIdAddress,
-                            get_tag_id("bipd", constants.bipeds.spartan))
-                delete_object(i)
+        --local currentGlobalsBipedTagId = read_dword(globalsTagMultiplayerBipedTagIdAddress)
+        for objectId = 0, 2043 do
+            local tempObject = blam35.object(get_object(objectId))
+            if (tempObject) then
+                if (tempObject.tagId == get_tag_id("bipd", constants.bipeds.spartan)) then
+                    write_dword(globalsTagMultiplayerBipedTagIdAddress,
+                                get_tag_id("bipd", constants.bipeds.monitor))
+                    delete_object(objectId)
+                elseif (tempObject.tagId == get_tag_id("bipd", constants.bipeds.monitor)) then
+                    write_dword(globalsTagMultiplayerBipedTagIdAddress,
+                                get_tag_id("bipd", constants.bipeds.spartan))
+                    delete_object(objectId)
+                end
             end
         end
     else
@@ -136,7 +136,7 @@ end
 ---@param optional string
 function features.printHUD(message, optional, forcedTickCount)
     textRefreshCount = forcedTickCount or 0
-    
+
     local color = {1, 0.890, 0.949, 0.992}
     if (optional) then
         drawTextBuffer = {

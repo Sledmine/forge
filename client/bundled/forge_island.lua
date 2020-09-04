@@ -5377,6 +5377,7 @@ function core.calculateDistanceFromObject(baseObject, targetObject)
     local calculatedZ = (targetObject.z - baseObject.z) ^ 2
     return math.sqrt(calulcatedX + calculatedY + calculatedZ)
 end
+
 function core.findTag(partialName, searchTagType)
     for tagId = 0, get_tags_count() - 1 do
         local tagPath = get_tag_path(tagId)
@@ -5388,7 +5389,6 @@ function core.findTag(partialName, searchTagType)
     return nil
 end
 
--- Module export
 return core
 
 end,
@@ -6999,8 +6999,8 @@ end
 ---------------------------------------------------------
 ------------------------------------------------------------------------------
 -- Forge Island Client Script
--- Author: Sledmine
--- Version: 4.0
+-- Sledmine
+-- Version 4.0
 -- Client side script for Forge Island
 ------------------------------------------------------------------------------
 clua_version = 2.042
@@ -7126,7 +7126,7 @@ function autoSaveForgeMap()
     end
 end
 
-function onMapLoad()
+function OnMapLoad()
     -- Dinamically load constansts for the current forge map
     constants = require "forge.constants"
     constants.scenarioPath = "[shm]\\halo_4\\maps\\forge_island\\forge_island"
@@ -7247,7 +7247,6 @@ function OnPreFrame()
         draw_text(table.unpack(drawTextBuffer))
     end
 end
-weldObject = {source = nil, target = nil}
 
 -- Where the magick happens, tiling!
 function OnTick()
@@ -7625,16 +7624,11 @@ function OnRcon(message)
     return true
 end
 
--- // TODO: Change this in to a command or a key sequence
-if (server_type == "local") then
-    -- onMapLoad()
-end
-
 function onCommand(command)
     return commands(command)
 end
 
-function onUnload()
+function OnMapUnload()
     -- Flush all the forge objects
     core.flushForge()
 
@@ -7643,5 +7637,5 @@ function onUnload()
 end
 
 -- Prepare event callbacks
-set_callback("map load", "onMapLoad")
-set_callback("unload", "onUnload")
+set_callback("map load", "OnMapLoad")
+set_callback("unload", "OnMapUnload")
