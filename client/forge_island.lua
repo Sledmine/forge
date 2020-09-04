@@ -244,7 +244,8 @@ function onMapLoad()
 end
 
 function OnPreFrame()
-    if (drawTextBuffer) then
+    local gameOnMenus = read_byte(blam.addressList.gameOnMenus) == 0
+    if (drawTextBuffer and not gameOnMenus) then
         draw_text(table.unpack(drawTextBuffer))
     end
 end
