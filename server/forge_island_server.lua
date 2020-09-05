@@ -124,32 +124,8 @@ function OnGameStart()
         execute_command("lua_call rcon_bypass submitCommand " .. command)
     end
 
-    eventsState = eventsStore:getState()
-    local playerVotes = eventsState.playerVotes
-    print(inspect(playerVotes))
-    if (#playerVotes > 0) then
-        local mapsList = eventsState.mapsList
-        local mapVotes = {0, 0, 0, 0}
-        for playerIndex, mapIndex in pairs(playerVotes) do
-            mapVotes[mapIndex] = mapVotes[mapIndex] + 1
-        end
-        local mostVotedMapIndex = 1
-        local topVotes = 0
-        for mapIndex, votes in pairs(mapVotes) do
-            if (votes > topVotes) then
-                topVotes = votes
-                mostVotedMapIndex = mapIndex
-            end
-        end
-        local winnerMap = mapsList[mostVotedMapIndex].mapName:gsub(" ", "_"):lower()
-        local winnerGametype = mapsList[mostVotedMapIndex].mapGametype:gsub(" ", "_"):lower()
-        print("Most voted map is: " .. winnerMap)
-        forgeMapName = winnerMap
-        --execute_command("sv_map forge_island " .. winnerGametype)
-        -- Load current forge map
-        if (forgeMapName) then
-            core.loadForgeMap(forgeMapName)
-        end
+    if (forgeMapName) then
+        core.loadForgeMap(forgeMapName)
     end
 
     eventsStore:dispatch({

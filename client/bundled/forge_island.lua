@@ -2155,7 +2155,9 @@ end
 -- Address list
 local addressList = {
     tagDataHeader = 0x40440000,
-    cameraType = 0x00647498 -- from Giraffe
+    cameraType = 0x00647498, -- from Giraffe
+    gamePaused = 0x004ACA79,
+    gameOnMenus = 0x00622058
 }
 
 -- Provide global tag classes by default
@@ -4237,8 +4239,23 @@ local function forgeCommands(command)
                 return false
             end
         elseif (forgeCommand == "fbiped") then
+            local weaponsList = {}
+            for tagId = 0, get_tags_count() - 1 do
+                local tagType = get_tag_type(tagId)
+                if (tagType == tagClasses.biped) then
+                    local tagPath = get_tag_path(tagId)
+                    local splitPath = glue.string.split(tagPath, "\\")
+                    local weaponTagName = splitPath[#splitPath]
+                    weaponsList[weaponTagName] = tagPath
+                end
+            end
+
+            local weaponName = table.concat(glue.shift(splitCommand, 1, -1), " ")
             local player = blam.biped(get_dynamic_player())
-            console_out(player.weaponId)
+            local weaponResult = weaponsList[weaponName]
+            if (weaponResult) then
+                local weaponObjectId = core.spawnObject(tagClasses.biped, weaponResult, player.x, player.y, player.z + 0.5)
+            end
             return false
         elseif (forgeCommand == "fobject") then
             local weaponsList = {}
@@ -4335,11 +4352,11 @@ constants.minimumSidebarSize = 40
 constants.maximumProgressBarSize = 171
 constants.maximumLoadingProgressBarSize = 422
 
-local fontTagPath, fontTagId = core.findTag("blender_pro_12", tagClasses.font)
+local fontTagPath, fontTagId = core.findTag("blender_pro_medium_12", tagClasses.font)
 constants.hudFont = fontTagId
 
-local projectileTagPath, projectileTagId = core.findTag("mp_needle", tagClasses.projectile)
-constants.forgeProjectileSelector = projectileTagPath
+--[[local projectileTagPath, projectileTagId = core.findTag("mp_needle", tagClasses.projectile)
+constants.forgeProjectileSelector = projectileTagPath]]
 
 -- Constante forge requests data
 constants.requests = {
@@ -5213,6 +5230,21 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
         local itemCollectionTagPath = core.findTag("sniper rifle", tagClasses.itemCollection)
         dprint(itemCollectionTagPath)
         itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("frag grenade")) then
+        dprint("FRAG GRENADE")
+        local itemCollectionTagPath = core.findTag("frag grenades", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("plasma grenade")) then
+        dprint("PLASMA GRENADE")
+        local itemCollectionTagPath = core.findTag("plasma grenades", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("random weapon spawn")) then
+        dprint("RANDOM WEAPON")
+        local itemCollectionTagPath = core.findTag("random weapon", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
     end
 
     -- Get scenario data
@@ -5482,7 +5514,7 @@ end
 function features.swapBiped()
     features.unhighlightAll()
     if (server_type == "local") then
-        local player = blam35.biped(get_dynamic_player())
+        local player = blam.biped(get_dynamic_player())
         if (player) then
             playerStore:dispatch({
                 type = "SAVE_POSITION"
@@ -5490,26 +5522,26 @@ function features.swapBiped()
         end
 
         -- Avoid annoying low health/shield bug after swaping bipeds
-        blam35.biped(get_dynamic_player(), {
-            health = 1,
-            shield = 1
-        })
+        player.health = 1
+        player.shield = 1
 
         -- Needs kinda refactoring, probably splitting this into LuaBlam
         local globalsTagAddress = get_tag("matg", "globals\\globals")
         local globalsTagData = read_dword(globalsTagAddress + 0x14)
         local globalsTagMultiplayerBipedTagIdAddress = globalsTagData + 0x9BC + 0xC
-        local currentGlobalsBipedTagId = read_dword(globalsTagMultiplayerBipedTagIdAddress)
-        for i = 0, 2043 do
-            local tempObject = blam35.object(get_object(i))
-            if (tempObject and tempObject.tagId == get_tag_id("bipd", constants.bipeds.spartan)) then
-                write_dword(globalsTagMultiplayerBipedTagIdAddress,
-                            get_tag_id("bipd", constants.bipeds.monitor))
-                delete_object(i)
-            elseif (tempObject and tempObject.tagId == get_tag_id("bipd", constants.bipeds.monitor)) then
-                write_dword(globalsTagMultiplayerBipedTagIdAddress,
-                            get_tag_id("bipd", constants.bipeds.spartan))
-                delete_object(i)
+        --local currentGlobalsBipedTagId = read_dword(globalsTagMultiplayerBipedTagIdAddress)
+        for objectId = 0, 2043 do
+            local tempObject = blam35.object(get_object(objectId))
+            if (tempObject) then
+                if (tempObject.tagId == get_tag_id("bipd", constants.bipeds.spartan)) then
+                    write_dword(globalsTagMultiplayerBipedTagIdAddress,
+                                get_tag_id("bipd", constants.bipeds.monitor))
+                    delete_object(objectId)
+                elseif (tempObject.tagId == get_tag_id("bipd", constants.bipeds.monitor)) then
+                    write_dword(globalsTagMultiplayerBipedTagIdAddress,
+                                get_tag_id("bipd", constants.bipeds.spartan))
+                    delete_object(objectId)
+                end
             end
         end
     else
@@ -5535,7 +5567,7 @@ end
 ---@param optional string
 function features.printHUD(message, optional, forcedTickCount)
     textRefreshCount = forcedTickCount or 0
-    
+
     local color = {1, 0.890, 0.949, 0.992}
     if (optional) then
         drawTextBuffer = {
@@ -6476,11 +6508,32 @@ local function eventsReducer(state, action)
                 state.playerVotes[action.playerIndex] = params.mapVoted
                 local mapName = state.mapsList[params.mapVoted].mapName
                 local mapGametype = state.mapsList[params.mapVoted].mapGametype
+                
                 gprint(playerName .. " voted for " .. mapName .. " " .. mapGametype)
                 eventsStore:dispatch({
                     type = constants.requests.sendTotalMapVotes.actionType
                 })
-                print(inspect(state))
+                local playerVotes = state.playerVotes
+                if (#playerVotes > 0) then
+                    local mapsList = state.mapsList
+                    local mapVotes = {0, 0, 0, 0}
+                    for playerIndex, mapIndex in pairs(playerVotes) do
+                        mapVotes[mapIndex] = mapVotes[mapIndex] + 1
+                    end
+                    local mostVotedMapIndex = 1
+                    local topVotes = 0
+                    for mapIndex, votes in pairs(mapVotes) do
+                        if (votes > topVotes) then
+                            topVotes = votes
+                            mostVotedMapIndex = mapIndex
+                        end
+                    end
+                    local winnerMap = mapsList[mostVotedMapIndex].mapName:gsub(" ", "_"):lower()
+                    local winnerGametype = mapsList[mostVotedMapIndex].mapGametype:gsub(" ", "_"):lower()
+                    print("Most voted map is: " .. winnerMap)
+                    forgeMapName = winnerMap
+                    execute_command("sv_map forge_island " .. winnerGametype)
+                end
             end
         end
         return state
@@ -7243,7 +7296,8 @@ function OnMapLoad()
 end
 
 function OnPreFrame()
-    if (drawTextBuffer) then
+    local gameOnMenus = read_byte(blam.addressList.gameOnMenus) == 0
+    if (drawTextBuffer and not gameOnMenus) then
         draw_text(table.unpack(drawTextBuffer))
     end
 end

@@ -314,11 +314,32 @@ local function eventsReducer(state, action)
                 state.playerVotes[action.playerIndex] = params.mapVoted
                 local mapName = state.mapsList[params.mapVoted].mapName
                 local mapGametype = state.mapsList[params.mapVoted].mapGametype
+                
                 gprint(playerName .. " voted for " .. mapName .. " " .. mapGametype)
                 eventsStore:dispatch({
                     type = constants.requests.sendTotalMapVotes.actionType
                 })
-                print(inspect(state))
+                local playerVotes = state.playerVotes
+                if (#playerVotes > 0) then
+                    local mapsList = state.mapsList
+                    local mapVotes = {0, 0, 0, 0}
+                    for playerIndex, mapIndex in pairs(playerVotes) do
+                        mapVotes[mapIndex] = mapVotes[mapIndex] + 1
+                    end
+                    local mostVotedMapIndex = 1
+                    local topVotes = 0
+                    for mapIndex, votes in pairs(mapVotes) do
+                        if (votes > topVotes) then
+                            topVotes = votes
+                            mostVotedMapIndex = mapIndex
+                        end
+                    end
+                    local winnerMap = mapsList[mostVotedMapIndex].mapName:gsub(" ", "_"):lower()
+                    local winnerGametype = mapsList[mostVotedMapIndex].mapGametype:gsub(" ", "_"):lower()
+                    print("Most voted map is: " .. winnerMap)
+                    forgeMapName = winnerMap
+                    execute_command("sv_map forge_island " .. winnerGametype)
+                end
             end
         end
         return state

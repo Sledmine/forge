@@ -734,6 +734,21 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
         local itemCollectionTagPath = core.findTag("sniper rifle", tagClasses.itemCollection)
         dprint(itemCollectionTagPath)
         itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("frag grenade")) then
+        dprint("FRAG GRENADE")
+        local itemCollectionTagPath = core.findTag("frag grenades", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("plasma grenade")) then
+        dprint("PLASMA GRENADE")
+        local itemCollectionTagPath = core.findTag("plasma grenades", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("random weapon spawn")) then
+        dprint("RANDOM WEAPON")
+        local itemCollectionTagPath = core.findTag("random weapon", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
     end
 
     -- Get scenario data

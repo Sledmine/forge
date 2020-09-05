@@ -21,8 +21,8 @@ constants.maximumLoadingProgressBarSize = 422
 local fontTagPath, fontTagId = core.findTag("blender_pro_medium_12", tagClasses.font)
 constants.hudFont = fontTagId
 
-local projectileTagPath, projectileTagId = core.findTag("mp_needle", tagClasses.projectile)
-constants.forgeProjectileSelector = projectileTagPath
+--[[local projectileTagPath, projectileTagId = core.findTag("mp_needle", tagClasses.projectile)
+constants.forgeProjectileSelector = projectileTagPath]]
 
 -- Constante forge requests data
 constants.requests = {
