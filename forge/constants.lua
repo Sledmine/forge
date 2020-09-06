@@ -12,6 +12,7 @@ constants.maximumBudget = 1024
 constants.minimumZSpawnPoint = -18.69
 constants.scenerysTagCollectionPath = core.findTag(map .. "_scenerys", tagClasses.tagCollection)
 
+
 -- Constant ui widget definition values
 constants.maximumSidebarSize = 249
 constants.minimumSidebarSize = 40
