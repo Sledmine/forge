@@ -43,4 +43,4 @@ luac.out
 .vscode
 
 # Final builds
-client/bundled/forge_island.lua
+client/bundled/*

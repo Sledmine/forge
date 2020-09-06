@@ -3,12 +3,12 @@
     "include": [
     ],
     "modules": [
-        "inspect",
         "glue",
+        "inspect",
         "json",
         "lua-redux",
-        "nlua-blam",
         "maethrillian",
+        "nlua-blam",
         "forge.commands",
         "forge.constants",
         "forge.core",
