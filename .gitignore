@@ -42,6 +42,9 @@ luac.out
 # VS Code
 .vscode
 
+# Final builds
+client\bundled\forge_island.lua
+
 # Sym links
 inspect.lua
 glue.lua

@@ -287,12 +287,6 @@ function OnTick()
             -- Check if monitor has an object attached
             local attachedObjectId = playerState.attachedObjectId
             if (attachedObjectId) then
-                -- Update object position
-                blam35.object(get_object(attachedObjectId), {
-                    x = playerState.xOffset,
-                    y = playerState.yOffset,
-                    z = playerState.zOffset
-                })
                 -- Change rotation angle
                 if (player.flashlightKey) then
                     playerStore:dispatch({
@@ -334,6 +328,7 @@ function OnTick()
                                 undo = true
                             }
                         })
+                        return true
                     end
                 elseif (player.meleeKey) then
                     playerStore:dispatch({
@@ -359,6 +354,7 @@ function OnTick()
                     })
                 end
 
+                
                 if (not playerState.lockDistance) then
                     playerStore:dispatch({
                         type = "UPDATE_DISTANCE"
@@ -367,7 +363,14 @@ function OnTick()
                         type = "UPDATE_OFFSETS"
                     })
                 end
-
+                
+                -- Update object position
+                blam35.object(get_object(attachedObjectId), {
+                    x = playerState.xOffset,
+                    y = playerState.yOffset,
+                    z = playerState.zOffset
+                })
+                
                 -- Unhighlight objects
                 features.unhighlightAll()
 
