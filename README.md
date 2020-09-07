@@ -3,7 +3,6 @@
 <center>
 <img width="450px" src="assets/forge_logo.png"></img>
 <br>
-<br>
 <h1>Halo Custom Edition - Forge</h1>
 Halo Custom Edition Forge system using Chimera and SAPP
 </center>

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 -- Forge Island Server Script
--- Authors: Sledmine
--- Version: 4.0
+-- Sledmine
+-- Version 1.0
 -- Script server side for Forge Island
 ------------------------------------------------------------------------------
 -- Declare SAPP API Version before importing libraries

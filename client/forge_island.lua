@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 -- Forge Island Client Script
 -- Sledmine
--- Version 4.0
+-- Version 1.0
 -- Client side script for Forge Island
 ------------------------------------------------------------------------------
 clua_version = 2.042
