@@ -129,7 +129,7 @@ local function forgeCommands(command)
             return false
         elseif (forgeCommand == "fit") then
             for objectId = 0, #get_objects() - 1 do
-                local tempObject = blam35.object(get_object(objectId))
+                local tempObject = blam.object(get_object(objectId))
                 if (tempObject and tempObject.type == objectClasses.weapon) then
                     delete_object(objectId)
                 end
@@ -167,12 +167,12 @@ local function forgeCommands(command)
                     weaponsList[weaponTagName] = tagPath
                 end
             end
-
             local weaponName = table.concat(glue.shift(splitCommand, 1, -1), " ")
             local player = blam.biped(get_dynamic_player())
             local weaponResult = weaponsList[weaponName]
             if (weaponResult) then
-                local weaponObjectId = core.spawnObject(tagClasses.weapon, weaponResult, player.x, player.y, player.z + 0.5)
+                local weaponObjectId = core.spawnObject(tagClasses.weapon, weaponResult, player.x,
+                                                        player.y, player.z + 0.5)
             end
             return false
         elseif (forgeCommand == "ftest") then
@@ -182,42 +182,29 @@ local function forgeCommands(command)
                 tests.run(true)
                 return false
             end
-        elseif (forgeCommand == "fbiped") then
-            local weaponsList = {}
-            for tagId = 0, get_tags_count() - 1 do
-                local tagType = get_tag_type(tagId)
-                if (tagType == tagClasses.biped) then
-                    local tagPath = get_tag_path(tagId)
-                    local splitPath = glue.string.split(tagPath, "\\")
-                    local weaponTagName = splitPath[#splitPath]
-                    weaponsList[weaponTagName] = tagPath
-                end
-            end
-
-            local weaponName = table.concat(glue.shift(splitCommand, 1, -1), " ")
-            local player = blam.biped(get_dynamic_player())
-            local weaponResult = weaponsList[weaponName]
-            if (weaponResult) then
-                local weaponObjectId = core.spawnObject(tagClasses.biped, weaponResult, player.x, player.y, player.z + 0.5)
-            end
+        elseif (forgeCommand == "ftable") then
+            -- Run unit testing
+            console_out(blam.readUnicodeString(get_player() + 0x4), true)
+            console_out(get_player())
             return false
-        elseif (forgeCommand == "fobject") then
-            local weaponsList = {}
+        elseif (forgeCommand == "fbiped") then
+            local tagsList = {}
             for tagId = 0, get_tags_count() - 1 do
                 local tagType = get_tag_type(tagId)
                 if (tagType == tagClasses.biped) then
                     local tagPath = get_tag_path(tagId)
                     local splitPath = glue.string.split(tagPath, "\\")
-                    local weaponTagName = splitPath[#splitPath]
-                    weaponsList[weaponTagName] = tagPath
+                    local tagPathName = splitPath[#splitPath]
+                    tagsList[tagPathName] = tagPath
                 end
             end
 
-            local weaponName = table.concat(glue.shift(splitCommand, 1, -1), " ")
-            local player = blam35.biped(get_dynamic_player())
-            local weaponResult = weaponsList[weaponName]
-            if (weaponResult) then
-                core.spawnObject(tagClasses.biped, weaponResult, player.x, player.y, player.z)
+            local bipedTagName = table.concat(glue.shift(splitCommand, 1, -1), " ")
+            local player = blam.biped(get_dynamic_player())
+            local tagPathResult = tagsList[bipedTagName]
+            if (tagPathResult) then
+                local objectId = core.spawnObject(tagClasses.biped, tagPathResult, player.x,
+                                                  player.y, player.z + 0.5)
             end
             return false
         elseif (forgeCommand == "fdump") then
@@ -225,6 +212,29 @@ local function forgeCommands(command)
             glue.writefile("forge_dump.json", inspect(forgeStore:getState()), "t")
             glue.writefile("events_dump.json", inspect(eventsStore:getState().forgeObjects), "t")
             glue.writefile("debug_dump.txt", debugBuffer, "t")
+            return false
+        elseif (forgeCommand == "fixmaps") then
+            --[[local json = require "json"
+            for mapName in hfs.dir(forgeMapsFolder) do
+                if (mapName ~= "." and mapName ~= "..") then
+                    local fmapContent = glue.readfile(forgeMapsFolder .. "\\" .. mapName, "t")
+                    if (fmapContent) then
+                        local forgeMap = json.decode(fmapContent)
+                        if (forgeMap) then
+                            --local fixedObjects = {}
+                            for objectIndex, object in pairs(forgeMap.objects) do
+                                object.roll, object.pitch = object.pitch, object.roll
+                                --glue.append(fixedObjects, object)
+                            end
+                            --forgeMap.objects = fixedObjects
+                        end
+                        -- Encode map info as json
+                        local fmapContent = json.encode(forgeMap)
+                        local forgeMapPath = forgeMapsFolder .. "\\fix\\" .. mapName
+                        glue.writefile(forgeMapPath, fmapContent, "t")
+                    end
+                end
+            end]]
             return false
         elseif (forgeCommand == "fprint") then
             -- Testing rcon communication
@@ -250,7 +260,15 @@ local function forgeCommands(command)
 
             return false
         elseif (forgeCommand == "fblam") then
-            console_out("lua-blam " .. blam35.version)
+            dprint(constants.bipeds)
+            console_out("lua-blam " .. blam.version)
+            return false
+        elseif (forgeCommand == "fspeed") then
+            local newSpeed = tonumber(table.concat(glue.shift(splitCommand, 1, -1), " "))
+            if (newSpeed) then
+                local player = get_player()
+                write_float(player + 0x6C, newSpeed)
+            end
             return false
         elseif (forgeCommand == "fspawn") then
             -- Get scenario data

@@ -196,11 +196,12 @@ function OnPlayerJoin(playerIndex)
         print("Sending map info")
         dprint("Sending sync responses for: " .. playerIndex)
 
-        -- Create a temporal forge map object like to force data sync
+        -- Create a temporal Forge map object like to force data sync
         local onMemoryForgeMap = {}
         onMemoryForgeMap.objects = countableForgeObjects
         onMemoryForgeMap.name = forgeState.currentMap.name
         onMemoryForgeMap.description = forgeState.currentMap.description
+        onMemoryForgeMap.author = forgeState.currentMap.author:gsub("Author: ", "")
         core.sendMapData(onMemoryForgeMap, playerIndex)
 
         -- Send to new players all the current forged objects
@@ -215,9 +216,9 @@ function OnPlayerJoin(playerIndex)
 end
 
 function OnRcon(playerIndex, message, environment, rconPassword)
-    -- // TODO: Check rcon environment
+    -- // TODO Check rcon environment
     dprint("Triggering rcon...")
-    -- // TODO: Check if we have to avoid returning true or false
+    -- // TODO Check if we have to avoid returning true or false
     dprint("Incoming rcon message:", "warning")
     dprint(message)
     local request = string.gsub(message, "'", "")
@@ -235,7 +236,6 @@ function OnRcon(playerIndex, message, environment, rconPassword)
         return core.processRequest(actionType, request, currentRequest, playerIndex)
     elseif (incomingRequest == "#b") then
         if (forgeAllowed) then
-            -- // TODO: Split this into different functions!
             dprint("Trying to process a biped swap request...")
             if (playersObjectIds[playerIndex]) then
                 local playerObjectId = playersObjectIds[playerIndex]
@@ -261,7 +261,7 @@ function OnRcon(playerIndex, message, environment, rconPassword)
         local mapName = splitData[2]
         local gameType = splitData[3]
         if (mapName) then
-            -- // FIXME: This control block is not ok, is just a patch!
+            -- // FIXME This control block is not ok, is just a patch!
             if (true) then
                 forgeMapName = mapName
                 execute_script("sv_map forge_island " .. gameType)

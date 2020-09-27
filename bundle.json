@@ -1,5 +1,6 @@
 {
     "name": "Forge Island",
+    "target": "lua53",
     "include": [
     ],
     "modules": [
@@ -15,7 +16,6 @@
         "forge.features",
         "forge.hook",
         "forge.menu",
-        "forge.tests",
         "forge.triggers",
         "forge.reducers.forgeReducer",
         "forge.reducers.eventsReducer",

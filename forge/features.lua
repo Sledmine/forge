@@ -98,7 +98,7 @@ function features.swapBiped()
         local globalsTagAddress = get_tag("matg", "globals\\globals")
         local globalsTagData = read_dword(globalsTagAddress + 0x14)
         local globalsTagMultiplayerBipedTagIdAddress = globalsTagData + 0x9BC + 0xC
-        --local currentGlobalsBipedTagId = read_dword(globalsTagMultiplayerBipedTagIdAddress)
+        -- local currentGlobalsBipedTagId = read_dword(globalsTagMultiplayerBipedTagIdAddress)
         for objectId = 0, 2043 do
             local tempObject = blam35.object(get_object(objectId))
             if (tempObject) then
@@ -161,6 +161,24 @@ function features.printHUD(message, optional, forcedTickCount)
             table.unpack(color)
         }
     end
+end
+
+function features.animateForgeLoading()
+    -- // TODO Refactor this logic, it could be better
+    if (not lastLoadingFrame) then
+        lastLoadingFrame = 0
+    else
+        if (lastLoadingFrame == 0) then
+            lastLoadingFrame = 1
+        else
+            lastLoadingFrame = 0
+        end
+    end
+    -- Animate Forge loading image
+    local uiWidget = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.loadingAnimation)
+    uiWidget.backgroundBitmap = get_tag_id("bitm", constants.bitmaps["forgeLoadingProgress" ..
+                                               tostring(lastLoadingFrame)])
+    return true
 end
 
 return features

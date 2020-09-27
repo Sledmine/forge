@@ -171,16 +171,19 @@ local function forgeReducer(state, action)
     elseif (action.type == "SET_MAP_NAME") then
         state.currentMap.name = action.payload.mapName
         return state
+    elseif (action.type == "SET_MAP_AUTHOR") then
+        state.currentMap.author = "Author: " .. action.payload.mapAuthor
+        return state
     elseif (action.type == "SET_MAP_DESCRIPTION") then
         state.currentMap.description = action.payload.mapDescription
         return state
     elseif (action.type == "SET_MAP_DATA") then
         state.currentMap.name = action.payload.mapName
+        state.currentMap.description = action.payload.mapDescription
         if (action.payload.mapDescription == "") then
             state.currentMap.description = "No description given for this map."
-            return state
         end
-        state.currentMap.description = action.payload.mapDescription
+        state.currentMap.author = "Author: " .. action.payload.mapAuthor
         return state
     elseif (action.type == "UPDATE_MAP_INFO") then
         if (action.payload) then
@@ -220,6 +223,9 @@ local function forgeReducer(state, action)
                         menu.close(constants.uiWidgetDefinitions.loadingMenu)
                     end
                 else
+                    if (forgeAnimationTimer) then
+                        stop_timer(forgeAnimationTimer)
+                    end
                     menu.close(constants.uiWidgetDefinitions.loadingMenu)
                 end
             end

@@ -201,7 +201,6 @@ local function eventsReducer(state, action)
             end
 
             dprint("Deleting object from store...", "warning")
-            -- // TODO: Add validation to this erasement!
             delete_object(targetObjectId)
             state.forgeObjects[targetObjectId] = nil
             dprint("Done.", "success")
@@ -221,25 +220,49 @@ local function eventsReducer(state, action)
         })
 
         return state
-    elseif (action.type == constants.requests.loadMapScreen.actionType) then
-        -- // TODO: This is not ok, this must be split in different reducers
+    elseif (action.type == constants.requests.setMapAuthor.actionType) then
+        local requestObject = action.payload.requestObject
+
+        local mapAuthor = requestObject.mapAuthor
+
+        forgeStore:dispatch({
+            type = constants.requests.setMapAuthor.actionType,
+            payload = {
+                mapAuthor = mapAuthor
+            }
+        })
+
+        return state
+    elseif (action.type == constants.requests.setMapDescription.actionType) then
+        local requestObject = action.payload.requestObject
+
+        local mapDescription = requestObject.mapDescription
+
+        forgeStore:dispatch({
+            type = constants.requests.setMapDescription.actionType,
+            payload = {
+                mapDescription = mapDescription
+            }
+        })
+
+        return state
+    elseif (action.type ==  constants.requests.loadMapScreen.actionType) then
         local requestObject = action.payload.requestObject
 
         local expectedObjects = requestObject.objectCount
         local mapName = requestObject.mapName
-        local mapDescription = requestObject.mapDescription
 
         forgeStore:dispatch({
             type = "UPDATE_MAP_INFO",
             payload = {
                 expectedObjects = expectedObjects,
-                mapName = mapName,
-                mapDescription = mapDescription
+                mapName = mapName
             }
         })
 
-        -- // TODO: This does not end after finishing map loading
-        set_timer(140, "forgeAnimation")
+        -- Function wrapper for timer
+        forgeAnimation = features.animateForgeLoading()
+        forgeAnimationTimer = set_timer(140, "forgeAnimation")
 
         features.openMenu(constants.uiWidgetDefinitions.loadingMenu)
 
@@ -306,7 +329,6 @@ local function eventsReducer(state, action)
         end
         return state
     elseif (action.type == constants.requests.sendMapVote.actionType) then
-        -- // TODO: Add vote map logic to handle player votes
         if (action.playerIndex and server_type == "sapp") then
             local playerName = get_var(action.playerIndex, "$name")
             if (not state.playerVotes[action.playerIndex]) then

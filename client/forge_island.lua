@@ -11,6 +11,7 @@ local inspect = require "inspect"
 local redux = require "lua-redux"
 local glue = require "glue"
 local json = require "json"
+--local ini = require "lip"
 
 -- Halo Custom Edition libraries
 blam = require "nlua-blam"
@@ -19,6 +20,7 @@ console_out = blam.consoleOutput
 -- Create global reference to tagClasses
 objectClasses = blam.objectClasses
 tagClasses = blam.tagClasses
+cameraTypes = blam.cameraTypes
 -- Bring old api compatibility
 blam35 = blam.compat35()
 hfs = require "hcefs"
@@ -78,11 +80,6 @@ function dprint(message, color)
     end
 end
 
----@return boolean
-function validateMapName()
-    return map == "forge_island_dev" or map == "forge_island" or map == "forge_island_beta"
-end
-
 function loadForgeConfiguration()
     local configurationFolder = hfs.currentdir() .. "\\config"
     local configurationFile = glue.readfile(configurationFolder .. "\\forge_island.json")
@@ -103,7 +100,7 @@ function loadForgeMaps()
             local extFile = splitFileName[#splitFileName]
             -- Only load files with extension .fmap
             if (extFile == "fmap") then
-                local mapName = string.gsub(file, ".fmap", "")
+                local mapName = string.gsub(file, ".fmap", ""):gsub("_", " ")
                 glue.append(mapsList, mapName)
             end
         end
@@ -141,11 +138,9 @@ function OnMapLoad()
 
     local forgeState = forgeStore:getState()
 
-    local tagCollectionAddress = get_tag(tagClasses.tagCollection,
-                                         constants.scenerysTagCollectionPath)
-    local tagCollection = blam35.tagCollection(tagCollectionAddress)
+    local tagCollection = blam.tagCollection(constants.scenerysTagCollectionPath)
 
-    -- // TODO: Refactor this entire loop, has been implemented from the old script!!!
+    -- // TODO Refactor this entire loop, has been implemented from the old script!!!
     -- Iterate over all the sceneries available in the sceneries tag collection
     for i = 1, tagCollection.count do
         local sceneryPath = get_tag_path(tagCollection.tagList[i])
@@ -155,6 +150,7 @@ function OnMapLoad()
         for folderNameIndex, folderName in pairs(sceneriesSplit) do
             if (folderName == "scenery") then
                 sceneryFolderIndex = folderNameIndex + 1
+                break
             end
         end
         local fixedSplittedPath = {}
@@ -209,7 +205,7 @@ function OnMapLoad()
         }
     })]]
 
-    local isForgeMap = validateMapName()
+    local isForgeMap = core.isForgeMap(map)
     if (isForgeMap) then
         -- Forge folders creation
         forgeMapsFolder = hfs.currentdir() .. "\\fmaps"
@@ -244,16 +240,16 @@ function OnMapLoad()
 end
 
 function OnPreFrame()
-    local gameOnMenus = read_byte(blam.addressList.gameOnMenus) == 0
-    if (drawTextBuffer and not gameOnMenus) then
+    local isOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
+    if (drawTextBuffer and not isOnMenu) then
         draw_text(table.unpack(drawTextBuffer))
     end
 end
 
 -- Where the magick happens, tiling!
 function OnTick()
+
     -- Get player object
-    ---@type biped
     local player = blam.biped(get_dynamic_player())
 
     -- Get player forge state
@@ -262,11 +258,9 @@ function OnTick()
     if (player) then
         local oldPosition = playerState.position
         if (oldPosition) then
-            blam35.biped(get_dynamic_player(), {
-                x = oldPosition.x,
-                y = oldPosition.y,
-                z = oldPosition.z + 0.1
-            })
+            player.x = oldPosition.x
+            player.y = oldPosition.y
+            player.z = oldPosition.z + 0.1
             playerStore:dispatch({
                 type = "RESET_POSITION"
             })
@@ -274,9 +268,7 @@ function OnTick()
         if (core.isPlayerMonitor()) then
             -- Provide better movement to monitors
             if (not player.ignoreCollision) then
-                blam35.biped(get_dynamic_player(), {
-                    ignoreCollision = true
-                })
+                player.ignoreCollision = true
             end
 
             -- Calculate player point of view
@@ -315,11 +307,10 @@ function OnTick()
                     local forgeObject = forgeObjects[attachedObjectId]
                     if (forgeObject) then
                         -- Update object position
-                        blam35.object(get_object(attachedObjectId), {
-                            x = forgeObject.x,
-                            y = forgeObject.y,
-                            z = forgeObject.z
-                        })
+                        local tempObject = blam.object(get_object(attachedObjectId))
+                        tempObject.x = forgeObject.x
+                        tempObject.y = forgeObject.y
+                        tempObject.z = forgeObject.z
                         core.rotateObject(attachedObjectId, forgeObject.yaw, forgeObject.pitch,
                                           forgeObject.roll)
                         playerStore:dispatch({
@@ -354,7 +345,6 @@ function OnTick()
                     })
                 end
 
-                
                 if (not playerState.lockDistance) then
                     playerStore:dispatch({
                         type = "UPDATE_DISTANCE"
@@ -363,14 +353,13 @@ function OnTick()
                         type = "UPDATE_OFFSETS"
                     })
                 end
-                
+
                 -- Update object position
-                blam35.object(get_object(attachedObjectId), {
-                    x = playerState.xOffset,
-                    y = playerState.yOffset,
-                    z = playerState.zOffset
-                })
-                
+                local tempObject = blam.object(get_object(attachedObjectId))
+                tempObject.x = playerState.xOffset
+                tempObject.y = playerState.yOffset
+                tempObject.z = playerState.zOffset
+
                 -- Unhighlight objects
                 features.unhighlightAll()
 
@@ -397,7 +386,7 @@ function OnTick()
                 for objectId, composedObject in pairs(forgeObjects) do
                     -- Object exists
                     if (composedObject) then
-                        local tempObject = blam35.object(get_object(objectId))
+                        local tempObject = blam.object(get_object(objectId))
                         local tagType = get_tag_type(tempObject.tagId)
                         if (tagType == tagClasses.scenery) then
                             local isPlayerLookingAt = core.playerIsLookingAt(objectId, 0.047, 0)
@@ -450,7 +439,7 @@ function OnTick()
                                                 roll = composedObject.roll
                                             }
                                         })
-                                    local tagId = blam35.object(get_object(objectId)).tagId
+                                    local tagId = blam.object(get_object(objectId)).tagId
                                     playerStore:dispatch(
                                         {
                                             type = "CREATE_AND_ATTACH_OBJECT",
@@ -465,7 +454,7 @@ function OnTick()
                         end
                     end
                 end
-                -- Open Forge menu by pressing 'Q'
+                -- Open Forge menu by pressing "Q"
                 if (player.flashlightKey) then
                     dprint("Opening Forge menu...")
                     features.openMenu(constants.uiWidgetDefinitions.forgeMenu)
@@ -487,9 +476,9 @@ function OnTick()
         end
     end
 
-    -- Menu buttons interpcetion
-
+    -- Menu buttons interceptors
     -- Trigger prefix and how many triggers are being read
+    -- triggers.get("hsc_trigger_example_name", 10)
     local mapsMenuPressedButton = triggers.get("maps_menu", 10)
     if (mapsMenuPressedButton) then
         if (mapsMenuPressedButton == 9) then
@@ -503,16 +492,14 @@ function OnTick()
                 type = "INCREMENT_MAPS_MENU_PAGE"
             })
         else
-            local mapName = blam35.unicodeStringList(
-                                get_tag("unicode_string_list", constants.unicodeStrings.mapsList))
-                                .stringList[mapsMenuPressedButton]
+            local elementsList = blam.unicodeStringList(constants.unicodeStrings.mapsList)
+            local mapName = elementsList.stringList[mapsMenuPressedButton]:gsub(" ", "_")
             core.loadForgeMap(mapName)
         end
         dprint("Maps menu:")
         dprint("Button " .. mapsMenuPressedButton .. " was pressed!", "category")
     end
 
-    -- Trigger prefix and how many triggers are being read
     local forgeMenuPressedButton = triggers.get("forge_menu", 9)
     if (forgeMenuPressedButton) then
         local forgeState = forgeStore:getState()
@@ -540,21 +527,21 @@ function OnTick()
                 type = "DECREMENT_FORGE_MENU_PAGE"
             })
         else
-            local desiredElement = blam35.unicodeStringList(
-                                       get_tag(tagClasses.unicodeStringList,
-                                               constants.unicodeStrings.forgeList)).stringList[forgeMenuPressedButton]
-            local sceneryPath = forgeState.forgeMenu.objectsDatabase[desiredElement]
+            local elementsList = blam.unicodeStringList(constants.unicodeStrings.forgeList)
+            local selectedSceneryName = elementsList.stringList[forgeMenuPressedButton]
+            local sceneryPath = forgeState.forgeMenu.objectsDatabase[selectedSceneryName]
             if (sceneryPath) then
                 dprint(" -> [ Forge Menu ]")
                 playerStore:dispatch({
                     type = "CREATE_AND_ATTACH_OBJECT",
                     payload = {path = sceneryPath}
                 })
+                --menu.close(constants.uiWidgetDefinitions.forgeMenu)
             else
                 forgeStore:dispatch({
                     type = "DOWNWARD_NAV_FORGE_MENU",
                     payload = {
-                        desiredElement = desiredElement
+                        desiredElement = selectedSceneryName
                     }
                 })
             end
@@ -563,7 +550,6 @@ function OnTick()
         dprint("Button " .. forgeMenuPressedButton .. " was pressed!", "category")
     end
 
-    -- Trigger prefix and how many triggers are being read
     local voteMapMenuPressedButton = triggers.get("map_vote_menu", 5)
     if (voteMapMenuPressedButton) then
         local voteMapRequest = {
@@ -581,34 +567,14 @@ function OnTick()
     hook.attach("forge_menu_close", menu.stop, constants.uiWidgetDefinitions.forgeMenu)
     hook.attach("loading_menu_close", menu.stop, constants.uiWidgetDefinitions.loadingMenu)
 
+    -- Update tick count
     textRefreshCount = textRefreshCount + 1
-    -- We need to draw new text this time
+
+    -- We need to draw new text, erase the older one
     if (textRefreshCount > 30) then
         textRefreshCount = 0
         drawTextBuffer = nil
     end
-end
-
--- This is not a mistake... right?
-function forgeAnimation()
-    -- // TODO: Update this logic, it is awful!
-    if (not lastImage) then
-        lastImage = 0
-    else
-        if (lastImage == 0) then
-            lastImage = 1
-        else
-            lastImage = 0
-        end
-    end
-    -- // TODO: Split this in a better way, it looks horrible!
-    -- Animate forge logo
-    blam35.uiWidgetDefinition(get_tag("ui_widget_definition",
-                                      constants.uiWidgetDefinitions.loadingAnimation), {
-        backgroundBitmap = get_tag_id("bitm", constants.bitmaps["forgeLoadingProgress" ..
-                                          tostring(lastImage)])
-    })
-    return true
 end
 
 function OnRcon(message)

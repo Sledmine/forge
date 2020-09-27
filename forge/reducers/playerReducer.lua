@@ -2,7 +2,7 @@ local glue = require "glue"
 
 -- Forge modules
 local core = require "forge.core"
-
+local features = require "forge.features"
 
 function playerReducer(state, action)
     -- Create default state if it does not exist
@@ -32,7 +32,6 @@ function playerReducer(state, action)
         state.lockDistance = action.payload.lockDistance
         return state
     elseif (action.type == "CREATE_AND_ATTACH_OBJECT") then
-        -- // TODO: Send a request to attach this object to a player in the server side
         if (state.attachedObjectId) then
             if (get_object(state.attachedObjectId)) then
                 delete_object(state.attachedObjectId)
@@ -49,6 +48,7 @@ function playerReducer(state, action)
                                                       state.yOffset, state.zOffset)
         end
         core.rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
+        features.highlightObject(state.attachedObjectId, 1)
         return state
     elseif (action.type == "ATTACH_OBJECT") then
         state.attachedObjectId = action.payload.objectId
@@ -72,6 +72,7 @@ function playerReducer(state, action)
             state.pitch = composedObject.pitch
             state.roll = composedObject.roll
         end
+        features.highlightObject(state.attachedObjectId, 1)
         return state
     elseif (action.type == "DETACH_OBJECT") then
         if (action.payload) then
@@ -182,7 +183,7 @@ function playerReducer(state, action)
         return state
     elseif (action.type == "STEP_ROTATION_DEGREE") then
         local previousRotation = state[state.currentAngle]
-        if (previousRotation >= 360) then
+        if ((previousRotation + state.rotationStep) >= 360) then
             state[state.currentAngle] = 0
         else
             state[state.currentAngle] = previousRotation + state.rotationStep

@@ -12,7 +12,6 @@ constants.maximumBudget = 1024
 constants.minimumZSpawnPoint = -18.69
 constants.scenerysTagCollectionPath = core.findTag(map .. "_scenerys", tagClasses.tagCollection)
 
-
 -- Constant ui widget definition values
 constants.maximumSidebarSize = 249
 constants.minimumSidebarSize = 40
@@ -71,7 +70,22 @@ constants.requests = {
         requestFormat = {
             {"requestType"},
             {"objectCount"},
-            {"mapName"},
+            {"mapName"}
+        }
+    },
+    setMapAuthor = {
+        actionType = "SET_MAP_AUTHOR",
+        requestType = "#ma",
+        requestFormat = {
+            {"requestType"},
+            {"mapAuthor"}
+        }
+    },
+    setMapDescription = {
+        actionType = "SET_MAP_DESCRIPTION",
+        requestType = "#md",
+        requestFormat = {
+            {"requestType"},
             {"mapDescription"}
         }
     },
@@ -124,8 +138,9 @@ constants.weaponHudInterfaces = {
 }
 
 constants.bitmaps = {
-    forgeLoadingProgress0 = "[shm]\\halo_4\\ui\\shell\\loading_menu\\bitmaps\\forge_loading_progress0",
-    forgeLoadingProgress1 = "[shm]\\halo_4\\ui\\shell\\loading_menu\\bitmaps\\forge_loading_progress1"
+    forgeLoadingProgress0 = core.findTag("forge_loading_progress0", tagClasses.bitmap),
+    forgeLoadingProgress1 = core.findTag("forge_loading_progress1", tagClasses.bitmap),
+    hudWeapons = core.findTag("hud_msg_icons_full", tagClasses.bitmap)
 }
 
 -- UI widget definitions

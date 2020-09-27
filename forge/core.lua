@@ -103,21 +103,22 @@ function core.eulerToRotation(yaw, pitch, roll)
         {0, 1, 0},
         {0, 0, 1}
     }
-    local cosPitch = math.cos(math.rad(pitch))
-    local sinPitch = math.sin(math.rad(pitch))
-    local cosYaw = math.cos(math.rad(yaw))
-    local sinYaw = math.sin(math.rad(yaw))
+
     local cosRoll = math.cos(math.rad(roll))
     local sinRoll = math.sin(math.rad(roll))
-    matrix[1][1] = cosPitch * cosYaw
-    matrix[1][2] = sinPitch * sinRoll - cosPitch * sinYaw * cosRoll
-    matrix[1][3] = cosPitch * sinYaw * sinRoll + sinPitch * cosRoll
+    local cosYaw = math.cos(math.rad(yaw))
+    local sinYaw = math.sin(math.rad(yaw))
+    local cosPitch = math.cos(math.rad(pitch))
+    local sinPitch = math.sin(math.rad(pitch))
+    matrix[1][1] = cosRoll * cosYaw
+    matrix[1][2] = sinRoll * sinPitch - cosRoll * sinYaw * cosPitch
+    matrix[1][3] = cosRoll * sinYaw * sinPitch + sinRoll * cosPitch
     matrix[2][1] = sinYaw
-    matrix[2][2] = cosYaw * cosRoll
-    matrix[2][3] = -cosYaw * sinRoll
-    matrix[3][1] = -sinPitch * cosYaw
-    matrix[3][2] = sinPitch * sinYaw * cosRoll + cosPitch * sinRoll
-    matrix[3][3] = -sinPitch * sinYaw * sinRoll + cosPitch * cosRoll
+    matrix[2][2] = cosYaw * cosPitch
+    matrix[2][3] = -cosYaw * sinPitch
+    matrix[3][1] = -sinRoll * cosYaw
+    matrix[3][2] = sinRoll * sinYaw * cosPitch + cosRoll * sinPitch
+    matrix[3][3] = -sinRoll * sinYaw * sinPitch + cosRoll * cosPitch
     local array = {
         matrix[1][1],
         matrix[2][1],
@@ -136,14 +137,13 @@ end
 ---@param roll number
 function core.rotateObject(objectId, yaw, pitch, roll)
     local rotation = core.eulerToRotation(yaw, pitch, roll)
-    blam35.object(get_object(objectId), {
-        vX = rotation[1],
-        vY = rotation[2],
-        vZ = rotation[3],
-        v2X = rotation[4],
-        v2Y = rotation[5],
-        v2Z = rotation[6]
-    })
+    local tempObject = blam.object(get_object(objectId))
+    tempObject.vX = rotation[1]
+    tempObject.vY = rotation[2]
+    tempObject.vZ = rotation[3]
+    tempObject.v2X = rotation[4]
+    tempObject.v2Y = rotation[5]
+    tempObject.v2Z = rotation[6]
 end
 
 --- Check if current player is using a monitor biped
@@ -151,9 +151,9 @@ end
 function core.isPlayerMonitor(playerIndex)
     local tempObject
     if (playerIndex) then
-        tempObject = blam35.object(get_dynamic_player(playerIndex))
+        tempObject = blam.object(get_dynamic_player(playerIndex))
     else
-        tempObject = blam35.object(get_dynamic_player())
+        tempObject = blam.object(get_dynamic_player())
     end
     if (tempObject) then
         local monitorBipedTagId = get_tag_id(tagClasses.biped, constants.bipeds.monitor)
@@ -319,13 +319,33 @@ end
 function core.sendMapData(forgeMap, playerIndex)
     if (server_type == "sapp") then
         local mapDataResponse = {}
+        local response
+        -- Send main map data
         mapDataResponse.requestType = constants.requests.loadMapScreen.requestType
         mapDataResponse.objectCount = #forgeMap.objects
         mapDataResponse.mapName = forgeMap.name
+        response = core.createRequest(mapDataResponse)
+        core.sendRequest(response, playerIndex)
+        -- Send map author
+        mapDataResponse = {}
+        mapDataResponse.requestType = constants.requests.setMapAuthor.requestType
+        mapDataResponse.mapAuthor = forgeMap.author
+        response = core.createRequest(mapDataResponse)
+        core.sendRequest(response, playerIndex)
+        -- Send map description
+        mapDataResponse = {}
+        mapDataResponse.requestType = constants.requests.setMapDescription.requestType
         mapDataResponse.mapDescription = forgeMap.description
-        local response = core.createRequest(mapDataResponse)
+        response = core.createRequest(mapDataResponse)
         core.sendRequest(response, playerIndex)
     end
+end
+
+--- Return if the map is forge available
+---@param mapName string
+---@return boolean
+function core.isForgeMap(mapName)
+    return mapName == map .. "_dev" or mapName == map .. "_beta" or mapName == map
 end
 
 function core.loadForgeMap(mapName)
@@ -337,13 +357,18 @@ function core.loadForgeMap(mapName)
     if (fmapContent) then
         dprint("Loading forge map...")
         local forgeMap = json.decode(fmapContent)
-        if (forgeMap and forgeMap.objects) then
+        if (forgeMap) then
+            if (not core.isForgeMap(forgeMap.map)) then
+                console_out("This forge map was not made for " .. map .. "!")
+                return false
+            end
             -- Load data into store
             forgeStore:dispatch({
                 type = "SET_MAP_DATA",
                 payload = {
                     mapName = forgeMap.name,
-                    mapDescription = forgeMap.description
+                    mapDescription = forgeMap.description,
+                    mapAuthor = forgeMap.author
                 }
             })
             core.sendMapData(forgeMap)
@@ -383,7 +408,8 @@ function core.loadForgeMap(mapName)
 
             return true
         else
-            dprint("Error at decoding data from '" .. mapName .. "' forge map...", "error")
+            console_out("Error at decoding data from '" .. mapName .. "' forge map...")
+            return false
         end
     else
         dprint("ERROR!! At trying to load '" .. mapName .. "' as a forge map...", "error")
@@ -401,13 +427,15 @@ function core.saveForgeMap()
 
     local mapName = forgeState.currentMap.name
     local mapDescription = forgeState.currentMap.description
+    local mapAuthor = blam.readUnicodeString(get_player() + 0x4, true)
 
     -- List used to store data of every object in the forge map
     local forgeMap = {
         name = mapName,
-        author = "",
+        author = mapAuthor,
         description = mapDescription,
         version = "",
+        map = map,
         objects = {}
     }
 
@@ -417,7 +445,7 @@ function core.saveForgeMap()
     -- Iterate through all the forge objects
     for objectId, forgeObject in pairs(objectsState) do
         -- Get scenery tag path to keep compatibility between versions
-        local tempObject = blam35.object(get_object(objectId))
+        local tempObject = blam.object(get_object(objectId))
         local sceneryPath = get_tag_path(tempObject.tagId)
 
         -- Create a copy of the composed object in the store to avoid replacing useful values
@@ -446,14 +474,12 @@ function core.saveForgeMap()
 
     -- Check if file was created
     if (forgeMapFile) then
-        console_out("Forge map '" .. mapName .. "' has been succesfully saved!", "success")
+        console_out("Forge map " .. mapName .. " has been succesfully saved!",
+                    blam.consoleColors.success)
 
         -- Reload forge maps list
         loadForgeMaps()
 
-        if (server_type == "local") then
-            console_out("Done.", "Saving " .. mapName .. "..", blam.consoleColors.success)
-        end
     else
         dprint("ERROR!! At saving '" .. mapName .. "' as a forge map...", "error")
     end
@@ -479,14 +505,12 @@ function core.spawnObject(type, tagPath, x, y, z)
     -- Prevent objects from phantom spawning!
     local objectId = spawn_object(type, tagPath, x, y, z)
     if (objectId) then
-        local tempObject = blam35.object(get_object(objectId))
-
-        -- Forces the object to render shadow
+        local tempObject = blam.object(get_object(objectId))
+        -- Force the object to render shadow
         if (configuration.objectsCastShadow) then
-            blam35.object(get_object(objectId), {
-                isNotCastingShadow = false
-            })
+            tempObject.isNotCastingShadow = false
         end
+        -- // FIXME Object inside bsp detection is not working in SAPP, use minimumZSpawnPoint instead!
         if (server_type == "sapp") then
             print("Object is outside map: " .. tostring(tempObject.isOutSideMap))
         end
@@ -501,17 +525,15 @@ function core.spawnObject(type, tagPath, x, y, z)
 
             if (objectId) then
                 -- Update new object position to match the original
-                blam35.object(get_object(objectId), {
-                    x = x,
-                    y = y,
-                    z = z
-                })
+                local tempObject = blam.object(get_object(objectId))
+                tempObject.x = x
+                tempObject.y = y
+                tempObject.z = z
 
                 -- Forces the object to render shadow
                 if (configuration.objectsCastShadow) then
-                    blam35.object(get_object(objectId), {
-                        isNotCastingShadow = false
-                    })
+                    local tempObject = blam.object(get_object(objectId))
+                    tempObject.isNotCastingShadow = false
                 end
             end
         end
@@ -532,7 +554,6 @@ function core.updatePlayerSpawn(tagPath, forgeObject, disable)
     local gameType = 0
 
     -- Get spawn info from tag name
-    -- // TODO: Add comment here with all the game types index!
     if (tagPath:find("ctf")) then
         dprint("CTF")
         gameType = 1
@@ -613,7 +634,7 @@ end
 ---@param tagPath string
 ---@param forgeObject table
 function core.updateNetgameFlagSpawn(tagPath, forgeObject)
-    -- // TODO: Review if some flags use team index as "group index"!
+    -- // TODO Review if some flags use team index as "group index"!
     local teamIndex = 0
     local flagType = 0
 
@@ -632,7 +653,7 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject)
     if (tagPath:find("flag stand")) then
         dprint("FLAG POINT")
         flagType = 0
-        -- // TODO: Check if double setting team index against default value is needed!
+        -- // TODO Check if double setting team index against default value is needed!
         if (tagPath:find("red")) then
             dprint("RED TEAM FLAG")
             teamIndex = 0
@@ -641,7 +662,7 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject)
             teamIndex = 1
         end
     elseif (tagPath:find("weapons")) then
-        -- // TODO: Check and add weapon based netgame flags like oddball!
+        -- // TODO Check and add weapon based netgame flags like oddball!
     end
 
     -- Get scenario data
@@ -653,7 +674,7 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject)
     -- Object is not already reflecting a flag point
     if (not forgeObject.reflectionId) then
         for flagId = 1, #mapNetgameFlagsPoints do
-            -- // FIXME: This control block is not neccessary but needs improvements!
+            -- // FIXME This control block is not neccessary but needs improvements!
             -- If this flag point is using the same flag type
             if (mapNetgameFlagsPoints[flagId].type == flagType and
                 mapNetgameFlagsPoints[flagId].teamIndex == teamIndex) then
@@ -748,6 +769,11 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
         local itemCollectionTagPath = core.findTag("random weapon", tagClasses.itemCollection)
         dprint(itemCollectionTagPath)
         itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    elseif (tagPath:find("gravity hammer spawn")) then
+        dprint("GRAVITY HAMMER")
+        local itemCollectionTagPath = core.findTag("gravity hammer", tagClasses.itemCollection)
+        dprint(itemCollectionTagPath)
+        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
     end
 
     -- Get scenario data
@@ -779,7 +805,7 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
     else
         dprint("Erasing netgame equipment with index: " .. forgeObject.reflectionId)
         if (disable) then
-            -- // FIXME: Weapon object is not being erased in fact, find a way to delete it!
+            -- // FIXME Weapon object is not being erased in fact, find a way to delete it!
             -- Disable or "delete" equipment point by setting type as 0
             netgameEquipmentPoints[forgeObject.reflectionId].type1 = 0
             -- Update spawn point list
