@@ -58,7 +58,7 @@ function playerReducer(state, action)
             local tempObject = blam35.object(get_object(state.attachedObjectId))
             if (tempObject) then
                 local distance = core.calculateDistanceFromObject(player, tempObject)
-                if (configuration.snapMode) then
+                if (configuration.forge.snapMode) then
                     state.distance = glue.round(distance)
                 else
                     state.distance = distance
@@ -142,7 +142,7 @@ function playerReducer(state, action)
         local xOffset = player.x + player.cameraX * state.distance
         local yOffset = player.y + player.cameraY * state.distance
         local zOffset = player.z + player.cameraZ * state.distance
-        if (configuration.snapMode) then
+        if (configuration.forge.snapMode) then
             state.xOffset = glue.round(xOffset)
             state.yOffset = glue.round(yOffset)
             state.zOffset = glue.round(zOffset)
@@ -158,7 +158,7 @@ function playerReducer(state, action)
             local tempObject = blam35.object(get_object(state.attachedObjectId))
             if (tempObject) then
                 local distance = core.calculateDistanceFromObject(player, tempObject)
-                if (configuration.snapMode) then
+                if (configuration.forge.snapMode) then
                     state.distance = glue.round(distance)
                 else
                     state.distance = distance

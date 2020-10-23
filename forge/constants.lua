@@ -7,12 +7,17 @@ local core = require "forge.core"
 
 local constants = {}
 
--- Constant forge values
+-- Constant core values
+--constants.myGamesFolder = read_string(0x00647830)
+constants.mouseInputAddress = 0x64C73C
+
+-- Constant Forge values
+constants.requestSeparator = "&"
 constants.maximumBudget = 1024
 constants.minimumZSpawnPoint = -18.69
 constants.scenerysTagCollectionPath = core.findTag(map .. "_scenerys", tagClasses.tagCollection)
 
--- Constant ui widget definition values
+-- Constant UI widget definition values
 constants.maximumSidebarSize = 249
 constants.minimumSidebarSize = 40
 constants.maximumProgressBarSize = 171
@@ -24,7 +29,7 @@ constants.hudFont = fontTagId
 --[[local projectileTagPath, projectileTagId = core.findTag("mp_needle", tagClasses.projectile)
 constants.forgeProjectileSelector = projectileTagPath]]
 
--- Constante forge requests data
+-- Constant Forge requests data
 constants.requests = {
     spawnObject = {
         actionType = "SPAWN_FORGE_OBJECT",

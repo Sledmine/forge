@@ -181,4 +181,10 @@ function features.animateForgeLoading()
     return true
 end
 
+function features.getMouseInput()
+    return {
+        scroll = tonumber(read_char(constants.mouseInputAddress + 8))
+    }
+end
+
 return features

@@ -12,21 +12,21 @@ local function forgeReflector()
     -- Get current forge state
     local forgeState = forgeStore:getState()
 
-    local currentObjectsList = forgeState.forgeMenu.currentObjectsList[forgeState.forgeMenu
+    local currentElements = forgeState.forgeMenu.currentElementsList[forgeState.forgeMenu
                                    .currentPage]
 
     -- Prevent errors objects does not exist
-    if (not currentObjectsList) then
+    if (not currentElements) then
         dprint("Current objects list is empty.", "warning")
-        currentObjectsList = {}
+        currentElements = {}
     end
 
     -- Forge Menu
     blam35.unicodeStringList(get_tag("unicode_string_list", constants.unicodeStrings.forgeList),
                            {
-        stringList = currentObjectsList
+        stringList = currentElements
     })
-    menu.update(constants.uiWidgetDefinitions.objectsList, #currentObjectsList + 2)
+    menu.update(constants.uiWidgetDefinitions.objectsList, #currentElements + 2)
 
     local paginationTextAddress =
         get_tag("unicode_string_list", constants.unicodeStrings.pagination)
@@ -34,7 +34,7 @@ local function forgeReflector()
         local pagination = blam35.unicodeStringList(paginationTextAddress)
         local paginationStringList = pagination.stringList
         paginationStringList[2] = tostring(forgeState.forgeMenu.currentPage)
-        paginationStringList[4] = tostring(#forgeState.forgeMenu.currentObjectsList)
+        paginationStringList[4] = tostring(#forgeState.forgeMenu.currentElementsList)
         blam35.unicodeStringList(paginationTextAddress, {
             stringList = paginationStringList
         })

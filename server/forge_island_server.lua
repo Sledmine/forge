@@ -13,7 +13,7 @@ print("Server is running " .. _VERSION)
 require "compat53"
 print("Compatibility with Lua 5.3 has been loaded!")
 
--- Set server type to sapp for triggering certain server actions
+-- Replace Chimera server type variable for compatibility purposes
 server_type = "sapp"
 
 -- Lua libraries
@@ -22,29 +22,37 @@ local glue = require "glue"
 local redux = require "lua-redux"
 
 -- Specific Halo Custom Edition libraries
-local maeth = require "maethrillian"
 blam = require "nlua-blam"
 tagClasses = blam.tagClasses
 blam35 = blam.compat35()
 
 -- Forge modules
-
 local core = require "forge.core"
 
 -- Reducers importation
 local eventsReducer = require "forge.reducers.eventsReducer"
 local forgeReducer = require "forge.reducers.forgeReducer"
 
--- Variable used to store the current forge map in memory
+-- Variable used to store the current Forge map in memory
 forgeMapName = nil
+-- Controls if Forging is available or not for the current game
+-- //FIXME For some reason Forge is not being blocked by this variable
 forgeAllowed = true
 
--- Default debug mode state
-debugMode = true
-
--- Forge server default configuration
--- DO NOT MODIFY ON SCRIPT!! use json config file instead
+-- Forge default configuration
 configuration = {}
+
+configuration.forge = {
+    debugMode = false,
+    autoSave = false,
+    autoSaveTime = 15000,
+    snapMode = false,
+    objectsCastShadow = false
+}
+
+-- Default debug mode state
+configuration.forge.debugMode = true
+
 
 -- Internal functions
 
@@ -52,7 +60,7 @@ configuration = {}
 ---@param message string
 ---@param color string | "'category'" | "'warning'" | "'error'" | "'success'"
 function dprint(message, color)
-    if (debugMode) then
+    if (configuration.forge.debugMode) then
         if (color == "category") then
             console_out(message, 0.31, 0.631, 0.976)
         elseif (color == "warning") then
@@ -77,8 +85,27 @@ function gprint(message)
     end
 end
 
-function loadForgeMaps()
+--- Function wrapper for file writing from Chimera to SAPP
+---@param path string
+---@param content string
+function write_file(path, content)
+    glue.writefile(path, content, "t")
 end
+
+--- Function wrapper for file reading from Chimera to SAPP
+---@param path string
+function read_file(path)
+    return glue.readfile(path)
+end
+
+--[[
+function list_directory(folderPath)
+    local files = {}
+    for file in hfs.dir(folderPath) do
+        glue.append(files, file)
+    end
+    return files
+end]]
 
 local playersObjectIds = {}
 local bipedChangeRequest = {}
@@ -101,9 +128,6 @@ function OnGameStart()
     -- Store for all the forge and events data
     forgeStore = forgeStore or redux.createStore(forgeReducer)
     eventsStore = eventsStore or redux.createStore(eventsReducer)
-
-    -- Forge folders creation
-    forgeMapsFolder = "fmaps"
 
     -- Add forge rcon as not dangerous for command interception
     execute_command("lua_call rcon_bypass submitRcon " .. "forge")
@@ -222,7 +246,7 @@ function OnRcon(playerIndex, message, environment, rconPassword)
     dprint("Incoming rcon message:", "warning")
     dprint(message)
     local request = string.gsub(message, "'", "")
-    local splitData = glue.string.split(request, "|")
+    local splitData = glue.string.split(request, constants.requestSeparator)
     local incomingRequest = splitData[1]
     local actionType
     local currentRequest

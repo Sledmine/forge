@@ -11,9 +11,9 @@ local features = require "forge.features"
 
 local function forgeCommands(command)
     if (command == "fdebug") then
-        debugMode = not debugMode
-        configuration.debugMode = debugMode
-        console_out("Debug mode: " .. tostring(debugMode))
+        configuration.forge.debugMode = not configuration.forge.debugMode
+        configuration.forge.debugMode = configuration.forge.debugMode
+        console_out("Debug mode: " .. tostring(configuration.forge.debugMode))
         return false
     else
         -- Split all the data in the command input
@@ -72,16 +72,16 @@ local function forgeCommands(command)
             core.saveForgeMap()
             return false
         elseif (forgeCommand == "fsnap") then
-            configuration.snapMode = not configuration.snapMode
-            console_out("Snap Mode: " .. tostring(configuration.snapMode))
+            configuration.forge.snapMode = not configuration.forge.snapMode
+            console_out("Snap Mode: " .. tostring(configuration.forge.snapMode))
             return false
         elseif (forgeCommand == "fauto") then
-            configuration.autoSave = not configuration.autoSave
-            console_out("Auto Save: " .. tostring(configuration.autoSave))
+            configuration.forge.autoSave = not configuration.forge.autoSave
+            console_out("Auto Save: " .. tostring(configuration.forge.autoSave))
             return false
         elseif (forgeCommand == "fcast") then
-            configuration.objectsCastShadow = not configuration.objectsCastShadow
-            console_out("Objects Cast Shadow: " .. tostring(configuration.objectsCastShadow))
+            configuration.forge.objectsCastShadow = not configuration.forge.objectsCastShadow
+            console_out("Objects Cast Shadow: " .. tostring(configuration.forge.objectsCastShadow))
             return false
         elseif (forgeCommand == "fload") then
             local mapName = table.concat(glue.shift(splitCommand, 1, -1), " ")
@@ -92,10 +92,9 @@ local function forgeCommands(command)
             end
             return false
         elseif (forgeCommand == "flist") then
-            for file in hfs.dir(forgeMapsFolder) do
-                if (file ~= "." and file ~= "..") then
-                    console_out(file)
-                end
+            local mapsFiles = list_directory(defaultMapsPath)
+            for fileIndex, file in pairs(mapsFiles) do
+                console_out(file)
             end
             return false
         elseif (forgeCommand == "fname") then
@@ -177,7 +176,7 @@ local function forgeCommands(command)
             return false
         elseif (forgeCommand == "ftest") then
             -- Run unit testing
-            if (debugMode) then
+            if (configuration.forge.debugMode) then
                 local tests = require "forge.tests"
                 tests.run(true)
                 return false
@@ -208,16 +207,16 @@ local function forgeCommands(command)
             end
             return false
         elseif (forgeCommand == "fdump") then
-            glue.writefile("player_dump.json", inspect(playerStore:getState()), "t")
-            glue.writefile("forge_dump.json", inspect(forgeStore:getState()), "t")
-            glue.writefile("events_dump.json", inspect(eventsStore:getState().forgeObjects), "t")
-            glue.writefile("debug_dump.txt", debugBuffer, "t")
+            write_file("player_dump.json", inspect(playerStore:getState()))
+            write_file("forge_dump.json", inspect(forgeStore:getState()))
+            write_file("events_dump.json", inspect(eventsStore:getState().forgeObjects))
+            write_file("debug_dump.txt", debugBuffer)
             return false
         elseif (forgeCommand == "fixmaps") then
             --[[local json = require "json"
             for mapName in hfs.dir(forgeMapsFolder) do
                 if (mapName ~= "." and mapName ~= "..") then
-                    local fmapContent = glue.readfile(forgeMapsFolder .. "\\" .. mapName, "t")
+                    local fmapContent = read_file(forgeMapsFolder .. "\\" .. mapName)
                     if (fmapContent) then
                         local forgeMap = json.decode(fmapContent)
                         if (forgeMap) then
@@ -231,7 +230,7 @@ local function forgeCommands(command)
                         -- Encode map info as json
                         local fmapContent = json.encode(forgeMap)
                         local forgeMapPath = forgeMapsFolder .. "\\fix\\" .. mapName
-                        glue.writefile(forgeMapPath, fmapContent, "t")
+                        write_file(forgeMapPath, fmapContent)
                     end
                 end
             end]]

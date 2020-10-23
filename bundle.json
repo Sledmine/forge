@@ -10,6 +10,7 @@
         "lua-redux",
         "maethrillian",
         "nlua-blam",
+        "lua-ini",
         "forge.commands",
         "forge.constants",
         "forge.core",

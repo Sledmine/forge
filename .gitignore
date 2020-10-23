@@ -42,5 +42,8 @@ luac.out
 # VS Code
 .vscode
 
+# IntelliJ IDEA
+.idea
+
 # Final builds
 client/bundled/*

@@ -23,10 +23,13 @@ local function forgeReducer(state, action)
                 }
             },
             forgeMenu = {
+                -- //TODO Implement a way to use this field for menu navigation purposes 
+                lastObject = "root",
                 desiredElement = "root",
                 objectsDatabase = {},
                 objectsList = {root = {}},
-                currentObjectsList = {},
+                elementsList = {root = {}},
+                currentElementsList = {},
                 currentPage = 1,
                 currentBudget = "0",
                 currentBarSize = 0
@@ -102,35 +105,43 @@ local function forgeReducer(state, action)
         end
         dprint(state.mapsMenu.currentPage)
         return state
-    elseif (action.type == "UPDATE_FORGE_OBJECTS_LIST") then
+    elseif (action.type == "UPDATE_FORGE_ELEMENTS_LIST") then
         state.forgeMenu = action.payload.forgeMenu
-        local objectsList = glue.childsbyparent(state.forgeMenu.objectsList,
-                                                state.forgeMenu.desiredElement)
-
-        -- Sort and prepare object list in alphabetic order
-        local keysList = glue.keys(objectsList)
-        table.sort(keysList, function(a, b)
-            return a:lower() < b:lower()
-        end)
-
-        for i = 1, #keysList do
-            if (string.sub(keysList[i], 1, 1) == "_") then
-                keysList[i] = string.sub(keysList[i], 2, -1)
-            end
+        local elementsList = glue.childsbyparent(state.forgeMenu.elementsList,
+                                               state.forgeMenu.desiredElement)
+        if (not elementsList) then
+            state.forgeMenu.desiredElement = "root"
+            elementsList = glue.childsbyparent(state.forgeMenu.elementsList,
+                                               state.forgeMenu.desiredElement)
         end
 
-        -- Create list pagination
-        state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
+        if (elementsList) then
+            -- Sort and prepare elements list in alphabetic order
+            local keysList = glue.keys(elementsList)
+            table.sort(keysList, function(a, b)
+                return a:lower() < b:lower()
+            end)
 
+            for i = 1, #keysList do
+                if (string.sub(keysList[i], 1, 1) == "_") then
+                    keysList[i] = string.sub(keysList[i], 2, -1)
+                end
+            end
+
+            -- Create list pagination
+            state.forgeMenu.currentElementsList = glue.chunks(keysList, 6)
+        else
+            error("Element " .. tostring(state.forgeMenu.desiredElement) .. " does not exist in the state list")
+        end
         return state
     elseif (action.type == "INCREMENT_FORGE_MENU_PAGE") then
-        dprint("Page:" .. inspect(state.forgeMenu.currentPage))
-        if (state.forgeMenu.currentPage < #state.forgeMenu.currentObjectsList) then
+        dprint("Page: " .. inspect(state.forgeMenu.currentPage))
+        if (state.forgeMenu.currentPage < #state.forgeMenu.currentElementsList) then
             state.forgeMenu.currentPage = state.forgeMenu.currentPage + 1
         end
         return state
     elseif (action.type == "DECREMENT_FORGE_MENU_PAGE") then
-        dprint("Page:" .. inspect(state.forgeMenu.currentPage))
+        dprint("Page: " .. inspect(state.forgeMenu.currentPage))
         if (state.forgeMenu.currentPage > 1) then
             state.forgeMenu.currentPage = state.forgeMenu.currentPage - 1
         end
@@ -138,7 +149,7 @@ local function forgeReducer(state, action)
     elseif (action.type == "DOWNWARD_NAV_FORGE_MENU") then
         state.forgeMenu.currentPage = 1
         state.forgeMenu.desiredElement = action.payload.desiredElement
-        local objectsList = glue.childsbyparent(state.forgeMenu.objectsList,
+        local objectsList = glue.childsbyparent(state.forgeMenu.elementsList,
                                                 state.forgeMenu.desiredElement)
 
         -- Sort and prepare object list in alphabetic order
@@ -148,14 +159,14 @@ local function forgeReducer(state, action)
         end)
 
         -- Create list pagination
-        state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
+        state.forgeMenu.currentElementsList = glue.chunks(keysList, 6)
 
         return state
     elseif (action.type == "UPWARD_NAV_FORGE_MENU") then
         state.forgeMenu.currentPage = 1
-        state.forgeMenu.desiredElement = glue.parentbychild(state.forgeMenu.objectsList,
+        state.forgeMenu.desiredElement = glue.parentbychild(state.forgeMenu.elementsList,
                                                             state.forgeMenu.desiredElement)
-        local objectsList = glue.childsbyparent(state.forgeMenu.objectsList,
+        local objectsList = glue.childsbyparent(state.forgeMenu.elementsList,
                                                 state.forgeMenu.desiredElement)
 
         -- Sort and prepare object list in alphabetic order
@@ -165,7 +176,7 @@ local function forgeReducer(state, action)
         end)
 
         -- Create list pagination
-        state.forgeMenu.currentObjectsList = glue.chunks(keysList, 6)
+        state.forgeMenu.currentElementsList = glue.chunks(keysList, 6)
 
         return state
     elseif (action.type == "SET_MAP_NAME") then

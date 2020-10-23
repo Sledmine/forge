@@ -5,14 +5,54 @@
 ------------------------------------------------------------------------------
 -- Lua libraries
 local inspect = require "inspect"
-local json = require "json"
 local glue = require "glue"
+local json = require "json"
+local ini = require "lua-ini"
 
 -- Halo libraries
 local maeth = require "maethrillian"
 
--- Core module
+-- Core module to export
 local core = {}
+
+--- Load Forge configuration from previous files
+---@param path string Path of the configuration folder
+function core.loadForgeConfiguration(path)
+    if (not path) then
+        path = defaultConfigurationPath
+    end
+    local configurationFile = read_file(path .. "\\" .. scriptName .. ".ini")
+    if (configurationFile) then
+        configuration = ini.decode(configurationFile)
+    end
+end
+
+--- Load previous Forge maps
+---@param path string Path of the maps folder
+function core.loadForgeMaps(path)
+    if (not path) then
+        path = defaultMapsPath
+    end
+    local mapsFiles = list_directory(path)
+    local mapsList = {}
+    for fileIndex, file in pairs(mapsFiles) do
+        if (not file:find("\\")) then
+            local splitFileName = glue.string.split(file, ".")
+            local extFile = splitFileName[#splitFileName]
+            -- Only load files with extension .fmap
+            if (extFile == "fmap") then
+                local mapName = string.gsub(file, ".fmap", ""):gsub("_", " ")
+                glue.append(mapsList, mapName)
+            end
+        end
+    end
+    -- Dispatch state modification!
+    local data = {mapsList = mapsList}
+    forgeStore:dispatch({
+        type = "UPDATE_MAP_LIST",
+        payload = data
+    })
+end
 
 --- Check if player is looking at object main frame
 ---@param target number
@@ -169,7 +209,7 @@ end
 ---@return string request
 function core.sendRequest(request, playerIndex)
     dprint("-> [ Sending request ]")
-    local requestType = glue.string.split(request, "|")[1]
+    local requestType = glue.string.split(request, constants.requestSeparator)[1]
     dprint("Request type: " .. requestType)
     if (requestType) then
         request = "rcon forge '" .. request .. "'"
@@ -232,7 +272,7 @@ function core.createRequest(requestTable)
             end
             local encodedTable = maeth.encodeTable(instanceObject, requestFormat)
             print(inspect(requestTable))
-            request = maeth.tableToRequest(encodedTable, requestFormat, "|")
+            request = maeth.tableToRequest(encodedTable, requestFormat, constants.requestSeparator)
         else
             print(inspect(instanceObject))
             error("There is no request type in this request!")
@@ -247,7 +287,8 @@ function core.processRequest(actionType, request, currentRequest, playerIndex)
     dprint("-> [ Receiving request ]")
     dprint("Incoming request: " .. request)
     dprint("Parsing incoming " .. actionType .. " ...", "warning")
-    local requestTable = maeth.requestToTable(request, currentRequest.requestFormat, "|")
+    local requestTable = maeth.requestToTable(request, currentRequest.requestFormat,
+                                              constants.requestSeparator)
     if (requestTable) then
         dprint("Done.", "success")
         dprint(inspect(requestTable))
@@ -353,7 +394,7 @@ function core.loadForgeMap(mapName)
         console_out("You can not load a map while connected to a server!'")
         return false
     end
-    local fmapContent = glue.readfile(forgeMapsFolder .. "\\" .. mapName .. ".fmap", "t")
+    local fmapContent = read_file(defaultMapsPath .. "\\" .. mapName .. ".fmap")
     if (fmapContent) then
         dprint("Loading forge map...")
         local forgeMap = json.decode(fmapContent)
@@ -469,16 +510,20 @@ function core.saveForgeMap()
     -- Fix map name
     mapName = string.gsub(mapName, " ", "_")
 
-    local forgeMapPath = forgeMapsFolder .. "\\" .. mapName .. ".fmap"
-    local forgeMapFile = glue.writefile(forgeMapPath, fmapContent, "t")
+    local forgeMapPath = defaultMapsPath .. "\\" .. mapName .. ".fmap"
+
+    local forgeMapFile = write_file(forgeMapPath, fmapContent)
 
     -- Check if file was created
     if (forgeMapFile) then
         console_out("Forge map " .. mapName .. " has been succesfully saved!",
                     blam.consoleColors.success)
 
-        -- Reload forge maps list
-        loadForgeMaps()
+        -- Avoid maps reload on server due to lack of a file system on the server side
+        if (server_type ~= "sapp") then
+            -- Reload forge maps list
+            core.loadForgeMaps()
+        end
 
     else
         dprint("ERROR!! At saving '" .. mapName .. "' as a forge map...", "error")
@@ -507,7 +552,7 @@ function core.spawnObject(type, tagPath, x, y, z)
     if (objectId) then
         local tempObject = blam.object(get_object(objectId))
         -- Force the object to render shadow
-        if (configuration.objectsCastShadow) then
+        if (configuration.forge.objectsCastShadow) then
             tempObject.isNotCastingShadow = false
         end
         -- // FIXME Object inside bsp detection is not working in SAPP, use minimumZSpawnPoint instead!
@@ -531,7 +576,7 @@ function core.spawnObject(type, tagPath, x, y, z)
                 tempObject.z = z
 
                 -- Forces the object to render shadow
-                if (configuration.objectsCastShadow) then
+                if (configuration.forge.objectsCastShadow) then
                     local tempObject = blam.object(get_object(objectId))
                     tempObject.isNotCastingShadow = false
                 end
