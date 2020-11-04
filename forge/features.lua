@@ -12,7 +12,7 @@ local features = {}
 --- Changes default crosshair values
 ---@param state number
 function features.setCrosshairState(state)
-    if (constants.weaponHudInterfaces.forgeCrosshair) then
+   --[[ if (constants.weaponHudInterfaces.forgeCrosshair) then
         local forgeCrosshairAddress = get_tag(tagClasses.weaponHudInterface,
                                               constants.weaponHudInterfaces.forgeCrosshair)
         if (state == 0) then
@@ -51,7 +51,7 @@ function features.setCrosshairState(state)
                 sequenceIndex = 0
             })
         end
-    end
+    end]]
 end
 
 function features.unhighlightAll()
@@ -136,7 +136,6 @@ end
 ---@param optional string
 function features.printHUD(message, optional, forcedTickCount)
     textRefreshCount = forcedTickCount or 0
-
     local color = {1, 0.890, 0.949, 0.992}
     if (optional) then
         drawTextBuffer = {
@@ -145,7 +144,7 @@ function features.printHUD(message, optional, forcedTickCount)
             290,
             640,
             480,
-            constants.hudFont,
+            constants.hudFontTagId,
             "center",
             table.unpack(color)
         }
@@ -156,7 +155,7 @@ function features.printHUD(message, optional, forcedTickCount)
             285,
             640,
             480,
-            constants.hudFont,
+            constants.hudFontTagId,
             "center",
             table.unpack(color)
         }

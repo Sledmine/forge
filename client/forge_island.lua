@@ -226,15 +226,13 @@ function OnPreFrame()
         -- triggers.get("hsc_trigger_example_name", 10)
         menuPressedButton = triggers.get("maps_menu", 10)
         mouse = features.getMouseInput()
-        if (playerIsOnMenu) then
-            if mouse.scroll ~= 0 then
-                dprint(inspect(mouse))
-            end
-            if (mouse.scroll > 0) then
-                menuPressedButton = 10
-            elseif (mouse.scroll < 0) then
-                menuPressedButton = 9
-            end
+        if mouse.scroll ~= 0 then
+            dprint(inspect(mouse))
+        end
+        if (mouse.scroll > 0) then
+            menuPressedButton = 10
+        elseif (mouse.scroll < 0) then
+            menuPressedButton = 9
         end
         if (menuPressedButton) then
             if (menuPressedButton == 9) then
@@ -258,15 +256,13 @@ function OnPreFrame()
 
         menuPressedButton = triggers.get("forge_menu", 9)
         mouse = features.getMouseInput()
-        if (playerIsOnMenu) then
-            if mouse.scroll ~= 0 then
-                dprint(inspect(mouse))
-            end
-            if (mouse.scroll > 0) then
-                menuPressedButton = 8
-            elseif (mouse.scroll < 0) then
-                menuPressedButton = 7
-            end
+        if mouse.scroll ~= 0 then
+            dprint(inspect(mouse))
+        end
+        if (mouse.scroll > 0) then
+            menuPressedButton = 8
+        elseif (mouse.scroll < 0) then
+            menuPressedButton = 7
         end
         if (menuPressedButton) then
             dprint(" -> [ Forge Menu ]")
@@ -293,6 +289,51 @@ function OnPreFrame()
                     local elementsList = blam.unicodeStringList(constants.unicodeStrings.forgeList)
                     local selectedElement = elementsList.stringList[menuPressedButton]
                     local elementsFunctions = {
+                        ["rotate 5"] = function()
+                            local newRotationStep = 5
+                            playerStore:dispatch({
+                                type = "SET_ROTATION_STEP",
+                                payload = {
+                                    step = newRotationStep
+                                }
+                            })
+                            playerStore:dispatch({
+                                type = "STEP_ROTATION_DEGREE"
+                            })
+                            playerStore:dispatch({
+                                type = "ROTATE_OBJECT"
+                            })
+                        end,
+                        ["rotate 45"] = function()
+                            local newRotationStep = 45
+                            playerStore:dispatch({
+                                type = "SET_ROTATION_STEP",
+                                payload = {
+                                    step = newRotationStep
+                                }
+                            })
+                            playerStore:dispatch({
+                                type = "STEP_ROTATION_DEGREE"
+                            })
+                            playerStore:dispatch({
+                                type = "ROTATE_OBJECT"
+                            })
+                        end,
+                        ["rotate 90"] = function()
+                            local newRotationStep = 90
+                            playerStore:dispatch({
+                                type = "SET_ROTATION_STEP",
+                                payload = {
+                                    step = newRotationStep
+                                }
+                            })
+                            playerStore:dispatch({
+                                type = "STEP_ROTATION_DEGREE"
+                            })
+                            playerStore:dispatch({
+                                type = "ROTATE_OBJECT"
+                            })
+                        end,
                         ["reset rotation"] = function()
                             playerStore:dispatch({
                                 type = "RESET_ROTATION"
@@ -300,6 +341,9 @@ function OnPreFrame()
                             playerStore:dispatch({
                                 type = "ROTATE_OBJECT"
                             })
+                        end,
+                        ["snap mode"] = function()
+                            configuration.forge.snapMode = not configuration.forge.snapMode
                         end,
                         ["blue"] = function()
                             local tempObject = blam.object(get_object(playerState.attachedObjectId))
@@ -370,7 +414,40 @@ function OnPreFrame()
             dprint("Vote Map menu:")
             dprint("Button " .. menuPressedButton .. " was pressed!", "category")
         end
-
+    else
+        -- Get player forge state
+        ---@type playerState
+        local playerState = playerStore:getState()
+        if (playerState.attachedObjectId) then
+            mouse = features.getMouseInput()
+            if (mouse.scroll > 0) then
+                playerStore:dispatch({
+                    type = "STEP_ROTATION_DEGREE",
+                    payload = {
+                        substraction = true,
+                        multiplier = mouse.scroll
+                    }
+                })
+                playerStore:dispatch({
+                    type = "ROTATE_OBJECT"
+                })
+                features.printHUD(playerState.currentAngle:upper() .. ": " ..
+                                      playerState[playerState.currentAngle])
+            elseif (mouse.scroll < 0) then
+                playerStore:dispatch({
+                    type = "STEP_ROTATION_DEGREE",
+                    payload = {
+                        substraction = false,
+                        multiplier = mouse.scroll
+                    }
+                })
+                playerStore:dispatch({
+                    type = "ROTATE_OBJECT"
+                })
+                features.printHUD(playerState.currentAngle:upper() .. ": " ..
+                                      playerState[playerState.currentAngle])
+            end
+        end
     end
 end
 
@@ -399,28 +476,32 @@ function OnTick()
                 player.ignoreCollision = true
             end
 
-            -- Calculate player point of view
-            playerStore:dispatch({
-                type = "UPDATE_OFFSETS"
-            })
-
             -- Check if monitor has an object attached
             local playerAttachedObjectId = playerState.attachedObjectId
             if (playerAttachedObjectId) then
+                -- Calculate player point of view
+                playerStore:dispatch({
+                    type = "UPDATE_OFFSETS"
+                })
                 -- Change rotation angle
-                if (player.crouchHold) then
+                if (player.flashlightKey) then
                     ---@type forgeState
                     local forgeState = forgeStore:getState()
+                    forgeState.forgeMenu.currentPage = 1
                     forgeState.forgeMenu.desiredElement = "root"
                     forgeState.forgeMenu.elementsList =
                         {
                             root = {
-                                colors = {
+                                ["colors (beta)"] = {
                                     blue = {},
                                     red = {},
                                     green = {}
                                 },
-                                ["reset rotation"] = {}
+                                ["reset rotation"] = {},
+                                ["rotate 5"] = {},
+                                ["rotate 45"] = {},
+                                ["rotate 90"] = {},
+                                ["snap mode"] = {}
                             }
                         }
                     forgeStore:dispatch({
@@ -430,17 +511,7 @@ function OnTick()
                         }
                     })
                     features.openMenu(constants.uiWidgetDefinitions.forgeMenu)
-                elseif (player.actionKeyHold or player.actionKey) then
-                    playerStore:dispatch({
-                        type = "STEP_ROTATION_DEGREE"
-                    })
-                    features.printHUD(playerState.currentAngle:upper() .. ": " ..
-                                          playerState[playerState.currentAngle])
-
-                    playerStore:dispatch({
-                        type = "ROTATE_OBJECT"
-                    })
-                elseif (player.flashlightKey) then
+                elseif (player.actionKey) then
                     playerStore:dispatch({
                         type = "CHANGE_ROTATION_ANGLE"
                     })
@@ -492,9 +563,6 @@ function OnTick()
                     playerStore:dispatch({
                         type = "UPDATE_DISTANCE"
                     })
-                    playerStore:dispatch({
-                        type = "UPDATE_OFFSETS"
-                    })
                 end
 
                 -- Update object position
@@ -526,7 +594,65 @@ function OnTick()
                 local forgeObjects = eventsStore:getState().forgeObjects
 
                 -- Get if player is looking at some object
-                for objectId, composedObject in pairs(forgeObjects) do
+                for objectNumber, objectIndex in pairs(get_objects()) do
+                    local projectile = blam.object(get_object(objectIndex))
+                    local composedObject
+                    local selectedObjIndex
+                    if (projectile and projectile.type == objectClasses.projectile) then
+                        local projectileTag = blam.getTag(projectile.tagId)
+                        if (projectileTag and projectileTag.index == constants.forgeProjectile) then
+                            if (projectile.attachedObjectId) then
+                                local selectedObject = blam.object(get_object(projectile.attachedObjectId))
+                                selectedObjIndex = core.getIndexById(projectile.attachedObjectId)
+                                composedObject = forgeObjects[selectedObjIndex]
+                                if (composedObject and selectedObject) then
+                                    dprint("attachedObjId: " .. projectile.attachedObjectId)
+                                    -- Player is taking the object
+                                    if (player.weaponPTH and not player.jumpHold) then
+                                        -- Hightlight the object that the player is looking at
+                                        if (features.highlightObject) then
+                                            features.highlightObject(projectile.attachedObjectId, 1)
+                                        end
+                                        dprint(projectile.x .. " " .. projectile.y .. " " ..
+                                                   projectile.z)
+                                        playerStore:dispatch(
+                                            {
+                                                type = "ATTACH_OBJECT",
+                                                payload = {
+                                                    objectId = selectedObjIndex,
+                                                    attach = {
+                                                        x = 0,--projectile.x,
+                                                        y = 0,--projectile.y,
+                                                        z = 0--projectile.z
+                                                    },
+                                                    fromPerspective = false
+                                                }
+                                            })
+                                    elseif (player.actionKey) then
+                                        playerStore:dispatch(
+                                            {
+                                                type = "SET_ROTATION_DEGREES",
+                                                payload = {
+                                                    yaw = composedObject.yaw,
+                                                    pitch = composedObject.pitch,
+                                                    roll = composedObject.roll
+                                                }
+                                            })
+                                        local tagId = blam.object(get_object(objectIndex)).tagId
+                                        playerStore:dispatch(
+                                            {
+                                                type = "CREATE_AND_ATTACH_OBJECT",
+                                                payload = {
+                                                    path = get_tag_path(tagId)
+                                                }
+                                            })
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                --[[for objectId, composedObject in pairs(forgeObjects) do
                     -- Object exists
                     if (composedObject) then
                         local tempObject = blam.object(get_object(objectId))
@@ -597,7 +723,7 @@ function OnTick()
                             end
                         end
                     end
-                end
+                end]]
                 -- Open Forge menu by pressing "Q"
                 if (player.flashlightKey) then
                     dprint("Opening Forge menu...")
@@ -623,12 +749,8 @@ function OnTick()
             if (player.flashlightKey) then
                 features.swapBiped()
             elseif (player.actionKey and player.crouchHold and server_type == "local") then
-                -- Calculate player point of view
-                playerStore:dispatch({
-                    type = "UPDATE_OFFSETS"
-                })
-                core.spawnObject(tagClasses.biped, constants.bipeds.spartan, playerState.xOffset,
-                                 playerState.yOffset, playerState.zOffset)
+                core.spawnObject(tagClasses.biped, constants.bipeds.spartan, player.x, player.y,
+                                 player.z + 3)
             end
         end
     end

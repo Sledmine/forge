@@ -50,21 +50,21 @@ local function eventsReducer(state, action)
         local tagPath = get_tag_path(requestObject.tagId)
 
         -- Get all the existent objects in the game before object spawn
-        local objectsBeforeSpawn = get_objects()
+        --local objectsBeforeSpawn = get_objects()
 
         -- Spawn object in the game
-        local localObjectId = core.spawnObject("scen", tagPath, forgeObject.x, forgeObject.y,
-                                               forgeObject.z)
+        local localObjectId = core.getIndexById(core.spawnObject("scen", tagPath, forgeObject.x, forgeObject.y,
+                                               forgeObject.z))
 
         -- Get all the existent objects in the game after object spawn
-        local objectsAfterSpawn = get_objects()
+        --local objectsAfterSpawn = get_objects()
 
         -- Tricky way to get object local id, due to Chimera 581 API returning a whole id instead of id
         -- Remember objectId is local to this game
-        if (server_type ~= "sapp") then
+        --[[if (server_type ~= "sapp") then
             local newObjects = glue.arraynv(objectsBeforeSpawn, objectsAfterSpawn)
             localObjectId = newObjects[#newObjects]
-        end
+        end]]
 
         -- Set object rotation after creating the object
         core.rotateObject(localObjectId, forgeObject.yaw, forgeObject.pitch, forgeObject.roll)

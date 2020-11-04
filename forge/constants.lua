@@ -24,10 +24,11 @@ constants.maximumProgressBarSize = 171
 constants.maximumLoadingProgressBarSize = 422
 
 local fontTagPath, fontTagId = core.findTag("blender_pro_medium_12", tagClasses.font)
-constants.hudFont = fontTagId
+constants.hudFontTagId = fontTagId
 
---[[local projectileTagPath, projectileTagId = core.findTag("mp_needle", tagClasses.projectile)
-constants.forgeProjectileSelector = projectileTagPath]]
+
+local projectileTagPath, projectileTagId = core.findTag("forge", tagClasses.projectile)
+constants.forgeProjectile = projectileTagId
 
 -- Constant Forge requests data
 constants.requests = {
@@ -68,7 +69,9 @@ constants.requests = {
             {"objectId"}
         }
     },
-    flushForge = {actionType = "FLUSH_FORGE"},
+    flushForge = {
+        actionType = "FLUSH_FORGE"
+    },
     loadMapScreen = {
         actionType = "LOAD_MAP_SCREEN",
         requestType = "#lm",
@@ -128,7 +131,9 @@ constants.requests = {
             {"votesMap4"}
         }
     },
-    flushVotes = {actionType = "FLUSH_VOTES"}
+    flushVotes = {
+        actionType = "FLUSH_VOTES"
+    }
 }
 
 -- Biped tag definitions
@@ -150,7 +155,8 @@ constants.bitmaps = {
 
 -- UI widget definitions
 constants.uiWidgetDefinitions = {
-    forgeMenu = "[shm]\\halo_4\\ui\\shell\\forge_menu\\forge_menu",
+    --forgeMenu = "[shm]\\halo_4\\ui\\shell\\forge_menu\\forge_menu",
+    forgeMenu = core.findTag("forge_menu", tagClasses.uiWidgetDefinition),
     voteMenu = "[shm]\\halo_4\\ui\\shell\\map_vote_menu\\map_vote_menu",
     objectsList = "[shm]\\halo_4\\ui\\shell\\forge_menu\\category_menu\\category_list",
     amountBar = "[shm]\\halo_4\\ui\\shell\\forge_menu\\budget_dialog\\budget_progress_bar",

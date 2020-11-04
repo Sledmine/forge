@@ -21,6 +21,9 @@ function playerReducer(state, action)
             xOffset = 0,
             yOffset = 0,
             zOffset = 0,
+            attachX = 0,
+            attachY = 0,
+            attachZ = 0,
             yaw = 0,
             pitch = 0,
             roll = 0,
@@ -32,6 +35,9 @@ function playerReducer(state, action)
         state.lockDistance = action.payload.lockDistance
         return state
     elseif (action.type == "CREATE_AND_ATTACH_OBJECT") then
+        state.attachX = 0
+        state.attachY = 0
+        state.attachZ = 0
         if (state.attachedObjectId) then
             if (get_object(state.attachedObjectId)) then
                 delete_object(state.attachedObjectId)
@@ -52,10 +58,14 @@ function playerReducer(state, action)
         return state
     elseif (action.type == "ATTACH_OBJECT") then
         state.attachedObjectId = action.payload.objectId
+        local attachObject = action.payload.attach
+        state.attachX = attachObject.x
+        state.attachY = attachObject.y
+        state.attachZ = attachObject.z
         local fromPerspective = action.payload.fromPerspective
         if (fromPerspective) then
-            local player = blam35.biped(get_dynamic_player())
-            local tempObject = blam35.object(get_object(state.attachedObjectId))
+            local player = blam.biped(get_dynamic_player())
+            local tempObject = blam.object(get_object(state.attachedObjectId))
             if (tempObject) then
                 local distance = core.calculateDistanceFromObject(player, tempObject)
                 if (configuration.forge.snapMode) then
@@ -138,10 +148,17 @@ function playerReducer(state, action)
         state.attachedObjectId = nil
         return state
     elseif (action.type == "UPDATE_OFFSETS") then
-        local player = blam35.biped(get_dynamic_player())
-        local xOffset = player.x + player.cameraX * state.distance
-        local yOffset = player.y + player.cameraY * state.distance
-        local zOffset = player.z + player.cameraZ * state.distance
+        local player = blam.biped(get_dynamic_player())
+        local tempObject
+        if (state.attachedObjectId) then
+            tempObject = blam.object(get_object(state.attachedObjectId))
+        end
+        if (not tempObject) then
+            tempObject = {x = 0, y = 0, z = 0}
+        end
+        local xOffset = player.x - state.attachX + player.cameraX * state.distance
+        local yOffset = player.y - state.attachY + player.cameraY * state.distance
+        local zOffset = player.z - state.attachZ + player.cameraZ * state.distance
         if (configuration.forge.snapMode) then
             state.xOffset = glue.round(xOffset)
             state.yOffset = glue.round(yOffset)
@@ -151,11 +168,12 @@ function playerReducer(state, action)
             state.yOffset = yOffset
             state.zOffset = zOffset
         end
+        --dprint(state.xOffset .. " " ..  state.yOffset .. " " .. state.zOffset)
         return state
     elseif (action.type == "UPDATE_DISTANCE") then
         if (state.attachedObjectId) then
-            local player = blam35.biped(get_dynamic_player())
-            local tempObject = blam35.object(get_object(state.attachedObjectId))
+            local player = blam.biped(get_dynamic_player())
+            local tempObject = blam.object(get_object(state.attachedObjectId))
             if (tempObject) then
                 local distance = core.calculateDistanceFromObject(player, tempObject)
                 if (configuration.forge.snapMode) then
@@ -182,12 +200,29 @@ function playerReducer(state, action)
         state.rotationStep = action.payload.step
         return state
     elseif (action.type == "STEP_ROTATION_DEGREE") then
+        local multiplier = 1
+        state.attachX = 0
+        state.attachY = 0
+        state.attachZ = 0
+        if (action.payload) then
+            if (action.payload.substraction) then
+                state.rotationStep = math.abs(state.rotationStep) * -1
+            else
+                state.rotationStep = math.abs(state.rotationStep)
+            end
+            multiplier = action.payload.multiplier or multiplier
+        end
         local previousRotation = state[state.currentAngle]
-        if ((previousRotation + state.rotationStep) >= 360) then
-            state[state.currentAngle] = 0
+        -- //TODO Add multiplier implementation
+        local newRotation = previousRotation + (state.rotationStep)
+        if ((newRotation) >= 360) then
+            state[state.currentAngle] = newRotation - 360
+        elseif ((newRotation) <= 0) then
+            state[state.currentAngle] = newRotation + 360
         else
             state[state.currentAngle] = previousRotation + state.rotationStep
         end
+
         return state
     elseif (action.type == "SET_ROTATION_DEGREES") then
         if (action.payload.yaw) then

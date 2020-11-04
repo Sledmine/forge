@@ -48,7 +48,7 @@ local function forgeReducer(state, action)
         }
     end
     if (action.type) then
-        dprint("[Forge Store]:")
+        dprint("[Forge Reducer]:")
         dprint("Action: " .. action.type, "category")
     end
     if (action.type == "UPDATE_MAP_LIST") then

@@ -21,9 +21,17 @@ function core.loadForgeConfiguration(path)
     if (not path) then
         path = defaultConfigurationPath
     end
-    local configurationFile = read_file(path .. "\\" .. scriptName .. ".ini")
+    local configurationFilePath = path .. "\\" .. scriptName .. ".ini"
+    local configurationFile = read_file(configurationFilePath)
     if (configurationFile) then
-        configuration = ini.decode(configurationFile)
+        console_out(configurationFile)
+        local loadedConfiguration = ini.decode(configurationFile)
+        if (loadedConfiguration and #glue.keys(loadedConfiguration) > 0) then
+            configuration = loadedConfiguration
+        else
+            console_out(configurationFilePath)
+            console_out("Forge ini file has a wrong format or is corrupted!")
+        end
     end
 end
 
@@ -59,42 +67,42 @@ end
 ---@param sensitivity number
 ---@param zOffset number
 -- Credits to Devieth and IceCrow14
-function core.playerIsLookingAt(target, sensitivity, zOffset)
+function core.playerIsAimingAt(target, sensitivity, zOffset)
     -- Minimum amount for distance scaling
-    local baseline_sensitivity = 0.012
+    local baselineSensitivity = 0.012
     local function read_vector3d(Address)
         return read_float(Address), read_float(Address + 0x4), read_float(Address + 0x8)
     end
     local mainObject = get_dynamic_player()
     local targetObject = get_object(target)
     -- Both objects must exist
-    if targetObject and mainObject then
-        local player_x, player_y, player_z = read_vector3d(mainObject + 0xA0)
-        local camera_x, camera_y, camera_z = read_vector3d(mainObject + 0x230)
+    if (targetObject and mainObject) then
+        local playerX, playerY, playerZ = read_vector3d(mainObject + 0xA0)
+        local cameraX, cameraY, cameraZ = read_vector3d(mainObject + 0x230)
         -- Target location 2
-        local target_x, target_y, target_z = read_vector3d(targetObject + 0x5C)
+        local targetX, targetY, targetZ = read_vector3d(targetObject + 0x5C)
         -- 3D distance
-        local distance = math.sqrt((target_x - player_x) ^ 2 + (target_y - player_y) ^ 2 +
-                                       (target_z - player_z) ^ 2)
-        local local_x = target_x - player_x
-        local local_y = target_y - player_y
-        local local_z = (target_z + zOffset) - player_z
-        local point_x = 1 / distance * local_x
-        local point_y = 1 / distance * local_y
-        local point_z = 1 / distance * local_z
-        local x_diff = math.abs(camera_x - point_x)
-        local y_diff = math.abs(camera_y - point_y)
-        local z_diff = math.abs(camera_z - point_z)
-        local average = (x_diff + y_diff + z_diff) / 3
+        local distance = math.sqrt((targetX - playerX) ^ 2 + (targetY - playerY) ^ 2 +
+                                       (targetZ - playerZ) ^ 2)
+        local localX = targetX - playerX
+        local localY = targetY - playerY
+        local localZ = (targetZ + zOffset) - playerZ
+        local pointX = 1 / distance * localX
+        local pointY = 1 / distance * localY
+        local pointZ = 1 / distance * localZ
+        local xDiff = math.abs(cameraX - pointX)
+        local yDiff = math.abs(cameraY - pointY)
+        local zDiff = math.abs(cameraZ - pointZ)
+        local average = (xDiff + yDiff + zDiff) / 3
         local scaler = 0
         if distance > 10 then
             scaler = math.floor(distance) / 1000
         end
-        local auto_aim = sensitivity - scaler
-        if auto_aim < baseline_sensitivity then
-            auto_aim = baseline_sensitivity
+        local autoAim = sensitivity - scaler
+        if autoAim < baselineSensitivity then
+            autoAim = baselineSensitivity
         end
-        if average < auto_aim then
+        if average < autoAim then
             return true
         end
     end
@@ -136,7 +144,7 @@ end
 ---@param yaw number
 ---@param pitch number
 ---@param roll number
----@return table, table
+---@return table<number, number>, table<number, table<number, number>>
 function core.eulerToRotation(yaw, pitch, roll)
     local matrix = {
         {1, 0, 0},
@@ -170,7 +178,7 @@ function core.eulerToRotation(yaw, pitch, roll)
     return array, matrix
 end
 
---- Rotate object into desired degrees
+--- Rotate object into desired angles
 ---@param objectId number
 ---@param yaw number
 ---@param pitch number
@@ -759,6 +767,7 @@ end
 function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
     local itemCollection
     -- Get equipment info from tag name
+    -- // TODO This should be even more efficient
     if (tagPath:find("assault rifle")) then
         dprint("AR")
         local itemCollectionTagPath = core.findTag("assault rifle", tagClasses.itemCollection)
@@ -961,13 +970,13 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
 end
 
 --- Find local object by server id
----@param state table
+---@param objects table
 ---@param remoteId number
 ---@return number
-function core.getObjectIdByRemoteId(state, remoteId)
-    for k, v in pairs(state) do
-        if (v.remoteId == remoteId) then
-            return k
+function core.getObjectIdByRemoteId(objects, remoteId)
+    for objectIndex, composedObject in pairs(objects) do
+        if (composedObject.remoteId == remoteId) then
+            return objectIndex
         end
     end
     return nil
@@ -985,14 +994,26 @@ function core.calculateDistanceFromObject(baseObject, targetObject)
 end
 
 function core.findTag(partialName, searchTagType)
-    for tagId = 0, get_tags_count() - 1 do
-        local tagPath = get_tag_path(tagId)
-        local tagType = get_tag_type(tagId)
+    for tagIndex = 0, get_tags_count() - 1 do
+        local tagPath = get_tag_path(tagIndex)
+        local tagType = get_tag_type(tagIndex)
         if (tagPath and tagPath:find(partialName) and tagType == searchTagType) then
-            return tagPath, tagId
+            return tagPath, tagIndex
         end
     end
     return nil
+end
+
+--- Get index value from an id value type
+---@param id number
+---@return number index
+function core.getIndexById(id)
+    local hex = glue.string.tohex(id)
+    local bytes = {}
+    for i = 5, #hex, 2 do
+        glue.append(bytes, hex:sub(i, i + 1))
+    end
+    return tonumber(table.concat(bytes, ""), 16)
 end
 
 return core
