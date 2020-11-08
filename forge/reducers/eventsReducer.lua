@@ -47,17 +47,36 @@ local function eventsReducer(state, action)
         -- Create a new object rather than passing it as "reference"
         local forgeObject = glue.update({}, requestObject)
 
-        local tagPath = get_tag_path(requestObject.tagId)
+        local tagPath = blam.getTag(requestObject.tagId).path
 
         -- Get all the existent objects in the game before object spawn
-        --local objectsBeforeSpawn = get_objects()
+        -- local objectsBeforeSpawn = blam.getObjects()
 
         -- Spawn object in the game
-        local localObjectId = core.getIndexById(core.spawnObject("scen", tagPath, forgeObject.x, forgeObject.y,
-                                               forgeObject.z))
+        local objectId = core.spawnObject(
+            tagClasses.scenery,
+            tagPath,
+            forgeObject.x,
+            forgeObject.y,
+            forgeObject.z
+        )
+        dprint("objectId: " .. objectId)
+
+        local objectIndex = core.getIndexById(objectId)
+        dprint("objectIndex: " .. objectIndex)
+
+        if (not objectIndex or not objectId) then
+            error("Object index/id could not be found for tag: " .. tagPath)
+        end
+
+        if (server_type == "sapp") then
+            -- SAPP functions can't handle object indexes
+            -- // TODO This requires a big refactor to use ids instead of indexes on the client side
+            objectIndex = objectId
+        end
 
         -- Get all the existent objects in the game after object spawn
-        --local objectsAfterSpawn = get_objects()
+        -- local objectsAfterSpawn = blam.getObjects()
 
         -- Tricky way to get object local id, due to Chimera 581 API returning a whole id instead of id
         -- Remember objectId is local to this game
@@ -67,14 +86,14 @@ local function eventsReducer(state, action)
         end]]
 
         -- Set object rotation after creating the object
-        core.rotateObject(localObjectId, forgeObject.yaw, forgeObject.pitch, forgeObject.roll)
+        core.rotateObject(objectIndex, forgeObject.yaw, forgeObject.pitch, forgeObject.roll)
 
         -- We are the server so the remote id is the local objectId
         if (server_type == "local" or server_type == "sapp") then
-            forgeObject.remoteId = localObjectId
+            forgeObject.remoteId = objectIndex
         end
 
-        dprint("objectId: " .. localObjectId)
+        dprint("objectId: " .. objectIndex)
         dprint("remoteId: " .. forgeObject.remoteId)
 
         -- Check and take actions if the object is a special netgame object
@@ -106,7 +125,7 @@ local function eventsReducer(state, action)
         forgeObject.tagId = nil
 
         -- Store the object in our state
-        state.forgeObjects[localObjectId] = forgeObject
+        state.forgeObjects[objectIndex] = forgeObject
 
         -- Update the current map information
         forgeStore:dispatch({
@@ -116,8 +135,8 @@ local function eventsReducer(state, action)
         return state
     elseif (action.type == constants.requests.updateObject.actionType) then
         local requestObject = action.payload.requestObject
-        local targetObjectId =
-            core.getObjectIdByRemoteId(state.forgeObjects, requestObject.objectId)
+        local targetObjectId = core.getObjectIndexByRemoteId(state.forgeObjects,
+                                                             requestObject.objectId)
         local forgeObject = state.forgeObjects[targetObjectId]
 
         if (forgeObject) then
@@ -134,16 +153,15 @@ local function eventsReducer(state, action)
             core.rotateObject(targetObjectId, forgeObject.yaw, forgeObject.pitch, forgeObject.roll)
 
             -- Update object position
-            blam35.object(get_object(targetObjectId), {
-                x = forgeObject.x,
-                y = forgeObject.y,
-                z = forgeObject.z
-            })
+            local tempObject = blam.object(get_object(targetObjectId))
+            tempObject.x = forgeObject.x
+            tempObject.y = forgeObject.y
+            tempObject.z = forgeObject.z
 
             -- Check and take actions if the object is reflecting a netgame point
             if (forgeObject.reflectionId) then
-                local tempObject = blam35.object(get_object(targetObjectId))
-                local tagPath = get_tag_path(tempObject.tagId)
+                local tempObject = blam.object(get_object(targetObjectId))
+                local tagPath = blam.getTag(tempObject.tagId).path
                 if (tagPath:find("spawning")) then
                     dprint("-> [Reflecting Spawn]", "warning")
                     if (tagPath:find("gametypes")) then
@@ -176,14 +194,14 @@ local function eventsReducer(state, action)
         return state
     elseif (action.type == constants.requests.deleteObject.actionType) then
         local requestObject = action.payload.requestObject
-        local targetObjectId =
-            core.getObjectIdByRemoteId(state.forgeObjects, requestObject.objectId)
+        local targetObjectId = core.getObjectIndexByRemoteId(state.forgeObjects,
+                                                             requestObject.objectId)
         local forgeObject = state.forgeObjects[targetObjectId]
 
         if (forgeObject) then
             if (forgeObject.reflectionId) then
-                local tempObject = blam35.object(get_object(targetObjectId))
-                local tagPath = get_tag_path(tempObject.tagId)
+                local tempObject = blam.object(get_object(targetObjectId))
+                local tagPath = blam.getTag(tempObject.tagId).path
                 if (tagPath:find("spawning")) then
                     dprint("-> [Reflecting Spawn]", "warning")
                     if (tagPath:find("gametypes")) then
@@ -227,9 +245,7 @@ local function eventsReducer(state, action)
 
         forgeStore:dispatch({
             type = constants.requests.setMapAuthor.actionType,
-            payload = {
-                mapAuthor = mapAuthor
-            }
+            payload = {mapAuthor = mapAuthor}
         })
 
         return state
@@ -246,7 +262,7 @@ local function eventsReducer(state, action)
         })
 
         return state
-    elseif (action.type ==  constants.requests.loadMapScreen.actionType) then
+    elseif (action.type == constants.requests.loadMapScreen.actionType) then
         local requestObject = action.payload.requestObject
 
         local expectedObjects = requestObject.objectCount
@@ -261,7 +277,7 @@ local function eventsReducer(state, action)
         })
 
         -- Function wrapper for timer
-        forgeAnimation = features.animateForgeLoading()
+        forgeAnimation = features.animateForgeLoading
         forgeAnimationTimer = set_timer(140, "forgeAnimation")
 
         features.openMenu(constants.uiWidgetDefinitions.loadingMenu)
@@ -324,8 +340,16 @@ local function eventsReducer(state, action)
             core.sendRequest(core.createRequest(sendTotalMapVotesRequest))
         else
             local params = action.payload.requestObject
-            local votesList = {params.votesMap1, params.votesMap2, params.votesMap3, params.votesMap4}
-            votingStore:dispatch({type = "SET_MAP_VOTES_LIST", payload = {votesList = votesList}})
+            local votesList = {
+                params.votesMap1,
+                params.votesMap2,
+                params.votesMap3,
+                params.votesMap4
+            }
+            votingStore:dispatch({
+                type = "SET_MAP_VOTES_LIST",
+                payload = {votesList = votesList}
+            })
         end
         return state
     elseif (action.type == constants.requests.sendMapVote.actionType) then
@@ -336,8 +360,8 @@ local function eventsReducer(state, action)
                 state.playerVotes[action.playerIndex] = params.mapVoted
                 local mapName = state.mapsList[params.mapVoted].mapName
                 local mapGametype = state.mapsList[params.mapVoted].mapGametype
-                
-                gprint(playerName .. " voted for " .. mapName .. " " .. mapGametype)
+
+                grprint(playerName .. " voted for " .. mapName .. " " .. mapGametype)
                 eventsStore:dispatch({
                     type = constants.requests.sendTotalMapVotes.actionType
                 })
@@ -357,10 +381,11 @@ local function eventsReducer(state, action)
                         end
                     end
                     local winnerMap = mapsList[mostVotedMapIndex].mapName:gsub(" ", "_"):lower()
-                    local winnerGametype = mapsList[mostVotedMapIndex].mapGametype:gsub(" ", "_"):lower()
+                    local winnerGametype = mapsList[mostVotedMapIndex].mapGametype:gsub(" ", "_")
+                                               :lower()
                     print("Most voted map is: " .. winnerMap)
                     forgeMapName = winnerMap
-                    execute_command("sv_map forge_island " .. winnerGametype)
+                    execute_command("sv_map " .. map .. " " .. winnerGametype)
                 end
             end
         end

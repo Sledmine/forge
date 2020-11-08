@@ -117,38 +117,6 @@ local function forgeCommands(command)
         elseif (forgeCommand == "fmenu") then
             features.openMenu("[shm]\\halo_4\\ui\\shell\\map_vote_menu\\map_vote_menu")
             return false
-        elseif (forgeCommand == "fweaps") then
-            for tagId = 0, get_tags_count() - 1 do
-                local tagType = get_tag_type(tagId)
-                if (tagType == tagClasses.weapon) then
-                    local tagPath = get_tag_path(tagId)
-                    console_out(tagPath)
-                end
-            end
-            return false
-        elseif (forgeCommand == "fit") then
-            for objectId = 0, #get_objects() - 1 do
-                local tempObject = blam.object(get_object(objectId))
-                if (tempObject and tempObject.type == objectClasses.weapon) then
-                    delete_object(objectId)
-                end
-            end
-            for tagId = 0, get_tags_count() - 1 do
-                local tagType = get_tag_type(tagId)
-                if (tagType == tagClasses.itemCollection) then
-                    local tagPath = get_tag_path(tagId)
-                    console_out(tagPath .. " " .. tagId)
-                end
-            end
-            return false
-        elseif (forgeCommand == "fonts") then
-            for tagId = 0, get_tags_count() - 1 do
-                local tagType = get_tag_type(tagId)
-                if (tagType == tagClasses.font) then
-                    local tagPath = get_tag_path(tagId)
-                    console_out(tagPath .. " " .. tagId)
-                end
-            end
         elseif (forgeCommand == "fsize") then
             dprint(collectgarbage("count") / 1024)
             return false
@@ -157,13 +125,12 @@ local function forgeCommands(command)
             return false
         elseif (forgeCommand == "fweap") then
             local weaponsList = {}
-            for tagId = 0, get_tags_count() - 1 do
-                local tagType = get_tag_type(tagId)
-                if (tagType == tagClasses.weapon) then
-                    local tagPath = get_tag_path(tagId)
-                    local splitPath = glue.string.split(tagPath, "\\")
+            for tagId = 0, blam.tagDataHeader.count - 1 do
+                local tempTag = blam.getTag(tagId)
+                if (tempTag and tempTag.class == tagClasses.weapon) then
+                    local splitPath = glue.string.split(tempTag.path, "\\")
                     local weaponTagName = splitPath[#splitPath]
-                    weaponsList[weaponTagName] = tagPath
+                    weaponsList[weaponTagName] = tempTag.path
                 end
             end
             local weaponName = table.concat(glue.shift(splitCommand, 1, -1), " ")
@@ -188,10 +155,10 @@ local function forgeCommands(command)
             return false
         elseif (forgeCommand == "fbiped") then
             local tagsList = {}
-            for tagId = 0, get_tags_count() - 1 do
-                local tagType = get_tag_type(tagId)
-                if (tagType == tagClasses.biped) then
-                    local tagPath = get_tag_path(tagId)
+            for tagId = 0, blam.tagDataHeader.count - 1 do
+                local tempTag = blam.getTag(tagId)
+                if (tempTag and tempTag.class == tagClasses.biped) then
+                    local tagPath = tempTag.path
                     local splitPath = glue.string.split(tagPath, "\\")
                     local tagPathName = splitPath[#splitPath]
                     tagsList[tagPathName] = tagPath
@@ -204,6 +171,7 @@ local function forgeCommands(command)
             if (tagPathResult) then
                 local objectId = core.spawnObject(tagClasses.biped, tagPathResult, player.x,
                                                   player.y, player.z + 0.5)
+                local player = blam.biped(get_object(objectId))
             end
             return false
         elseif (forgeCommand == "fdump") then
@@ -239,7 +207,7 @@ local function forgeCommands(command)
             -- Testing rcon communication
             dprint("[Game Objects]", "category")
 
-            local objects = get_objects()
+            local objects = blam.getObjects()
 
             -- Debug in game objects count
             dprint("Count: " .. #objects)

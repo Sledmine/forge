@@ -25,15 +25,15 @@ Forge reimplements some concepts from modern app libraries like the store from [
 # Highlights
 
 - Provides a store for all the Forge objects created on the server meaning the store is reusable, when a player joins mid game all the objects in the store can be pushed to the new player and sync everything created by other players on the server.
-- Any forged map is stored in a versionless .fmap meaning that forged maps will work in almost any map version if object paths did not change.
-- Forge works in local mode **(opening the map in LAN mode, does not work in a real LAN game)**, the script will act as a server and client at the same time allowing you to play in the same way as if you were connected to a real server.
-- Rcon messages are not persistent, except data intercepted from them, meaning that messages are not sent too often, only when they are needed, ensuring performance and less spamming messages blocking Halo Custom Edition flow.
-- Rcon messages come with full range compression to send specific values like floats that are hard to send via a message string, for example position and rotation values for every object are too important to keep them exactly in the same way they were sent, the compression used in Forge ensures the maximum and the minimum exact value at the moment of decompression using string.pack and string.unpack from Lua 5.3 (SAPP uses Lua 5.1, but some compatibility with Lua 5.3 can be achived by implemeting a compatibility library, bringing string.unpack and string.pack as a backport).
+- Any forged map is stored in a versionless .fmap meaning that forged maps will work in almost any Forge map version, objects that are not anymore in the Forge map will be ignored.
+- Forge works in local mode **(Playing the map via LAN mode option, this does not work in a real LAN game)**, the script will act as a server and client at the same time allowing you to play in the same way as if you were connected to a real server.
+- Rcon messages are not persistent, except data intercepted from them, meaning that messages are not sent too often, only when they are needed, ensuring performance and less spamming messages blocking Halo Custom Edition thread flow.
+- Rcon messages come with full range compression to send specific values like floats that are hard to send via string message, for example coordinates and rotation values for every object are too important to keep them exactly in the same way they were sent, the compression used in Forge ensures the maximum and the minimum exact value at the moment of decompression using `string.pack` and `string.unpack` from **Lua 5.3** (SAPP uses **Lua 5.1**, but some compatibility with **Lua 5.3** can be achived by implemeting a compatibility library, bringing `string.unpack` and `string.pack` as a backport).
 
 # Features
 
 ### **Multiple Biped Support**
-There is a simple built in system to associate players with a specific biped, used to swap between spartan and monitor, other bipeds can be added to this system to achieve different gametypes, armors, etc.
+There is a simple built in system to associate players with a specific biped, used to swap between spartan and monitor, other bipeds can be added to this system to achieve different armors, biped based gametypes, etc.
 
 ### **Object Selection**
 Objects are highligted when a monitor is looking at them, object selection is calculated via frame base for every object, meaning that non collideable objects can be selected too.
@@ -63,6 +63,28 @@ We are giving our best effort to make this project as complete and useful as pos
 - Object history placement, provide undo, redo operations along time.
 - Better controls implementation, multi input devices is key, keyboard, mouse and joystick support are must have features.
 
+## Libraries used in the project
+
+- [lua-blam](https://github.com/Sledmine/lua-blam)
+- [redux](https://github.com/piperswe/lua-redux)
+- [lfs](https://github.com/keplerproject/luafilesystem)
+- [glue](https://github.com/Sledmine/glue)
+- [inspect](https://github.com/kikito/inspect.lua)
+- [json](https://github.com/rxi/json.lua)
+- [lua-compat-5.3](https://github.com/keplerproject/lua-compat-5.3)
+- [luaunit](https://github.com/bluebird75/luaunit)
+
+# Building Forge
+
+To bundle the project you need to be sure to have all the required dependencies installed on the project, there are some symlinks on this repository but you need to recreate them manually or install every dependency on the project manually as well.
+
+Then you can use [Mercury](https://github.com/Sledmine/Mercury) to bundle the project using the next command line on the project folder:
+```cmd
+mercury bundle -c
+```
+
+There are not release builds of [Mercury](https://github.com/Sledmine/Mercury) at the creation of this document, instead you can use [luacc](https://github.com/mihacooper). [Mercury](https://github.com/Sledmine/Mercury) is using the same implementation of [luacc](https://github.com/mihacooper) to bundle lua projects.
+
 # Long way to Forge
 
 This project is part of something just much bigger than creating a project with an Island and Forge for Halo Custom Edition, here are some points that can help this to grow a lot!
@@ -76,22 +98,10 @@ This project is part of something just much bigger than creating a project with 
 # Special Thanks and Credits
 
 - Visual Studio Code and EmmyLua for the fast workflow for Lua
-- Kepler Project for the lua file system and the lua 5.3 compatibility
 - Luaunit for the unit testing framework
 - Egor Skriptunoff for resolving the [old rotation function](https://stackoverflow.com/questions/30493826/yaw-pitch-and-roll-rotations-to-six-float-variables)
-- aLTis94 for providing the old rotation function on his fake forge script
-- Jerry for back adding functionality to Chimera and bug fixing
-- Sled for all the forge core designment, some Forge UI design, hard reverse engineering functions and stuff for tools and libraries
+- aLTis94 for providing help and examples of different implementation methods
+- Jerry for adding functionality to Chimera and keeping features updated
+- Sled for the entire Forge system designment, UI designment and reverse engineering game functions and stuff like tools and libraries
 - MrChromed for all shaders, models, sounds, fixes, and all what he does, I can't list all here
 - Solink for porting and optimizing models for Forge, such as the bsp and almost all the objects of the project
-
-## Libraries used in the project
-
-- [lua-blam](https://github.com/Sledmine/lua-blam)
-- [redux](https://github.com/piperswe/lua-redux)
-- [lfs](https://github.com/keplerproject/luafilesystem)
-- [glue](https://github.com/Sledmine/glue)
-- [inspect](https://github.com/kikito/inspect.lua)
-- [json](https://github.com/rxi/json.lua)
-- [lua-compat-5.3](https://github.com/keplerproject/lua-compat-5.3)
-- [luaunit](https://github.com/bluebird75/luaunit)

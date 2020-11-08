@@ -100,7 +100,7 @@ function playerReducer(state, action)
                 -- Object does not exist, create request table and send request
                 local requestTable = {}
                 requestTable.requestType = constants.requests.spawnObject.requestType
-                local tempObject = blam35.object(get_object(state.attachedObjectId))
+                local tempObject = blam.object(get_object(state.attachedObjectId))
                 requestTable.tagId = tempObject.tagId
                 requestTable.x = state.xOffset
                 requestTable.y = state.yOffset
@@ -113,7 +113,7 @@ function playerReducer(state, action)
             else
                 local requestTable = composedObject
                 requestTable.requestType = constants.requests.updateObject.requestType
-                local tempObject = blam35.object(get_object(state.attachedObjectId))
+                local tempObject = blam.object(get_object(state.attachedObjectId))
                 requestTable.x = tempObject.x
                 requestTable.y = tempObject.y
                 requestTable.z = tempObject.z
@@ -243,7 +243,7 @@ function playerReducer(state, action)
         return state
     elseif (action.type == "SAVE_POSITION") then
         -- Do not forget to migrate this to dumpObject or getAll
-        local tempObject = blam35.biped(get_dynamic_player())
+        local tempObject = blam.biped(get_dynamic_player())
         state.position = {
             x = tempObject.x,
             y = tempObject.y,

@@ -3,17 +3,17 @@
 -- Sledmine
 -- Function reflector for store
 ------------------------------------------------------------------------------
-
 local menu = require "forge.menu"
 
 local inspect = require "inspect"
 
 local function forgeReflector()
     -- Get current forge state
+    ---@type forgeState
     local forgeState = forgeStore:getState()
 
-    local currentElements = forgeState.forgeMenu.currentElementsList[forgeState.forgeMenu
-                                   .currentPage]
+    local currentMenuPage = forgeState.forgeMenu.currentPage
+    local currentElements = forgeState.forgeMenu.currentElementsList[currentMenuPage]
 
     -- Prevent errors objects does not exist
     if (not currentElements) then
@@ -22,53 +22,39 @@ local function forgeReflector()
     end
 
     -- Forge Menu
-    blam35.unicodeStringList(get_tag("unicode_string_list", constants.unicodeStrings.forgeList),
-                           {
-        stringList = currentElements
-    })
+    local forgeMenuElementsStrings = blam.unicodeStringList(constants.unicodeStrings.forgeMenuElements)
+    forgeMenuElementsStrings.stringList = currentElements
     menu.update(constants.uiWidgetDefinitions.objectsList, #currentElements + 2)
 
-    local paginationTextAddress =
-        get_tag("unicode_string_list", constants.unicodeStrings.pagination)
-    if (paginationTextAddress) then
-        local pagination = blam35.unicodeStringList(paginationTextAddress)
+    local pagination = blam.unicodeStringList(constants.unicodeStrings.pagination)
+    if (pagination) then
         local paginationStringList = pagination.stringList
-        paginationStringList[2] = tostring(forgeState.forgeMenu.currentPage)
+        paginationStringList[2] = tostring(currentMenuPage)
         paginationStringList[4] = tostring(#forgeState.forgeMenu.currentElementsList)
-        blam35.unicodeStringList(paginationTextAddress, {
-            stringList = paginationStringList
-        })
+        pagination.stringList = paginationStringList
     end
 
     -- Budget count
     -- Update unicode string with current budget value
-    local budgetCountAddress = get_tag("unicode_string_list", constants.unicodeStrings.budgetCount)
-    local currentBudget = blam35.unicodeStringList(budgetCountAddress)
+    local currentBudget = blam.unicodeStringList(constants.unicodeStrings.budgetCount)
 
+    -- Refresh budget count
     currentBudget.stringList = {
         forgeState.forgeMenu.currentBudget,
         "/ " .. tostring(constants.maximumBudget)
     }
 
-    -- Refresh budget count
-    blam35.unicodeStringList(budgetCountAddress, currentBudget)
-    
-
     -- Refresh budget bar status
-    blam35.uiWidgetDefinition(
-        get_tag("ui_widget_definition", constants.uiWidgetDefinitions.amountBar),
-        {
-            width = forgeState.forgeMenu.currentBarSize
-        })
+    local amountBarWidget = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.amountBar)
+    amountBarWidget.width = forgeState.forgeMenu.currentBarSize
 
     -- Refresh loading bar size
-    blam35.uiWidgetDefinition(get_tag("ui_widget_definition",
-                                    constants.uiWidgetDefinitions.loadingProgress),
-                            {
-        width = forgeState.loadingMenu.currentBarSize
-    })
+    local loadingProgressWidget = blam.uiWidgetDefinition(
+                                      constants.uiWidgetDefinitions.loadingProgress)
+    loadingProgressWidget.width = forgeState.loadingMenu.currentBarSize
 
-    local currentMapsList = forgeState.mapsMenu.currentMapsList[forgeState.mapsMenu.currentPage]
+    local currentMapsMenuPage = forgeState.mapsMenu.currentPage
+    local currentMapsList = forgeState.mapsMenu.currentMapsList[currentMapsMenuPage]
 
     -- Prevent errors when maps does not exist
     if (not currentMapsList) then
@@ -77,35 +63,30 @@ local function forgeReflector()
     end
 
     -- Refresh available forge maps list
-    -- TO DO: Merge unicode string updating with menus updating!
-    blam35.unicodeStringList(get_tag("unicode_string_list", constants.unicodeStrings.mapsList),
-                           {
-        stringList = currentMapsList
-    })
+    -- //TODO Merge unicode string updating with menus updating?
+
+    local mapsListStrings = blam.unicodeStringList(constants.unicodeStrings.mapsList)
+    mapsListStrings.stringList = currentMapsList
     -- Wich ui widget will be updated and how many items it will show
     menu.update(constants.uiWidgetDefinitions.mapsList, #currentMapsList + 3)
 
     -- Refresh fake sidebar in maps menu
-    blam35.uiWidgetDefinition(get_tag("ui_widget_definition", constants.uiWidgetDefinitions.sidebar),
-                            {
-        height = forgeState.mapsMenu.sidebar.height,
-        boundsY = forgeState.mapsMenu.sidebar.position
-    })
+    local sidebarWidget = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.sidebar)
+    sidebarWidget.height = forgeState.mapsMenu.sidebar.height
+    sidebarWidget.boundsY = forgeState.mapsMenu.sidebar.position
 
     -- Refresh current forge map information
-    blam35.unicodeStringList(
-        get_tag("unicode_string_list", constants.unicodeStrings.pauseGameStrings), {
-            stringList = {
-                -- Bypass first 3 elements in the string list
-                "",
-                "",
-                "",
-                forgeState.currentMap.name,
-                forgeState.currentMap.author,
-                forgeState.currentMap.version,
-                forgeState.currentMap.description
-            }
-        })
+    local pauseGameStrings = blam.unicodeStringList(constants.unicodeStrings.pauseGameStrings)
+    pauseGameStrings.stringList = {
+        -- Bypass first 3 elements in the string list
+        "",
+        "",
+        "",
+        forgeState.currentMap.name,
+        forgeState.currentMap.author,
+        forgeState.currentMap.version,
+        forgeState.currentMap.description
+    }
 end
 
 return forgeReflector

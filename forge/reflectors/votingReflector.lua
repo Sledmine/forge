@@ -11,19 +11,14 @@ local function votingReflector()
     -- Get current forge state
     local votingState = votingStore:getState()
 
-    
     local votesList = votingState.votingMenu.votesList
-    
+
     for k, v in pairs(votesList) do
         votesList[k] = tostring(v)
     end
-    
-    -- Voting Menu
-    
-    -- Get maps vote string list
-    local unideStringListAddress = get_tag(tagClasses.unicodeStringList,
-    constants.unicodeStrings.votingList)
-    
+
+    -- [Voting Menu]
+
     -- Update maps string list
     local mapsList = votingState.votingMenu.mapsList
 
@@ -32,21 +27,19 @@ local function votingReflector()
         dprint("Current maps vote list is empty.", "warning")
         mapsList = {}
     end
-    
+
     local currentMapsList = {}
-    for mapIndex, map in pairs (mapsList) do
+    for mapIndex, map in pairs(mapsList) do
         glue.append(currentMapsList, map.name .. "\r" .. map.gametype)
     end
-    blam35.unicodeStringList(unideStringListAddress, {
-        stringList = currentMapsList
-    })
 
-    unideStringListAddress = get_tag(tagClasses.unicodeStringList,
-                                     constants.unicodeStrings.votingCountList)
+    -- Get maps vote string list
+    local votingMapsStrings = blam.unicodeStringList(constants.unicodeStrings.votingMapsList)
+    votingMapsStrings.stringList = currentMapsList
 
-    blam35.unicodeStringList(unideStringListAddress, {
-        stringList = votesList
-    })
+    -- Get maps vote count string list
+    local votingCountListStrings = blam.unicodeStringList(constants.unicodeStrings.votingCountList)
+    votingCountListStrings.stringList = votesList
 
 end
 

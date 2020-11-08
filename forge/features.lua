@@ -12,7 +12,7 @@ local features = {}
 --- Changes default crosshair values
 ---@param state number
 function features.setCrosshairState(state)
-   --[[ if (constants.weaponHudInterfaces.forgeCrosshair) then
+    --[[ if (constants.weaponHudInterfaces.forgeCrosshair) then
         local forgeCrosshairAddress = get_tag(tagClasses.weaponHudInterface,
                                               constants.weaponHudInterfaces.forgeCrosshair)
         if (state == 0) then
@@ -57,14 +57,13 @@ end
 function features.unhighlightAll()
     local forgeObjects = eventsStore:getState().forgeObjects
     for objectId, composedObject in pairs(forgeObjects) do
-        local tempObject = blam35.object(get_object(objectId))
+        local tempObject = blam.object(get_object(objectId))
         -- Object exists
         if (tempObject) then
-            local tagType = get_tag_type(tempObject.tagId)
-            if (tagType == "scen") then
-                blam35.object(get_object(objectId), {
-                    health = 0
-                })
+            local tempTag = blam.getTag(tempObject.tagId)
+            if (tempTag and tempTag.class == tagClasses.scenery) then
+                local tempObject = blam.object(get_object(objectId))
+                tempObject.health = 0
             end
         end
     end
@@ -74,12 +73,11 @@ end
 ---@param transparency number | "0.1" | "0.5" | "1"
 function features.highlightObject(objectId, transparency)
     -- Highlight object
-    blam35.object(get_object(objectId), {
-        health = transparency
-    })
+    local tempObject = blam.object(get_object(objectId))
+    tempObject.health = transparency
 end
 
--- Mod functions
+--- Execute a player swap between biped and monitor
 function features.swapBiped()
     features.unhighlightAll()
     if (server_type == "local") then
@@ -95,26 +93,26 @@ function features.swapBiped()
         player.shield = 1
 
         -- Needs kinda refactoring, probably splitting this into LuaBlam
-        local globalsTagAddress = get_tag("matg", "globals\\globals")
+        local globalsTagAddress = get_tag(tagClasses.globals, "globals\\globals")
         local globalsTagData = read_dword(globalsTagAddress + 0x14)
         local globalsTagMultiplayerBipedTagIdAddress = globalsTagData + 0x9BC + 0xC
-        -- local currentGlobalsBipedTagId = read_dword(globalsTagMultiplayerBipedTagIdAddress)
-        for objectId = 0, 2043 do
-            local tempObject = blam35.object(get_object(objectId))
+        for objectNumber, objectIndex in pairs(blam.getObjects()) do
+            local tempObject = blam.object(get_object(objectIndex))
             if (tempObject) then
-                if (tempObject.tagId == get_tag_id("bipd", constants.bipeds.spartan)) then
-                    write_dword(globalsTagMultiplayerBipedTagIdAddress,
-                                get_tag_id("bipd", constants.bipeds.monitor))
-                    delete_object(objectId)
-                elseif (tempObject.tagId == get_tag_id("bipd", constants.bipeds.monitor)) then
-                    write_dword(globalsTagMultiplayerBipedTagIdAddress,
-                                get_tag_id("bipd", constants.bipeds.spartan))
-                    delete_object(objectId)
+                local spartanTag = blam.getTag(constants.bipeds.spartan, tagClasses.biped)
+                local monitorTag = blam.getTag(constants.bipeds.monitor, tagClasses.biped)
+                if (tempObject.tagId == spartanTag.id) then
+                    write_dword(globalsTagMultiplayerBipedTagIdAddress, monitorTag.id)
+                    delete_object(objectIndex)
+                elseif (tempObject.tagId == monitorTag.id) then
+                    write_dword(globalsTagMultiplayerBipedTagIdAddress, spartanTag.id)
+                    delete_object(objectIndex)
                 end
             end
         end
     else
         dprint("Requesting monitor biped...")
+        -- // TODO Replace this with a send request function
         execute_script("rcon forge #b")
     end
 end
@@ -123,7 +121,7 @@ end
 ---@param tagPath string
 ---@return boolean result susccess
 function features.openMenu(tagPath, prevent)
-    local uiWidgetTagId = get_tag_id(tagClasses.uiWidgetDefinition, tagPath)
+    local uiWidgetTagId = blam.getTag(tagPath, tagClasses.uiWidgetDefinition).id
     if (uiWidgetTagId) then
         load_ui_widget(tagPath)
         return true
@@ -163,27 +161,28 @@ function features.printHUD(message, optional, forcedTickCount)
 end
 
 function features.animateForgeLoading()
-    -- // TODO Refactor this logic, it could be better
-    if (not lastLoadingFrame) then
-        lastLoadingFrame = 0
+    local bitmapPath = constants.bitmaps.mapLoading0
+    if (loadingFrame == 0) then
+        bitmapPath = constants.bitmaps.mapLoading1
     else
-        if (lastLoadingFrame == 0) then
-            lastLoadingFrame = 1
-        else
-            lastLoadingFrame = 0
-        end
+        bitmapPath = constants.bitmaps.mapLoading0
     end
+
     -- Animate Forge loading image
     local uiWidget = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.loadingAnimation)
-    uiWidget.backgroundBitmap = get_tag_id("bitm", constants.bitmaps["forgeLoadingProgress" ..
-                                               tostring(lastLoadingFrame)])
+    local bitmapTag = blam.getTag(bitmapPath, tagClasses.bitmap)
+    uiWidget.backgroundBitmap = bitmapTag.id
     return true
 end
 
+--- Get information from the mouse input in the game
+---@return mouseInput
 function features.getMouseInput()
-    return {
+    ---@class mouseInput
+    local mouseInput = {
         scroll = tonumber(read_char(constants.mouseInputAddress + 8))
     }
+    return mouseInput
 end
 
 return features

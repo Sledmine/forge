@@ -41,6 +41,10 @@ function core.loadForgeMaps(path)
     if (not path) then
         path = defaultMapsPath
     end
+    if (not directory_exists(path)) then
+        create_directory(path)
+        --return false
+    end
     local mapsFiles = list_directory(path)
     local mapsList = {}
     for fileIndex, file in pairs(mapsFiles) do
@@ -204,8 +208,8 @@ function core.isPlayerMonitor(playerIndex)
         tempObject = blam.object(get_dynamic_player())
     end
     if (tempObject) then
-        local monitorBipedTagId = get_tag_id(tagClasses.biped, constants.bipeds.monitor)
-        if (tempObject.tagId == monitorBipedTagId) then
+        local tempTag = blam.getTag(constants.bipeds.monitor, tagClasses.biped)
+        if (tempTag and tempObject.tagId == tempTag.id) then
             return true
         end
     end
@@ -236,7 +240,7 @@ function core.sendRequest(request, playerIndex)
             dprint("Server request: " .. fixedRequest)
             -- We want to broadcast to every player in the server
             if (not playerIndex) then
-                gprint(fixedRequest)
+                grprint(fixedRequest)
             else
                 -- We are looking to send data to a specific player
                 rprint(playerIndex, fixedRequest)
@@ -352,7 +356,7 @@ end
 function core.flushForge()
     if (eventsStore) then
         local forgeObjects = eventsStore:getState().forgeObjects
-        if (#glue.keys(forgeObjects) > 0 and #get_objects() > 0) then
+        if (#glue.keys(forgeObjects) > 0 and #blam.getObjects() > 0) then
             -- saveForgeMap('unsaved')
             -- execute_script('object_destroy_all')
             for objectId, composedObject in pairs(forgeObjects) do
@@ -433,11 +437,11 @@ function core.loadForgeMap(mapName)
 
             for objectId, forgeObject in pairs(forgeMap.objects) do
                 local spawnRequest = glue.update({}, forgeObject)
-                local objectTagId = get_tag_id(tagClasses.scenery, spawnRequest.tagPath)
-                if (objectTagId) then
+                local objectTag = blam.getTag(spawnRequest.tagPath, tagClasses.scenery)
+                if (objectTag and objectTag.id) then
                     spawnRequest.requestType = constants.requests.spawnObject.requestType
                     spawnRequest.tagPath = nil
-                    spawnRequest.tagId = objectTagId
+                    spawnRequest.tagId = objectTag.id
                     eventsStore:dispatch({
                         type = constants.requests.spawnObject.actionType,
                         payload = {
@@ -463,7 +467,7 @@ function core.loadForgeMap(mapName)
     else
         dprint("ERROR!! At trying to load '" .. mapName .. "' as a forge map...", "error")
         if (server_type == "sapp") then
-            gprint("ERROR!! At trying to load '" .. mapName .. "' as a forge map...")
+            grprint("ERROR!! At trying to load '" .. mapName .. "' as a forge map...")
         end
     end
     return false
@@ -495,7 +499,7 @@ function core.saveForgeMap()
     for objectId, forgeObject in pairs(objectsState) do
         -- Get scenery tag path to keep compatibility between versions
         local tempObject = blam.object(get_object(objectId))
-        local sceneryPath = get_tag_path(tempObject.tagId)
+        local sceneryPath = blam.getTag(tempObject.tagId).path
 
         -- Create a copy of the composed object in the store to avoid replacing useful values
         local fmapObject = glue.update({}, forgeObject)
@@ -765,69 +769,19 @@ end
 ---@param forgeObject table
 ---@param disable boolean
 function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
-    local itemCollection
+    local itemCollectionTagId
+    local tagSplitPath = glue.string.split(tagPath, "\\")
+    local desiredWeapon = tagSplitPath[#tagSplitPath]:gsub(" spawn", "")
+    dprint(desiredWeapon)
     -- Get equipment info from tag name
-    -- // TODO This should be even more efficient
-    if (tagPath:find("assault rifle")) then
-        dprint("AR")
-        local itemCollectionTagPath = core.findTag("assault rifle", tagClasses.itemCollection)
-        dprint(itemCollectionTagPath)
-        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
-    elseif (tagPath:find("battle rifle")) then
-        dprint("BR")
-        local itemCollectionTagPath = core.findTag("battle rifle", tagClasses.itemCollection)
-        dprint(itemCollectionTagPath)
-        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
-    elseif (tagPath:find("dmr")) then
-        dprint("DMR")
-        local itemCollectionTagPath = core.findTag("dmr", tagClasses.itemCollection)
-        dprint(itemCollectionTagPath)
-        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
-    elseif (tagPath:find("needler")) then
-        dprint("DMR")
-        local itemCollectionTagPath = core.findTag("needler", tagClasses.itemCollection)
-        dprint(itemCollectionTagPath)
-        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
-    elseif (tagPath:find("plasma pistol")) then
-        dprint("DMR")
-        local itemCollectionTagPath = core.findTag("plasma pistol", tagClasses.itemCollection)
-        dprint(itemCollectionTagPath)
-        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
-    elseif (tagPath:find("rocket launcher")) then
-        dprint("DMR")
-        local itemCollectionTagPath = core.findTag("rocket launcher", tagClasses.itemCollection)
-        dprint(itemCollectionTagPath)
-        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
-    elseif (tagPath:find("shotgun")) then
-        dprint("DMR")
-        local itemCollectionTagPath = core.findTag("shotgun", tagClasses.itemCollection)
-        dprint(itemCollectionTagPath)
-        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
-    elseif (tagPath:find("sniper rifle")) then
-        dprint("DMR")
-        local itemCollectionTagPath = core.findTag("sniper rifle", tagClasses.itemCollection)
-        dprint(itemCollectionTagPath)
-        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
-    elseif (tagPath:find("frag grenade")) then
-        dprint("FRAG GRENADE")
-        local itemCollectionTagPath = core.findTag("frag grenades", tagClasses.itemCollection)
-        dprint(itemCollectionTagPath)
-        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
-    elseif (tagPath:find("plasma grenade")) then
-        dprint("PLASMA GRENADE")
-        local itemCollectionTagPath = core.findTag("plasma grenades", tagClasses.itemCollection)
-        dprint(itemCollectionTagPath)
-        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
-    elseif (tagPath:find("random weapon spawn")) then
-        dprint("RANDOM WEAPON")
-        local itemCollectionTagPath = core.findTag("random weapon", tagClasses.itemCollection)
-        dprint(itemCollectionTagPath)
-        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
-    elseif (tagPath:find("gravity hammer spawn")) then
-        dprint("GRAVITY HAMMER")
-        local itemCollectionTagPath = core.findTag("gravity hammer", tagClasses.itemCollection)
-        dprint(itemCollectionTagPath)
-        itemCollection = get_tag_id(tagClasses.itemCollection, itemCollectionTagPath)
+    if (desiredWeapon) then
+        local itcTagPath, itcTagIndex, itcTagId = core.findTag(desiredWeapon, tagClasses.itemCollection)
+        itemCollectionTagId = itcTagId
+    end
+    if (not itemCollectionTagId) then
+        -- // TODO This needs more review
+        error("Could not find item collection tag id for desired weapon spawn: " .. tagPath)
+        return false
     end
 
     -- Get scenario data
@@ -848,7 +802,7 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
                 netgameEquipmentPoints[equipmentId].facing = math.rad(forgeObject.yaw)
                 netgameEquipmentPoints[equipmentId].type1 = 12
                 netgameEquipmentPoints[equipmentId].levitate = true
-                netgameEquipmentPoints[equipmentId].itemCollection = itemCollection
+                netgameEquipmentPoints[equipmentId].itemCollection = itemCollectionTagId
 
                 -- Debug spawn index
                 dprint("Creating equipment replacing index: " .. equipmentId, "warning")
@@ -969,11 +923,11 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
     end
 end
 
---- Find local object by server id
+--- Find local object by server remote object id
 ---@param objects table
 ---@param remoteId number
 ---@return number
-function core.getObjectIdByRemoteId(objects, remoteId)
+function core.getObjectIndexByRemoteId(objects, remoteId)
     for objectIndex, composedObject in pairs(objects) do
         if (composedObject.remoteId == remoteId) then
             return objectIndex
@@ -987,18 +941,20 @@ end
 ---@param targetObject table
 ---@return number
 function core.calculateDistanceFromObject(baseObject, targetObject)
-    local calulcatedX = (targetObject.x - baseObject.x) ^ 2
+    local calculatedX = (targetObject.x - baseObject.x) ^ 2
     local calculatedY = (targetObject.y - baseObject.y) ^ 2
     local calculatedZ = (targetObject.z - baseObject.z) ^ 2
-    return math.sqrt(calulcatedX + calculatedY + calculatedZ)
+    return math.sqrt(calculatedX + calculatedY + calculatedZ)
 end
 
+--- Find the path, index and id of a tag given partial name and tag type
+---@param partialName string
+---@param searchTagType string
 function core.findTag(partialName, searchTagType)
-    for tagIndex = 0, get_tags_count() - 1 do
-        local tagPath = get_tag_path(tagIndex)
-        local tagType = get_tag_type(tagIndex)
-        if (tagPath and tagPath:find(partialName) and tagType == searchTagType) then
-            return tagPath, tagIndex
+    for tagIndex = 0, blam.tagDataHeader.count - 1 do
+        local tempTag = blam.getTag(tagIndex)
+        if (tempTag and tempTag.path:find(partialName) and tempTag.class == searchTagType) then
+            return tempTag.path, tempTag.index, tempTag.id
         end
     end
     return nil

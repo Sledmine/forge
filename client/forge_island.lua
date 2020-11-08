@@ -25,8 +25,6 @@ console_out = blam.consoleOutput
 objectClasses = blam.objectClasses
 tagClasses = blam.tagClasses
 cameraTypes = blam.cameraTypes
--- Bring old api compatibility
-blam35 = blam.compat35()
 
 -- Forge modules
 local triggers = require "forge.triggers"
@@ -67,13 +65,14 @@ debugBuffer = ""
 textRefreshCount = 0
 -- Object used to store mouse input across pre frame update
 mouse = {}
+loadingFrame = 0
 
 --- Function to send debug messages to console output
 ---@param message string
----@param color string | "'category'" | "'warning'" | "'error'" | "'success'"
+---@param color '"string"' | '"category"' | '"warning"' | '"error"' | '"success"'
 function dprint(message, color)
-    if (type(message) == "table") then
-        return console_out(inspect(message))
+    if (type(message) ~= "string") then
+        message = inspect(message)
     end
     debugBuffer = debugBuffer .. message .. "\n"
     if (configuration.forge.debugMode) then
@@ -122,7 +121,8 @@ function OnMapLoad()
     -- // TODO Refactor this entire loop, has been implemented from the old script!!!
     -- Iterate over all the sceneries available in the sceneries tag collection
     for i = 1, tagCollection.count do
-        local sceneryPath = get_tag_path(tagCollection.tagList[i])
+        local tempTag = blam.getTag(tagCollection.tagList[i], tagClasses.scenery)
+        local sceneryPath = tempTag.path
 
         local sceneriesSplit = glue.string.split(sceneryPath, "\\")
         local sceneryFolderIndex
@@ -286,7 +286,7 @@ function OnPreFrame()
                 })
             else
                 if (playerState.attachedObjectId) then
-                    local elementsList = blam.unicodeStringList(constants.unicodeStrings.forgeList)
+                    local elementsList = blam.unicodeStringList(constants.unicodeStrings.forgeMenuElements)
                     local selectedElement = elementsList.stringList[menuPressedButton]
                     local elementsFunctions = {
                         ["rotate 5"] = function()
@@ -378,7 +378,7 @@ function OnPreFrame()
                         end
                     end
                 else
-                    local elementsList = blam.unicodeStringList(constants.unicodeStrings.forgeList)
+                    local elementsList = blam.unicodeStringList(constants.unicodeStrings.forgeMenuElements)
                     local selectedSceneryName = elementsList.stringList[menuPressedButton]
                     local sceneryPath = forgeState.forgeMenu.objectsDatabase[selectedSceneryName]
                     if (sceneryPath) then
@@ -563,6 +563,9 @@ function OnTick()
                     playerStore:dispatch({
                         type = "UPDATE_DISTANCE"
                     })
+                    playerStore:dispatch({
+                        type = "UPDATE_OFFSETS"
+                    })
                 end
 
                 -- Update object position
@@ -594,7 +597,7 @@ function OnTick()
                 local forgeObjects = eventsStore:getState().forgeObjects
 
                 -- Get if player is looking at some object
-                for objectNumber, objectIndex in pairs(get_objects()) do
+                for objectNumber, objectIndex in pairs(blam.getObjects()) do
                     local projectile = blam.object(get_object(objectIndex))
                     local composedObject
                     local selectedObjIndex
@@ -602,28 +605,26 @@ function OnTick()
                         local projectileTag = blam.getTag(projectile.tagId)
                         if (projectileTag and projectileTag.index == constants.forgeProjectile) then
                             if (projectile.attachedObjectId) then
-                                local selectedObject = blam.object(get_object(projectile.attachedObjectId))
+                                local selectedObject =
+                                    blam.object(get_object(projectile.attachedObjectId))
                                 selectedObjIndex = core.getIndexById(projectile.attachedObjectId)
                                 composedObject = forgeObjects[selectedObjIndex]
                                 if (composedObject and selectedObject) then
-                                    dprint("attachedObjId: " .. projectile.attachedObjectId)
                                     -- Player is taking the object
                                     if (player.weaponPTH and not player.jumpHold) then
                                         -- Hightlight the object that the player is looking at
                                         if (features.highlightObject) then
                                             features.highlightObject(projectile.attachedObjectId, 1)
                                         end
-                                        dprint(projectile.x .. " " .. projectile.y .. " " ..
-                                                   projectile.z)
                                         playerStore:dispatch(
                                             {
                                                 type = "ATTACH_OBJECT",
                                                 payload = {
                                                     objectId = selectedObjIndex,
                                                     attach = {
-                                                        x = 0,--projectile.x,
-                                                        y = 0,--projectile.y,
-                                                        z = 0--projectile.z
+                                                        x = 0, -- projectile.x,
+                                                        y = 0, -- projectile.y,
+                                                        z = 0 -- projectile.z
                                                     },
                                                     fromPerspective = false
                                                 }
@@ -639,14 +640,16 @@ function OnTick()
                                                 }
                                             })
                                         local tagId = blam.object(get_object(objectIndex)).tagId
+                                        local tagPath = blam.getTag(tagId).path
                                         playerStore:dispatch(
                                             {
                                                 type = "CREATE_AND_ATTACH_OBJECT",
                                                 payload = {
-                                                    path = get_tag_path(tagId)
+                                                    path = tagPath
                                                 }
                                             })
                                     end
+                                    delete_object(objectIndex)
                                 end
                             end
                         end

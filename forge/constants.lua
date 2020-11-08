@@ -8,7 +8,7 @@ local core = require "forge.core"
 local constants = {}
 
 -- Constant core values
---constants.myGamesFolder = read_string(0x00647830)
+-- constants.myGamesFolder = read_string(0x00647830)
 constants.mouseInputAddress = 0x64C73C
 
 -- Constant Forge values
@@ -25,7 +25,6 @@ constants.maximumLoadingProgressBarSize = 422
 
 local fontTagPath, fontTagId = core.findTag("blender_pro_medium_12", tagClasses.font)
 constants.hudFontTagId = fontTagId
-
 
 local projectileTagPath, projectileTagId = core.findTag("forge", tagClasses.projectile)
 constants.forgeProjectile = projectileTagId
@@ -69,9 +68,7 @@ constants.requests = {
             {"objectId"}
         }
     },
-    flushForge = {
-        actionType = "FLUSH_FORGE"
-    },
+    flushForge = {actionType = "FLUSH_FORGE"},
     loadMapScreen = {
         actionType = "LOAD_MAP_SCREEN",
         requestType = "#lm",
@@ -131,9 +128,7 @@ constants.requests = {
             {"votesMap4"}
         }
     },
-    flushVotes = {
-        actionType = "FLUSH_VOTES"
-    }
+    flushVotes = {actionType = "FLUSH_VOTES"}
 }
 
 -- Biped tag definitions
@@ -148,14 +143,14 @@ constants.weaponHudInterfaces = {
 }
 
 constants.bitmaps = {
-    forgeLoadingProgress0 = core.findTag("forge_loading_progress0", tagClasses.bitmap),
-    forgeLoadingProgress1 = core.findTag("forge_loading_progress1", tagClasses.bitmap),
+    mapLoading0 = core.findTag("forge_loading_progress0", tagClasses.bitmap),
+    mapLoading1 = core.findTag("forge_loading_progress1", tagClasses.bitmap),
     hudWeapons = core.findTag("hud_msg_icons_full", tagClasses.bitmap)
 }
 
 -- UI widget definitions
 constants.uiWidgetDefinitions = {
-    --forgeMenu = "[shm]\\halo_4\\ui\\shell\\forge_menu\\forge_menu",
+    -- forgeMenu = "[shm]\\halo_4\\ui\\shell\\forge_menu\\forge_menu",
     forgeMenu = core.findTag("forge_menu", tagClasses.uiWidgetDefinition),
     voteMenu = "[shm]\\halo_4\\ui\\shell\\map_vote_menu\\map_vote_menu",
     objectsList = "[shm]\\halo_4\\ui\\shell\\forge_menu\\category_menu\\category_list",
@@ -171,8 +166,8 @@ constants.uiWidgetDefinitions = {
 -- Unicode string definitions
 constants.unicodeStrings = {
     budgetCount = "[shm]\\halo_4\\ui\\shell\\forge_menu\\strings\\budget_count",
-    forgeList = "[shm]\\halo_4\\ui\\shell\\forge_menu\\strings\\elements_text",
-    votingList = "[shm]\\halo_4\\ui\\shell\\map_vote_menu\\strings\\vote_maps_names",
+    forgeMenuElements = "[shm]\\halo_4\\ui\\shell\\forge_menu\\strings\\elements_text",
+    votingMapsList = "[shm]\\halo_4\\ui\\shell\\map_vote_menu\\strings\\vote_maps_names",
     votingCountList = "[shm]\\halo_4\\ui\\shell\\map_vote_menu\\strings\\vote_maps_count",
     pagination = "[shm]\\halo_4\\ui\\shell\\forge_menu\\strings\\pagination",
     mapsList = "[shm]\\halo_4\\ui\\shell\\pause_game\\strings\\maps_name",

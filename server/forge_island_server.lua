@@ -4,17 +4,22 @@
 -- Version 1.0
 -- Script server side for Forge Island
 ------------------------------------------------------------------------------
+
+-- Constants
 -- Declare SAPP API Version before importing libraries
 -- This is usefull for SAPP detection
 api_version = "1.12.0.0"
+-- Replace Chimera server type variable for compatibility purposes
+server_type = "sapp"
+-- Script name must be the base script name, without variants or extensions
+scriptName = "forge_island_server"--script_name:gsub(".lua", ""):gsub("_dev", ""):gsub("_beta", "")
+defaultConfigurationPath = "config"
+defaultMapsPath = "fmaps"
 
 print("Server is running " .. _VERSION)
 -- Bring compatibility with Lua 5.3
 require "compat53"
 print("Compatibility with Lua 5.3 has been loaded!")
-
--- Replace Chimera server type variable for compatibility purposes
-server_type = "sapp"
 
 -- Lua libraries
 local inspect = require "inspect"
@@ -24,7 +29,6 @@ local redux = require "lua-redux"
 -- Specific Halo Custom Edition libraries
 blam = require "nlua-blam"
 tagClasses = blam.tagClasses
-blam35 = blam.compat35()
 
 -- Forge modules
 local core = require "forge.core"
@@ -37,8 +41,9 @@ local forgeReducer = require "forge.reducers.forgeReducer"
 forgeMapName = nil
 -- Controls if Forging is available or not for the current game
 -- //FIXME For some reason Forge is not being blocked by this variable
-forgeAllowed = true
+local forgeAllowed = true
 
+-- // TODO This needs some refactoring, this configuration is useless on server side
 -- Forge default configuration
 configuration = {}
 
@@ -53,20 +58,27 @@ configuration.forge = {
 -- Default debug mode state
 configuration.forge.debugMode = true
 
+-- Internal functions and variables
 
--- Internal functions
+-- Internal functions and variables
+-- Buffer to store all the debug printing
+debugBuffer = ""
 
 --- Function to send debug messages to console output
 ---@param message string
----@param color string | "'category'" | "'warning'" | "'error'" | "'success'"
+---@param color string | category | warning | error | success
 function dprint(message, color)
+    if (type(message) ~= "string") then
+        message = inspect(message)
+    end
+    debugBuffer = debugBuffer .. message .. "\n"
     if (configuration.forge.debugMode) then
         if (color == "category") then
             console_out(message, 0.31, 0.631, 0.976)
         elseif (color == "warning") then
-            console_out(message)
+            console_out(message, blam.consoleColors.warning)
         elseif (color == "error") then
-            console_out(message)
+            console_out(message, blam.consoleColors.error)
         elseif (color == "success") then
             console_out(message, 0.235, 0.82, 0)
         else
@@ -77,7 +89,7 @@ end
 
 --- Print console text to every player in the server
 ---@param message string
-function gprint(message)
+function grprint(message)
     for i = 1, 16 do
         if (player_present(i)) then
             rprint(i, message)
@@ -107,9 +119,9 @@ function list_directory(folderPath)
     return files
 end]]
 
-local playersObjectIds = {}
-local bipedChangeRequest = {}
-local playerObjectTempPos = {}
+local playersObjIds = {}
+local playersBiped = {}
+local playersTemPos = {}
 
 function OnScriptLoad()
     register_callback(cb["EVENT_GAME_START"], "OnGameStart")
@@ -162,24 +174,22 @@ function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
     if (not player_present(playerIndex)) then
         return true
     else
-        local isBiped = false
         for index, tagPath in pairs(constants.bipeds) do
-            local bipedTagId = get_tag_id(tagClasses.biped, tagPath)
-            if (tagId == bipedTagId) then
-                isBiped = true
-                break
-            end
-        end
-        if (isBiped and forgeAllowed) then
-            -- Track objectId of every player
-            playersObjectIds[playerIndex] = objectId
-
-            -- There is a requsted biped by a player
-            if (bipedChangeRequest[playerIndex]) then
-                local requestedBipedName = bipedChangeRequest[playerIndex]
-                local requestedBipedTagPath = constants.bipeds[requestedBipedName]
-                local requestedBipedTagId = get_tag_id(tagClasses.biped, requestedBipedTagPath)
-                return true, requestedBipedTagId
+            local bipedTag = blam.getTag(tagPath, tagClasses.biped)
+            if (bipedTag and tagId == bipedTag.id) then
+                if (forgeAllowed) then
+                    -- Track objectId of every player
+                    playersObjIds[playerIndex] = objectId
+                    local requestedBiped = playersBiped[playerIndex]
+                    -- There is a requested biped by a player
+                    if (requestedBiped) then
+                        local requestedBipedTagPath = constants.bipeds[requestedBiped]
+                        local bipedTag = blam.getTag(requestedBipedTagPath, tagClasses.biped)
+                        if (bipedTag and bipedTag.id) then
+                            return true, bipedTag.id
+                        end
+                    end
+                end
             end
         end
     end
@@ -188,22 +198,20 @@ end
 
 -- Update object data after spawning
 function OnPlayerSpawn(playerIndex)
-    local player = blam35.biped(get_dynamic_player(playerIndex))
+    local player = blam.biped(get_dynamic_player(playerIndex))
     if (player) then
         -- Provide better movement to monitors
         if (core.isPlayerMonitor(playerIndex)) then
-            blam35.biped(get_dynamic_player(playerIndex), {
-                ignoreCollision = true
-            })
+            local tempObject = blam.biped(get_dynamic_player(playerIndex))
+            tempObject.ignoreCollision = true
         end
-        local playerPosition = playerObjectTempPos[playerIndex]
+        local playerPosition = playersTemPos[playerIndex]
         if (playerPosition) then
-            blam35.object(get_dynamic_player(playerIndex), {
-                x = playerPosition[1],
-                y = playerPosition[2],
-                z = playerPosition[3]
-            })
-            playerObjectTempPos[playerIndex] = nil
+            local tempObject = blam.object(get_dynamic_player(playerIndex))
+            tempObject.x = playerPosition[1]
+            tempObject.y = playerPosition[2]
+            tempObject.z = playerPosition[3]
+            playersTemPos[playerIndex] = nil
         end
     end
 end
@@ -232,7 +240,7 @@ function OnPlayerJoin(playerIndex)
         for objectId, forgeObject in pairs(forgeObjects) do
             local instanceObject = glue.update({}, forgeObject)
             instanceObject.requestType = constants.requests.spawnObject.requestType
-            instanceObject.tagId = blam35.object(get_object(objectId)).tagId
+            instanceObject.tagId = blam.object(get_object(objectId)).tagId
             local response = core.createRequest(instanceObject)
             core.sendRequest(response, playerIndex)
         end
@@ -258,29 +266,33 @@ function OnRcon(playerIndex, message, environment, rconPassword)
     end
     if (actionType) then
         return core.processRequest(actionType, request, currentRequest, playerIndex)
+        -- // TODO Move this into a server request
     elseif (incomingRequest == "#b") then
         if (forgeAllowed) then
             dprint("Trying to process a biped swap request...")
-            if (playersObjectIds[playerIndex]) then
-                local playerObjectId = playersObjectIds[playerIndex]
+            if (playersObjIds[playerIndex]) then
+                local playerObjectId = playersObjIds[playerIndex]
                 dprint("playerObjectId: " .. tostring(playerObjectId))
-                local player = blam35.object(get_object(playerObjectId))
+                local player = blam.object(get_object(playerObjectId))
                 if (player) then
-                    playerObjectTempPos[playerIndex] =
-                        {
-                            player.x,
-                            player.y,
-                            player.z
-                        }
-                    if (player.tagId == get_tag_id("bipd", constants.bipeds.monitor)) then
-                        bipedChangeRequest[playerIndex] = "spartan"
-                    else
-                        bipedChangeRequest[playerIndex] = "monitor"
+                    playersTemPos[playerIndex] = {
+                        player.x,
+                        player.y,
+                        player.z
+                    }
+                    local monitorTag = blam.getTag(constants.bipeds.monitor, tagClasses.biped)
+                    if (monitorTag) then
+                        if (player.tagId == monitorTag.id) then
+                            playersBiped[playerIndex] = "spartan"
+                        else
+                            playersBiped[playerIndex] = "monitor"
+                        end
+                        delete_object(playerObjectId)
                     end
-                    delete_object(playerObjectId)
                 end
             end
         end
+        return false
     elseif (incomingRequest == "fload") then
         local mapName = splitData[2]
         local gameType = splitData[3]
@@ -288,14 +300,16 @@ function OnRcon(playerIndex, message, environment, rconPassword)
             -- // FIXME This control block is not ok, is just a patch!
             if (true) then
                 forgeMapName = mapName
-                execute_script("sv_map forge_island " .. gameType)
+                execute_script("sv_map " .. map .. " " .. gameType)
             end
         else
             rprint(playerIndex, "You must specify a forge map name.")
         end
+        return false
     elseif (incomingRequest == "fmon") then
         forgeAllowed = not forgeAllowed
-        print(forgeAllowed)
+        grprint(tostring(forgeAllowed))
+        return false
     end
 end
 
