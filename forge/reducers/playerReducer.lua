@@ -38,6 +38,9 @@ function playerReducer(state, action)
         state.attachX = 0
         state.attachY = 0
         state.attachZ = 0
+        state.yaw = 0
+        state.pitch = 0
+        state.roll = 0
         if (state.attachedObjectId) then
             if (get_object(state.attachedObjectId)) then
                 delete_object(state.attachedObjectId)
