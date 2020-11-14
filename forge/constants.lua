@@ -9,13 +9,16 @@ local constants = {}
 
 -- Constant core values
 -- constants.myGamesFolder = read_string(0x00647830)
-constants.mouseInputAddress = 0x64C73C
+constants.mouseInputAddress = 0x64C73C 
+--constants.mouseInputAddress = read_dword(0x12CDFF50)
 
 -- Constant Forge values
 constants.requestSeparator = "&"
 constants.maximumBudget = 1024
 constants.minimumZSpawnPoint = -18.69
-constants.scenerysTagCollectionPath = core.findTag(map .. "_scenerys", tagClasses.tagCollection)
+constants.forgeSelectorOffset = 0.33
+constants.forgeSelectorVelocity = 15
+constants.scenerysTagCollectionPath = core.findTag(map:gsub("_dev", ""):gsub("_beta", "") .. "_objects", tagClasses.tagCollection)
 
 -- Constant UI widget definition values
 constants.maximumSidebarSize = 249
@@ -27,6 +30,7 @@ local fontTagPath, fontTagId = core.findTag("blender_pro_medium_12", tagClasses.
 constants.hudFontTagId = fontTagId
 
 local projectileTagPath, projectileTagId = core.findTag("forge", tagClasses.projectile)
+constants.forgeProjectilePath = projectileTagPath
 constants.forgeProjectile = projectileTagId
 
 -- Constant Forge requests data
@@ -139,7 +143,8 @@ constants.bipeds = {
 
 -- Weapon hud tag definitions
 constants.weaponHudInterfaces = {
-    forgeCrosshair = core.findTag("ui\\hud\\forge", tagClasses.weaponHudInterface)
+    forgeCrosshair = core.findTag("ui\\hud\\forge", tagClasses.weaponHudInterface),
+    forgeWeaponCrosshair = core.findTag("monitor\\forge", tagClasses.weaponHudInterface)
 }
 
 constants.bitmaps = {

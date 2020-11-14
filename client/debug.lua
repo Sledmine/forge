@@ -5,7 +5,7 @@
 ------------------------------------------------------------------------------
 clua_version = 2.042
 
-local blam = require "nlua-blam"
+local blam = require "blam"
 tagClasses = blam.tagClasses
 local glue = require "glue"
 local inspect = require "inspect"

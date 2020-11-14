@@ -53,7 +53,7 @@ function playerReducer(state, action)
             state.attachedObjectId = core.spawnObject("scen", action.payload.path, state.xOffset,
                                                       state.yOffset, state.zOffset)
         end
-        core.rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
+        --core.rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
         features.highlightObject(state.attachedObjectId, 1)
         return state
     elseif (action.type == "ATTACH_OBJECT") then
@@ -242,7 +242,6 @@ function playerReducer(state, action)
         -- state.currentAngle = 'yaw'
         return state
     elseif (action.type == "SAVE_POSITION") then
-        -- Do not forget to migrate this to dumpObject or getAll
         local tempObject = blam.biped(get_dynamic_player())
         state.position = {
             x = tempObject.x,

@@ -22,7 +22,8 @@ local function forgeReflector()
     end
 
     -- Forge Menu
-    local forgeMenuElementsStrings = blam.unicodeStringList(constants.unicodeStrings.forgeMenuElements)
+    local forgeMenuElementsStrings = blam.unicodeStringList(
+                                         constants.unicodeStrings.forgeMenuElements)
     forgeMenuElementsStrings.stringList = currentElements
     menu.update(constants.uiWidgetDefinitions.objectsList, #currentElements + 2)
 

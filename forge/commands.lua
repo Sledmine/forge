@@ -115,6 +115,15 @@ local function forgeCommands(command)
             return false
             -------------- DEBUGGING COMMANDS ONLY ---------------
         elseif (forgeCommand == "fmenu") then
+            votingStore:dispatch({
+                type = "APPEND_MAP_VOTE",
+                payload = {
+                    map = {
+                        name = "Forge",
+                        gametype = "Slayer"
+                    }
+                }
+            })
             features.openMenu("[shm]\\halo_4\\ui\\shell\\map_vote_menu\\map_vote_menu")
             return false
         elseif (forgeCommand == "fsize") then

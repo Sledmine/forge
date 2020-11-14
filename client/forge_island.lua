@@ -1,14 +1,14 @@
 ------------------------------------------------------------------------------
 -- Forge Island Client Script
 -- Sledmine
--- Version 1.0
+-- Version 1.1
 -- Client side script for Forge Island
 ------------------------------------------------------------------------------
 -- Constants
 clua_version = 2.042
 -- Script name must be the base script name, without variants or extensions
-scriptName = script_name:gsub(".lua", ""):gsub("_dev", ""):gsub("_beta", "")
 defaultConfigurationPath = "config"
+scriptName = script_name:gsub(".lua", ""):gsub("_dev", ""):gsub("_beta", "")
 defaultMapsPath = "fmaps"
 
 -- Lua libraries
@@ -18,7 +18,7 @@ local glue = require "glue"
 local ini = require "lua-ini"
 
 -- Halo Custom Edition libraries
-blam = require "nlua-blam"
+blam = require "blam"
 -- Bind legacy Chimera printing to lua-blam printing
 console_out = blam.consoleOutput
 -- Create global reference to tagClasses
@@ -65,6 +65,7 @@ debugBuffer = ""
 textRefreshCount = 0
 -- Object used to store mouse input across pre frame update
 mouse = {}
+local currentPermutation = 0
 loadingFrame = 0
 
 --- Function to send debug messages to console output
@@ -105,8 +106,7 @@ end
 function OnMapLoad()
     -- Dinamically load constants for the current Forge map
     constants = require "forge.constants"
-    constants.scenarioPath = "[shm]\\halo_4\\maps\\forge_island\\forge_island"
-    constants.scenerysTagCollectionPath = "[shm]\\halo_4\\maps\\forge_island\\forge_island_scenerys"
+    constants.scenarioPath = "[shm]\\halo_reach\\maps\\forge_world\\forge_world"
 
     -- Like Redux we have some kind of store baby!! the rest is pure magic..
     playerStore = redux.createStore(playerReducer)
@@ -173,20 +173,10 @@ function OnMapLoad()
     })
 
     votingStore:subscribe(votingReflector)
-
     -- Dispatch forge objects list update
     votingStore:dispatch({
-        type = "FLUSH_MAP_VOTES"
+       type = "FLUSH_MAP_VOTES"
     })
-    --[[votingStore:dispatch({
-        type = "APPEND_MAP_VOTE",
-        payload = {
-            map = {
-                name = "Forge",
-                gametype = "Slayer"
-            }
-        }
-    })]]
 
     local isForgeMap = core.isForgeMap(map)
     if (isForgeMap) then
@@ -286,85 +276,11 @@ function OnPreFrame()
                 })
             else
                 if (playerState.attachedObjectId) then
-                    local elementsList = blam.unicodeStringList(constants.unicodeStrings.forgeMenuElements)
+                    local elementsList = blam.unicodeStringList(
+                                             constants.unicodeStrings.forgeMenuElements)
                     local selectedElement = elementsList.stringList[menuPressedButton]
-                    local elementsFunctions = {
-                        ["rotate 5"] = function()
-                            local newRotationStep = 5
-                            playerStore:dispatch({
-                                type = "SET_ROTATION_STEP",
-                                payload = {
-                                    step = newRotationStep
-                                }
-                            })
-                            playerStore:dispatch({
-                                type = "STEP_ROTATION_DEGREE"
-                            })
-                            playerStore:dispatch({
-                                type = "ROTATE_OBJECT"
-                            })
-                        end,
-                        ["rotate 45"] = function()
-                            local newRotationStep = 45
-                            playerStore:dispatch({
-                                type = "SET_ROTATION_STEP",
-                                payload = {
-                                    step = newRotationStep
-                                }
-                            })
-                            playerStore:dispatch({
-                                type = "STEP_ROTATION_DEGREE"
-                            })
-                            playerStore:dispatch({
-                                type = "ROTATE_OBJECT"
-                            })
-                        end,
-                        ["rotate 90"] = function()
-                            local newRotationStep = 90
-                            playerStore:dispatch({
-                                type = "SET_ROTATION_STEP",
-                                payload = {
-                                    step = newRotationStep
-                                }
-                            })
-                            playerStore:dispatch({
-                                type = "STEP_ROTATION_DEGREE"
-                            })
-                            playerStore:dispatch({
-                                type = "ROTATE_OBJECT"
-                            })
-                        end,
-                        ["reset rotation"] = function()
-                            playerStore:dispatch({
-                                type = "RESET_ROTATION"
-                            })
-                            playerStore:dispatch({
-                                type = "ROTATE_OBJECT"
-                            })
-                        end,
-                        ["snap mode"] = function()
-                            configuration.forge.snapMode = not configuration.forge.snapMode
-                        end,
-                        ["blue"] = function()
-                            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-                            tempObject.redA = 0
-                            tempObject.greenA = 0
-                            tempObject.blueA = 1
-                        end,
-                        ["green"] = function()
-                            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-                            tempObject.redA = 0
-                            tempObject.greenA = 1
-                            tempObject.blueA = 0
-                        end,
-                        ["red"] = function()
-                            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-                            tempObject.redA = 1
-                            tempObject.greenA = 0
-                            tempObject.blueA = 0
-                        end
-                    }
                     if (selectedElement) then
+                        local elementsFunctions = features.getObjectMenuFunctions()
                         local buttonFunction = elementsFunctions[selectedElement]
                         if (buttonFunction) then
                             buttonFunction()
@@ -378,7 +294,8 @@ function OnPreFrame()
                         end
                     end
                 else
-                    local elementsList = blam.unicodeStringList(constants.unicodeStrings.forgeMenuElements)
+                    local elementsList = blam.unicodeStringList(
+                                             constants.unicodeStrings.forgeMenuElements)
                     local selectedSceneryName = elementsList.stringList[menuPressedButton]
                     local sceneryPath = forgeState.forgeMenu.objectsDatabase[selectedSceneryName]
                     if (sceneryPath) then
@@ -493,9 +410,24 @@ function OnTick()
                         {
                             root = {
                                 ["colors (beta)"] = {
-                                    blue = {},
+                                    white = {},
+                                    black = {},
                                     red = {},
-                                    green = {}
+                                    blue = {},
+                                    gray = {},
+                                    yellow = {},
+                                    green = {},
+                                    pink = {},
+                                    purple = {},
+                                    cyan = {},
+                                    cobalt = {},
+                                    orange = {},
+                                    teal = {},
+                                    sage = {},
+                                    brown = {},
+                                    tan = {},
+                                    maroon = {},
+                                    salmon = {}
                                 },
                                 ["reset rotation"] = {},
                                 ["rotate 5"] = {},
@@ -570,9 +502,11 @@ function OnTick()
 
                 -- Update object position
                 local tempObject = blam.object(get_object(playerAttachedObjectId))
-                tempObject.x = playerState.xOffset
-                tempObject.y = playerState.yOffset
-                tempObject.z = playerState.zOffset
+                if (tempObject) then
+                    tempObject.x = playerState.xOffset
+                    tempObject.y = playerState.yOffset
+                    tempObject.z = playerState.zOffset
+                end
 
                 -- Unhighlight objects
                 features.unhighlightAll()
@@ -591,68 +525,48 @@ function OnTick()
                 -- Set crosshair to not selected state
                 features.setCrosshairState(0)
 
-                -- Unhighlight objects
                 features.unhighlightAll()
 
-                local forgeObjects = eventsStore:getState().forgeObjects
-
-                -- Get if player is looking at some object
-                for objectNumber, objectIndex in pairs(blam.getObjects()) do
-                    local projectile = blam.object(get_object(objectIndex))
-                    local composedObject
-                    local selectedObjIndex
-                    if (projectile and projectile.type == objectClasses.projectile) then
-                        local projectileTag = blam.getTag(projectile.tagId)
-                        if (projectileTag and projectileTag.index == constants.forgeProjectile) then
-                            if (projectile.attachedObjectId) then
-                                local selectedObject =
-                                    blam.object(get_object(projectile.attachedObjectId))
-                                selectedObjIndex = core.getIndexById(projectile.attachedObjectId)
-                                composedObject = forgeObjects[selectedObjIndex]
-                                if (composedObject and selectedObject) then
-                                    -- Player is taking the object
-                                    if (player.weaponPTH and not player.jumpHold) then
-                                        -- Hightlight the object that the player is looking at
-                                        if (features.highlightObject) then
-                                            features.highlightObject(projectile.attachedObjectId, 1)
-                                        end
-                                        playerStore:dispatch(
-                                            {
-                                                type = "ATTACH_OBJECT",
-                                                payload = {
-                                                    objectId = selectedObjIndex,
-                                                    attach = {
-                                                        x = 0, -- projectile.x,
-                                                        y = 0, -- projectile.y,
-                                                        z = 0 -- projectile.z
-                                                    },
-                                                    fromPerspective = false
-                                                }
-                                            })
-                                    elseif (player.actionKey) then
-                                        playerStore:dispatch(
-                                            {
-                                                type = "SET_ROTATION_DEGREES",
-                                                payload = {
-                                                    yaw = composedObject.yaw,
-                                                    pitch = composedObject.pitch,
-                                                    roll = composedObject.roll
-                                                }
-                                            })
-                                        local tagId = blam.object(get_object(objectIndex)).tagId
-                                        local tagPath = blam.getTag(tagId).path
-                                        playerStore:dispatch(
-                                            {
-                                                type = "CREATE_AND_ATTACH_OBJECT",
-                                                payload = {
-                                                    path = tagPath
-                                                }
-                                            })
-                                    end
-                                    delete_object(objectIndex)
-                                end
-                            end
-                        end
+                local objectIndex, forgeObject, projectileIndex = core.getPlayerAimingObject()
+                if (objectIndex) then
+                    -- Player is taking the object
+                    -- Unhighlight objects
+                    features.highlightObject(objectIndex, 1)
+                    features.setCrosshairState(1)
+                    if (player.weaponPTH and not player.jumpHold) then
+                        -- Hightlight the object that the player is looking at
+                        playerStore:dispatch({
+                            type = "ATTACH_OBJECT",
+                            payload = {
+                                objectId = objectIndex,
+                                attach = {
+                                    x = 0, -- projectile.x
+                                    y = 0, -- projectile.y
+                                    z = 0 -- projectile.z
+                                },
+                                fromPerspective = true
+                            }
+                        })
+                    elseif (player.actionKey) then
+                        local tagId = blam.object(get_object(objectIndex)).tagId
+                        local tagPath = blam.getTag(tagId).path
+                        playerStore:dispatch({
+                            type = "CREATE_AND_ATTACH_OBJECT",
+                            payload = {
+                                path = tagPath
+                            }
+                        })
+                        playerStore:dispatch({
+                            type = "SET_ROTATION_DEGREES",
+                            payload = {
+                                yaw = forgeObject.yaw,
+                                pitch = forgeObject.pitch,
+                                roll = forgeObject.roll
+                            }
+                        })
+                        playerStore:dispatch({
+                            type = "ROTATE_OBJECT"
+                        })
                     end
                 end
                 --[[for objectId, composedObject in pairs(forgeObjects) do
@@ -741,6 +655,7 @@ function OnTick()
                     })
                     features.openMenu(constants.uiWidgetDefinitions.forgeMenu)
                 elseif (player.crouchHold) then
+                    features.setCrosshairState(-1)
                     features.swapBiped()
                     playerStore:dispatch({
                         type = "DETACH_OBJECT"
@@ -749,11 +664,18 @@ function OnTick()
             end
         else
             -- Convert into monitor
-            if (player.flashlightKey) then
+            if (player.flashlightKey and not player.crouchHold) then
                 features.swapBiped()
             elseif (player.actionKey and player.crouchHold and server_type == "local") then
                 core.spawnObject(tagClasses.biped, constants.bipeds.spartan, player.x, player.y,
-                                 player.z + 3)
+                                 player.z)
+            elseif (player.flashlightKey and player.crouchHold and server_type == "local") then
+                if (currentPermutation < 12) then
+                    currentPermutation = currentPermutation + 1
+                else
+                    currentPermutation = 0
+                end
+                player.regionPermutation2 = currentPermutation
             end
         end
     end

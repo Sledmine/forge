@@ -41,11 +41,9 @@ local function votingReducer(state, action)
         if (#state.votingMenu.mapsList < 4) then
             local map = action.payload.map
             glue.append(state.votingMenu.mapsList, map)
-            dprint(inspect(state.votingMenu.mapsList))
         end
         return state
     elseif (action.type == "SET_MAP_VOTES_LIST") then
-        dprint(inspect(action.payload.votesList))
         state.votingMenu.votesList = action.payload.votesList
         return state
     elseif (action.type == "FLUSH_MAP_VOTES") then

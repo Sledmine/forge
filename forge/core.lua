@@ -24,7 +24,6 @@ function core.loadForgeConfiguration(path)
     local configurationFilePath = path .. "\\" .. scriptName .. ".ini"
     local configurationFile = read_file(configurationFilePath)
     if (configurationFile) then
-        console_out(configurationFile)
         local loadedConfiguration = ini.decode(configurationFile)
         if (loadedConfiguration and #glue.keys(loadedConfiguration) > 0) then
             configuration = loadedConfiguration
@@ -43,7 +42,7 @@ function core.loadForgeMaps(path)
     end
     if (not directory_exists(path)) then
         create_directory(path)
-        --return false
+        -- return false
     end
     local mapsFiles = list_directory(path)
     local mapsList = {}
@@ -394,11 +393,14 @@ function core.sendMapData(forgeMap, playerIndex)
     end
 end
 
+-- //TODO Add unit testing for this function
 --- Return if the map is forge available
 ---@param mapName string
 ---@return boolean
 function core.isForgeMap(mapName)
-    return mapName == map .. "_dev" or mapName == map .. "_beta" or mapName == map
+    dprint(mapName)
+    dprint(map)
+    return (mapName == map .. "_dev" or mapName == map .. "_beta" or mapName == map) or (mapName == map:gsub("_dev", ""))
 end
 
 function core.loadForgeMap(mapName)
@@ -465,9 +467,9 @@ function core.loadForgeMap(mapName)
             return false
         end
     else
-        dprint("ERROR!! At trying to load '" .. mapName .. "' as a forge map...", "error")
+        dprint("Error at trying to load '" .. mapName .. "' as a forge map...", "error")
         if (server_type == "sapp") then
-            grprint("ERROR!! At trying to load '" .. mapName .. "' as a forge map...")
+            grprint("Error at trying to load '" .. mapName .. "' as a forge map...")
         end
     end
     return false
@@ -549,16 +551,18 @@ end
 ---@param y number
 ---@param z number
 ---@return number | nil objectId
-function core.spawnObject(type, tagPath, x, y, z)
-    dprint(" -> [ Object Spawning ]")
-    dprint("Type:", "category")
-    dprint(type)
-    dprint("Tag  Path:", "category")
-    dprint(tagPath)
-    dprint("Position:", "category")
-    local positionString = "%s: %s: %s:"
-    dprint(positionString:format(x, y, z))
-    dprint("Trying to spawn object...", "warning")
+function core.spawnObject(type, tagPath, x, y, z, noLog)
+    if (not noLog) then
+        dprint(" -> [ Object Spawning ]")
+        dprint("Type:", "category")
+        dprint(type)
+        dprint("Tag  Path:", "category")
+        dprint(tagPath)
+        dprint("Position:", "category")
+        local positionString = "%s: %s: %s:"
+        dprint(positionString:format(x, y, z))
+        dprint("Trying to spawn object...", "warning")
+    end
     -- Prevent objects from phantom spawning!
     local objectId = spawn_object(type, tagPath, x, y, z)
     if (objectId) then
@@ -569,7 +573,13 @@ function core.spawnObject(type, tagPath, x, y, z)
         end
         -- // FIXME Object inside bsp detection is not working in SAPP, use minimumZSpawnPoint instead!
         if (server_type == "sapp") then
-            print("Object is outside map: " .. tostring(tempObject.isOutSideMap))
+            -- SAPP for some reason can not detect if an object was spawned inside the map
+            -- So we need to create an instance of the object and add the flag to it
+            if (z < constants.minimumZSpawnPoint) then
+                tempObject = blam.dumpObject(tempObject)
+                tempObject.isOutSideMap = true
+            end
+            dprint("Object is outside map: " .. tostring(tempObject.isOutSideMap))
         end
         if (tempObject.isOutSideMap) then
             dprint("-> Object: " .. objectId .. " is INSIDE map!!!", "warning")
@@ -595,7 +605,7 @@ function core.spawnObject(type, tagPath, x, y, z)
             end
         end
 
-        dprint("-> Object: " .. objectId .. " succesfully spawned!!!", "success")
+        dprint("-> Object: " .. tagPath .. " succesfully spawned with id: " .. objectId, "success")
         return objectId
     end
     dprint("Error at trying to spawn object!!!!", "error")
@@ -775,7 +785,8 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
     dprint(desiredWeapon)
     -- Get equipment info from tag name
     if (desiredWeapon) then
-        local itcTagPath, itcTagIndex, itcTagId = core.findTag(desiredWeapon, tagClasses.itemCollection)
+        local itcTagPath, itcTagIndex, itcTagId = core.findTag(desiredWeapon,
+                                                               tagClasses.itemCollection)
         itemCollectionTagId = itcTagId
     end
     if (not itemCollectionTagId) then
@@ -970,6 +981,58 @@ function core.getIndexById(id)
         glue.append(bytes, hex:sub(i, i + 1))
     end
     return tonumber(table.concat(bytes, ""), 16)
+end
+
+local function createSelector()
+    local player = blam.biped(get_dynamic_player())
+    if (player) then
+        local selector = {
+            x = player.x + player.xVel + player.cameraX * constants.forgeSelectorOffset,
+            y = player.y + player.yVel + player.cameraY * constants.forgeSelectorOffset,
+            z = player.z + player.zVel + player.cameraZ * constants.forgeSelectorOffset
+        }
+        local projectileId = core.spawnObject(tagClasses.projectile, constants.forgeProjectilePath,
+                                              selector.x, selector.y, selector.z, true)
+        if (projectileId) then
+            local projectile = blam.projectile(get_object(projectileId))
+            if (projectile) then
+                projectile.xVel = player.cameraX * constants.forgeSelectorVelocity
+                projectile.yVel = player.cameraY * constants.forgeSelectorVelocity
+                projectile.zVel = player.cameraZ * constants.forgeSelectorVelocity
+                projectile.yaw = player.cameraX * constants.forgeSelectorVelocity
+                projectile.pitch = player.cameraY * constants.forgeSelectorVelocity
+                projectile.roll = player.cameraZ * constants.forgeSelectorVelocity
+            end
+        end
+    end
+end
+
+function core.getPlayerAimingObject()
+    local forgeObjects = eventsStore:getState().forgeObjects
+    for objectNumber, objectIndex in pairs(blam.getObjects()) do
+        local projectile = blam.projectile(get_object(objectIndex))
+        local composedObject
+        local selectedObjIndex
+        if (projectile and projectile.type == objectClasses.projectile) then
+            local projectileTag = blam.getTag(projectile.tagId)
+            if (projectileTag and projectileTag.index == constants.forgeProjectile) then
+                if (projectile.attachedToObjectId) then
+                    local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
+                    selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
+                    composedObject = forgeObjects[selectedObjIndex]
+                    if (composedObject and selectedObject) then
+                        -- Player is looking at this object
+                        delete_object(objectIndex)
+                        createSelector()
+                        return selectedObjIndex, composedObject, objectIndex
+                    end
+                end
+                delete_object(objectIndex)
+                return nil
+            end
+        end
+    end
+    createSelector()
 end
 
 return core

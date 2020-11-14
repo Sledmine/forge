@@ -4,7 +4,6 @@
 -- Version 1.0
 -- Script server side for Forge Island
 ------------------------------------------------------------------------------
-
 -- Constants
 -- Declare SAPP API Version before importing libraries
 -- This is usefull for SAPP detection
@@ -12,7 +11,7 @@ api_version = "1.12.0.0"
 -- Replace Chimera server type variable for compatibility purposes
 server_type = "sapp"
 -- Script name must be the base script name, without variants or extensions
-scriptName = "forge_island_server"--script_name:gsub(".lua", ""):gsub("_dev", ""):gsub("_beta", "")
+scriptName = "forge_island_server" -- script_name:gsub(".lua", ""):gsub("_dev", ""):gsub("_beta", "")
 defaultConfigurationPath = "config"
 defaultMapsPath = "fmaps"
 
@@ -27,7 +26,7 @@ local glue = require "glue"
 local redux = require "lua-redux"
 
 -- Specific Halo Custom Edition libraries
-blam = require "nlua-blam"
+blam = require "blam"
 tagClasses = blam.tagClasses
 
 -- Forge modules
@@ -42,6 +41,7 @@ forgeMapName = nil
 -- Controls if Forging is available or not for the current game
 -- //FIXME For some reason Forge is not being blocked by this variable
 local forgeAllowed = true
+mapVotingEnabled = true
 
 -- // TODO This needs some refactoring, this configuration is useless on server side
 -- Forge default configuration
@@ -154,7 +154,8 @@ function OnGameStart()
         "#v",
         "fload",
         "fsave",
-        "fmon"
+        "fmon",
+        "fbip"
     }
     for index, command in pairs(forgeCommands) do
         execute_command("lua_call rcon_bypass submitCommand " .. command)
@@ -167,6 +168,7 @@ function OnGameStart()
     eventsStore:dispatch({
         type = constants.requests.flushVotes.actionType
     })
+    mapVotingEnabled = true
 end
 
 -- Change biped tag id from players and store their object ids
@@ -216,15 +218,15 @@ function OnPlayerSpawn(playerIndex)
     end
 end
 
--- Sync all the required stuff to new players
+-- Sync data to incoming players
 function OnPlayerJoin(playerIndex)
     local forgeState = forgeStore:getState()
     local forgeObjects = eventsStore:getState().forgeObjects
     local countableForgeObjects = glue.keys(forgeObjects)
-    -- local objectCount = #countableForgeObjects
+    local objectCount = #countableForgeObjects
 
     -- There are objects to sync
-    if (forgeMapName) then -- and objectCount > 0) then
+    if (forgeMapName or objectCount > 0) then
         print("Sending map info")
         dprint("Sending sync responses for: " .. playerIndex)
 
@@ -267,49 +269,81 @@ function OnRcon(playerIndex, message, environment, rconPassword)
     if (actionType) then
         return core.processRequest(actionType, request, currentRequest, playerIndex)
         -- // TODO Move this into a server request
-    elseif (incomingRequest == "#b") then
-        if (forgeAllowed) then
-            dprint("Trying to process a biped swap request...")
-            if (playersObjIds[playerIndex]) then
-                local playerObjectId = playersObjIds[playerIndex]
-                dprint("playerObjectId: " .. tostring(playerObjectId))
-                local player = blam.object(get_object(playerObjectId))
-                if (player) then
-                    playersTemPos[playerIndex] = {
-                        player.x,
-                        player.y,
-                        player.z
-                    }
-                    local monitorTag = blam.getTag(constants.bipeds.monitor, tagClasses.biped)
-                    if (monitorTag) then
-                        if (player.tagId == monitorTag.id) then
-                            playersBiped[playerIndex] = "spartan"
-                        else
-                            playersBiped[playerIndex] = "monitor"
+    else
+        splitData = glue.string.split(request, " ")
+        for k, v in pairs(splitData) do
+            splitData[k] = v:gsub("\"", "")
+        end
+        local forgeCommand = splitData[1]
+        if (forgeCommand == "#b") then
+            if (forgeAllowed) then
+                dprint("Trying to process a biped swap request...")
+                if (playersObjIds[playerIndex]) then
+                    local playerObjectId = playersObjIds[playerIndex]
+                    dprint("playerObjectId: " .. tostring(playerObjectId))
+                    local player = blam.object(get_object(playerObjectId))
+                    if (player) then
+                        playersTemPos[playerIndex] =
+                            {
+                                player.x,
+                                player.y,
+                                player.z
+                            }
+                        local monitorTag = blam.getTag(constants.bipeds.monitor, tagClasses.biped)
+                        if (monitorTag) then
+                            if (player.tagId == monitorTag.id) then
+                                playersBiped[playerIndex] = "spartan"
+                            else
+                                playersBiped[playerIndex] = "monitor"
+                            end
+                            delete_object(playerObjectId)
                         end
-                        delete_object(playerObjectId)
                     end
                 end
             end
-        end
-        return false
-    elseif (incomingRequest == "fload") then
-        local mapName = splitData[2]
-        local gameType = splitData[3]
-        if (mapName) then
-            -- // FIXME This control block is not ok, is just a patch!
-            if (true) then
-                forgeMapName = mapName
-                execute_script("sv_map " .. map .. " " .. gameType)
+            return false
+        elseif (forgeCommand == "fload") then
+            local mapName = splitData[2]
+            local gameType = splitData[3]
+            if (mapName) then
+                if (read_file("fmaps\\" .. mapName .. ".fmap", "t")) then
+                    forgeMapName = mapName
+                    mapVotingEnabled = false
+                    execute_script("sv_map " .. map .. " " .. gameType)
+                else
+                    grprint("Could not read Forge map " .. mapName .. " file!")
+                end
+            else
+                rprint(playerIndex, "You must specify a forge map name.")
             end
-        else
-            rprint(playerIndex, "You must specify a forge map name.")
+            return false
+        elseif (forgeCommand == "fbip") then
+            local bipedName = splitData[2]
+            if (bipedName) then
+                for i = 1, 16 do
+                    playersBiped[playerIndex] = bipedName
+                    execute_script("sv_map_reset")
+                end
+            else
+                rprint(playerIndex, "You must specify a biped name.")
+            end
+            return false
+        elseif (forgeCommand == "fmon") then
+            forgeAllowed = not forgeAllowed
+            grprint(tostring(forgeAllowed))
+            return false
+        elseif (forgeCommand == "fspawn") then
+            -- Get scenario data
+            local scenario = blam.scenario(0)
+
+            -- Get scenario player spawn points
+            local mapSpawnPoints = scenario.spawnLocationList
+
+            mapSpawnPoints[1].type = 12
+
+            scenario.spawnLocationList = mapSpawnPoints
+            return false
         end
-        return false
-    elseif (incomingRequest == "fmon") then
-        forgeAllowed = not forgeAllowed
-        grprint(tostring(forgeAllowed))
-        return false
     end
 end
 
@@ -320,9 +354,11 @@ function OnGameEnd()
         eventsStore:dispatch({
             type = constants.requests.flushForge.actionType
         })
-        eventsStore:dispatch({
-            type = constants.requests.loadVoteMapScreen.actionType
-        })
+        if (mapVotingEnabled) then
+            eventsStore:dispatch({
+                type = constants.requests.loadVoteMapScreen.actionType
+            })
+        end
     end
 end
 

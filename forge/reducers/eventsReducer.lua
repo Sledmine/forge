@@ -277,8 +277,8 @@ local function eventsReducer(state, action)
         })
 
         -- Function wrapper for timer
-        forgeAnimation = features.animateForgeLoading
-        forgeAnimationTimer = set_timer(140, "forgeAnimation")
+        --forgeAnimation = features.animateForgeLoading
+        --forgeAnimationTimer = set_timer(140, "forgeAnimation")
 
         features.openMenu(constants.uiWidgetDefinitions.loadingMenu)
 

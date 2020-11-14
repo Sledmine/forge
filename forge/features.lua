@@ -4,6 +4,7 @@
 -- Set of different forge features
 ------------------------------------------------------------------------------
 local glue = require "glue"
+local color = require "color"
 
 local core = require "forge.core"
 
@@ -12,58 +13,68 @@ local features = {}
 --- Changes default crosshair values
 ---@param state number
 function features.setCrosshairState(state)
-    --[[ if (constants.weaponHudInterfaces.forgeCrosshair) then
-        local forgeCrosshairAddress = get_tag(tagClasses.weaponHudInterface,
-                                              constants.weaponHudInterfaces.forgeCrosshair)
+    local forgeDefaultInterface = blam.weaponHudInterface(constants.weaponHudInterfaces.forgeCrosshair)
+    local forgeWeaponInterface = blam.weaponHudInterface(constants.weaponHudInterfaces.forgeWeaponCrosshair)
+    if (forgeWeaponInterface) then
+        local newCrosshairs = forgeWeaponInterface.crosshairs
         if (state == 0) then
-            blam35.weaponHudInterface(forgeCrosshairAddress, {
+            newCrosshairs[1].overlays[1].sequenceIndex = 1
+            --[[blam35.weaponHudInterface(forgeCrosshairAddress, {
                 defaultRed = 64,
                 defaultGreen = 169,
                 defaultBlue = 255,
                 sequenceIndex = 1
-            })
+            })]]
         elseif (state == 1) then
-            blam35.weaponHudInterface(forgeCrosshairAddress, {
+            newCrosshairs[1].overlays[1].sequenceIndex = 2
+            --[[blam35.weaponHudInterface(forgeCrosshairAddress, {
                 defaultRed = 0,
                 defaultGreen = 255,
                 defaultBlue = 0,
                 sequenceIndex = 2
-            })
+            })]]
         elseif (state == 2) then
-            blam35.weaponHudInterface(forgeCrosshairAddress, {
+            newCrosshairs[1].overlays[1].sequenceIndex = 3
+            --[[blam35.weaponHudInterface(forgeCrosshairAddress, {
                 defaultRed = 0,
                 defaultGreen = 255,
                 defaultBlue = 0,
                 sequenceIndex = 3
-            })
+            })]]
         elseif (state == 3) then
-            blam35.weaponHudInterface(forgeCrosshairAddress, {
+            newCrosshairs[1].overlays[1].sequenceIndex = 4
+            --[[blam35.weaponHudInterface(forgeCrosshairAddress, {
                 defaultRed = 255,
                 defaultGreen = 0,
                 defaultBlue = 0,
                 sequenceIndex = 4
-            })
+            })]]
         else
-            blam35.weaponHudInterface(forgeCrosshairAddress, {
+            newCrosshairs[1].overlays[1].sequenceIndex = 0
+            --[[blam35.weaponHudInterface(forgeCrosshairAddress, {
                 defaultRed = 64,
                 defaultGreen = 169,
                 defaultBlue = 255,
                 sequenceIndex = 0
-            })
+            })]]
         end
-    end]]
+        forgeWeaponInterface.crosshairs = newCrosshairs
+        forgeDefaultInterface.crosshairs = newCrosshairs
+    end
 end
 
-function features.unhighlightAll()
+function features.unhighlightAll(exceptionId)
     local forgeObjects = eventsStore:getState().forgeObjects
-    for objectId, composedObject in pairs(forgeObjects) do
-        local tempObject = blam.object(get_object(objectId))
-        -- Object exists
-        if (tempObject) then
-            local tempTag = blam.getTag(tempObject.tagId)
-            if (tempTag and tempTag.class == tagClasses.scenery) then
-                local tempObject = blam.object(get_object(objectId))
-                tempObject.health = 0
+    for objectIndex, composedObject in pairs(forgeObjects) do
+        if (objectIndex ~= exceptionId) then
+            local tempObject = blam.object(get_object(objectIndex))
+            -- Object exists
+            if (tempObject) then
+                local tempTag = blam.getTag(tempObject.tagId)
+                if (tempTag and tempTag.class == tagClasses.scenery) then
+                    local tempObject = blam.object(get_object(objectIndex))
+                    tempObject.health = 0
+                end
             end
         end
     end
@@ -183,6 +194,142 @@ function features.getMouseInput()
         scroll = tonumber(read_char(constants.mouseInputAddress + 8))
     }
     return mouseInput
+end
+
+function features.setObjectColor(hexColor, object)
+    local r, g, b = color.hex(hexColor)
+    object.redA = r
+    object.greenA = g
+    object.blueA = b
+end
+
+function features.getObjectMenuFunctions()
+    local playerState = playerStore:getState()
+    local elementFunctions = {
+        ["rotate 5"] = function()
+            local newRotationStep = 5
+            playerStore:dispatch({
+                type = "SET_ROTATION_STEP",
+                payload = {step = newRotationStep}
+            })
+            playerStore:dispatch({
+                type = "STEP_ROTATION_DEGREE"
+            })
+            playerStore:dispatch({
+                type = "ROTATE_OBJECT"
+            })
+        end,
+        ["rotate 45"] = function()
+            local newRotationStep = 45
+            playerStore:dispatch({
+                type = "SET_ROTATION_STEP",
+                payload = {step = newRotationStep}
+            })
+            playerStore:dispatch({
+                type = "STEP_ROTATION_DEGREE"
+            })
+            playerStore:dispatch({
+                type = "ROTATE_OBJECT"
+            })
+        end,
+        ["rotate 90"] = function()
+            local newRotationStep = 90
+            playerStore:dispatch({
+                type = "SET_ROTATION_STEP",
+                payload = {step = newRotationStep}
+            })
+            playerStore:dispatch({
+                type = "STEP_ROTATION_DEGREE"
+            })
+            playerStore:dispatch({
+                type = "ROTATE_OBJECT"
+            })
+        end,
+        ["reset rotation"] = function()
+            playerStore:dispatch({
+                type = "RESET_ROTATION"
+            })
+            playerStore:dispatch({
+                type = "ROTATE_OBJECT"
+            })
+        end,
+        ["snap mode"] = function()
+            configuration.forge.snapMode = not configuration.forge.snapMode
+        end,
+        ["white"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#FFFFFF", tempObject)
+        end,
+        ["black"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#000000", tempObject)
+        end,
+        ["red"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#FE0000", tempObject)
+        end,
+        ["blue"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#0201E3", tempObject)
+        end,
+        ["gray"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#707E71", tempObject)
+        end,
+        ["yellow"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#FFFF01", tempObject)
+        end,
+        ["green"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#00FF01", tempObject)
+        end,
+        ["pink"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#FF56B9", tempObject)
+        end,
+        ["purple"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#AB10F4", tempObject)
+        end,
+        ["cyan"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#01FFFF", tempObject)
+        end,
+        ["cobalt"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#6493ED", tempObject)
+        end,
+        ["orange"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#FF7F00", tempObject)
+        end,
+        ["teal"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#1ECC91", tempObject)
+        end,
+        ["sage"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#006401", tempObject)
+        end,
+        ["brown"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#603814", tempObject)
+        end,
+        ["tan"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#C69C6C", tempObject)
+        end,
+        ["maroon"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#9D0B0E", tempObject)
+        end,
+        ["salmon"] = function()
+            local tempObject = blam.object(get_object(playerState.attachedObjectId))
+            features.setObjectColor("#F5999E", tempObject)
+        end
+    }
+    return elementFunctions
 end
 
 return features
