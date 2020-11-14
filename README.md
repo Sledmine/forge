@@ -36,7 +36,7 @@ Forge reimplements some concepts from modern app libraries like the store from [
 There is a simple built in system to associate players with a specific biped, used to swap between spartan and monitor, other bipeds can be added to this system to achieve different armors, biped based gametypes, etc.
 
 ### **Object Selection**
-Objects are highligted when a monitor is looking at them, object selection is calculated via frame base for every object, meaning that non collideable objects can be selected too.
+Objects are highligted when a monitor is looking at them, object selection is calculated via projectile interception, this is suposed to change in the future due to objects must have a collision to be selected.
 
 ### **Dynamic Forge Objects Addition**
 Every Forge object is basically a scenery, so every scenery in a specific tag collection is taken as a Forge object and stored in a scenery database to be used.
@@ -49,9 +49,9 @@ Every scenery stored in the scenery database is automatically split into categor
 - Spawn reflection system
 
 ## In progress
-- Better dynamic object selection, taking objects from distance or objects that are too big is really difficult by now.
-- Map voting menu, non admin required servers are a key piece in the Forge project, let players play what they want to play.
-- Automatic constant tag detection, there are some base tags and constant values needed by Forge to work, this must be done dynamically in client and server side.
+- ~~- Better dynamic object selection, taking objects from distance or objects that are too big is really difficult by now.~~
+- ~~- Map voting menu, non admin required servers are a key piece in the Forge project, let players play what they want to play.~~
+- Automatic constant tag detection, there are some base tags and constant values needed by Forge to work, this must be done dynamically in client and server side. **(ALMOST DONE)**
 
 ## To do
 - Forge permission system, deny Forge requests to the server for specific players.
