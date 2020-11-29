@@ -80,7 +80,7 @@ To bundle the project you need to be sure to have all the required dependencies 
 
 Then you can use [Mercury](https://github.com/Sledmine/Mercury) to bundle the project using the next command line on the project folder:
 ```cmd
-mercury bundle -c
+mercury bundle
 ```
 
 There are not release builds of [Mercury](https://github.com/Sledmine/Mercury) at the creation of this document, instead you can use [luacc](https://github.com/mihacooper). [Mercury](https://github.com/Sledmine/Mercury) is using the same implementation of [luacc](https://github.com/mihacooper) to bundle lua projects.
