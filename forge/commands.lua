@@ -186,7 +186,8 @@ local function forgeCommands(command)
         elseif (forgeCommand == "fdump") then
             write_file("player_dump.json", inspect(playerStore:getState()))
             write_file("forge_dump.json", inspect(forgeStore:getState()))
-            write_file("events_dump.json", inspect(eventsStore:getState().forgeObjects))
+            write_file("events_dump.json", inspect(eventsStore:getState()))
+            write_file("voting_dump.json", inspect(votingStore:getState()))
             write_file("debug_dump.txt", debugBuffer)
             return false
         elseif (forgeCommand == "fixmaps") then

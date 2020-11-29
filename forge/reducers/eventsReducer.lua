@@ -11,29 +11,9 @@ local function eventsReducer(state, action)
     if (not state) then
         state = {
             forgeObjects = {},
+            cachedResponses = {},
             playerVotes = {},
-            mapsList = {
-                {
-                    mapName = "Begotten",
-                    mapGametype = "Team Slayer",
-                    mapIndex = 1
-                },
-                {
-                    mapName = "Octagon",
-                    mapGametype = "Slayer",
-                    mapIndex = 1
-                },
-                {
-                    mapName = "Strong Enough",
-                    mapGametype = "CTF",
-                    mapIndex = 1
-                },
-                {
-                    mapName = "Castle",
-                    mapGametype = "CTF",
-                    mapIndex = 1
-                }
-            }
+            mapVotesGroup = 0
         }
     end
     if (action.type) then
@@ -46,20 +26,11 @@ local function eventsReducer(state, action)
 
         -- Create a new object rather than passing it as "reference"
         local forgeObject = glue.update({}, requestObject)
-
         local tagPath = blam.getTag(requestObject.tagId).path
 
-        -- Get all the existent objects in the game before object spawn
-        -- local objectsBeforeSpawn = blam.getObjects()
-
         -- Spawn object in the game
-        local objectId = core.spawnObject(
-            tagClasses.scenery,
-            tagPath,
-            forgeObject.x,
-            forgeObject.y,
-            forgeObject.z
-        )
+        local objectId = core.spawnObject(tagClasses.scenery, tagPath, forgeObject.x, forgeObject.y,
+                                          forgeObject.z)
         dprint("objectId: " .. objectId)
 
         local objectIndex = core.getIndexById(objectId)
@@ -71,24 +42,14 @@ local function eventsReducer(state, action)
 
         if (server_type == "sapp") then
             -- SAPP functions can't handle object indexes
-            -- // TODO This requires a big refactor to use ids instead of indexes on the client side
+            -- // TODO This requires some refactor and testing to use ids instead of indexes on the client side
             objectIndex = objectId
         end
-
-        -- Get all the existent objects in the game after object spawn
-        -- local objectsAfterSpawn = blam.getObjects()
-
-        -- Tricky way to get object local id, due to Chimera 581 API returning a whole id instead of id
-        -- Remember objectId is local to this game
-        --[[if (server_type ~= "sapp") then
-            local newObjects = glue.arraynv(objectsBeforeSpawn, objectsAfterSpawn)
-            localObjectId = newObjects[#newObjects]
-        end]]
 
         -- Set object rotation after creating the object
         core.rotateObject(objectIndex, forgeObject.yaw, forgeObject.pitch, forgeObject.roll)
 
-        -- We are the server so the remote id is the local objectId
+        -- We are the server so the remote id is the local objectId/objectIndex
         if (server_type == "local" or server_type == "sapp") then
             forgeObject.remoteId = objectIndex
         end
@@ -118,10 +79,11 @@ local function eventsReducer(state, action)
         -- As a server we have to send back a response/request to the players in the server
         if (server_type == "sapp") then
             local response = core.createRequest(forgeObject)
+            state.cachedResponses[objectIndex] = response
             core.sendRequest(response)
         end
 
-        -- Clean and prepare object
+        -- Clean and prepare object to store it
         forgeObject.tagId = nil
 
         -- Store the object in our state
@@ -186,6 +148,13 @@ local function eventsReducer(state, action)
                 print(inspect(requestObject))
                 local response = core.createRequest(requestObject)
                 core.sendRequest(response)
+
+                -- Create cache for incoming players
+                local instanceObject = glue.update({}, forgeObject)
+                instanceObject.requestType = constants.requests.spawnObject.requestType
+                instanceObject.tagId = blam.object(get_object(targetObjectId)).tagId
+                local response = core.createRequest(instanceObject)
+                state.cachedResponses[targetObjectId] = response
             end
         else
             dprint("ERROR!!! The required object with Id: " .. requestObject.objectId ..
@@ -227,6 +196,10 @@ local function eventsReducer(state, action)
             if (server_type == "sapp") then
                 local response = core.createRequest(requestObject)
                 core.sendRequest(response)
+
+                -- Delete cache of this object for incoming players
+                state.cachedResponses[targetObjectId] = nil
+
             end
         else
             dprint("ERROR!!! The required object with Id: " .. requestObject.objectId ..
@@ -277,13 +250,14 @@ local function eventsReducer(state, action)
         })
 
         -- Function wrapper for timer
-        --forgeAnimation = features.animateForgeLoading
-        --forgeAnimationTimer = set_timer(140, "forgeAnimation")
+        forgeAnimation = features.animateForgeLoading
+        forgeAnimationTimer = set_timer(250, "forgeAnimation")
 
         features.openMenu(constants.uiWidgetDefinitions.loadingMenu)
 
         return state
     elseif (action.type == constants.requests.flushForge.actionType) then
+        state.cachedResponses = {}
         state.forgeObjects = {}
         return state
     elseif (action.type == constants.requests.loadVoteMapScreen.actionType) then
@@ -299,8 +273,37 @@ local function eventsReducer(state, action)
                 requestType = constants.requests.loadVoteMapScreen.requestType
             }
             core.sendRequest(core.createRequest(loadMapVoteMenuRequest))
+
+            local forgeState = forgeStore:getState()
+            if (forgeState and forgeState.mapsMenu.mapsList) then
+                -- Remove all the current vote maps
+                votingStore:dispatch({
+                    type = "FLUSH_MAP_VOTES"
+                })
+                -- // TODO This needs testing and probably a better implementation
+                local mapGroups = glue.chunks(forgeState.mapsMenu.mapsList, 4)
+                state.mapVotesGroup = state.mapVotesGroup + 1
+                local currentGroup = mapGroups[state.mapVotesGroup]
+                if (not currentGroup) then
+                    state.mapVotesGroup = 1
+                    currentGroup = mapGroups[state.mapVotesGroup]
+                end
+                for index, mapName in pairs(currentGroup) do
+                    votingStore:dispatch({
+                        type = constants.requests.appendVoteMap.actionType,
+                        payload = {
+                            map = {
+                                name = mapName,
+                                gametype = "Slayer",
+                                mapIndex = 1
+                            }
+                        }
+                    })
+                end
+            end
             -- Send list of all available vote maps
-            for mapIndex, map in pairs(state.mapsList) do
+            local votingState = votingStore:getState()
+            for mapIndex, map in pairs(votingState.votingMenu.mapsList) do
                 local voteMapOpenRequest = {
                     requestType = constants.requests.appendVoteMap.requestType
                 }
@@ -313,11 +316,11 @@ local function eventsReducer(state, action)
         if (server_type ~= "sapp") then
             local params = action.payload.requestObject
             votingStore:dispatch({
-                type = "APPEND_MAP_VOTE",
+                type = constants.requests.appendVoteMap.actionType,
                 payload = {
                     map = {
-                        name = params.mapName,
-                        gametype = params.mapGametype
+                        name = params.name,
+                        gametype = params.gametype
                     }
                 }
             })
@@ -358,8 +361,9 @@ local function eventsReducer(state, action)
             if (not state.playerVotes[action.playerIndex]) then
                 local params = action.payload.requestObject
                 state.playerVotes[action.playerIndex] = params.mapVoted
-                local mapName = state.mapsList[params.mapVoted].mapName
-                local mapGametype = state.mapsList[params.mapVoted].mapGametype
+                local votingState = votingStore:getState()
+                local mapName = votingState.votingMenu.mapsList[params.mapVoted].name
+                local mapGametype = votingState.votingMenu.mapsList[params.mapVoted].gametype
 
                 grprint(playerName .. " voted for " .. mapName .. " " .. mapGametype)
                 eventsStore:dispatch({
@@ -367,7 +371,7 @@ local function eventsReducer(state, action)
                 })
                 local playerVotes = state.playerVotes
                 if (#playerVotes > 0) then
-                    local mapsList = state.mapsList
+                    local mapsList = votingState.votingMenu.mapsList
                     local mapVotes = {0, 0, 0, 0}
                     for playerIndex, mapIndex in pairs(playerVotes) do
                         mapVotes[mapIndex] = mapVotes[mapIndex] + 1
@@ -380,8 +384,8 @@ local function eventsReducer(state, action)
                             mostVotedMapIndex = mapIndex
                         end
                     end
-                    local winnerMap = mapsList[mostVotedMapIndex].mapName:gsub(" ", "_"):lower()
-                    local winnerGametype = mapsList[mostVotedMapIndex].mapGametype:gsub(" ", "_")
+                    local winnerMap = mapsList[mostVotedMapIndex].name:gsub(" ", "_"):lower()
+                    local winnerGametype = mapsList[mostVotedMapIndex].gametype:gsub(" ", "_")
                                                :lower()
                     print("Most voted map is: " .. winnerMap)
                     forgeMapName = winnerMap

@@ -9,7 +9,6 @@ local menu = require "forge.menu"
 local function forgeReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
-        ---@class forgeState
         state = {
             mapsMenu = {
                 mapsList = {},
@@ -108,7 +107,7 @@ local function forgeReducer(state, action)
     elseif (action.type == "UPDATE_FORGE_ELEMENTS_LIST") then
         state.forgeMenu = action.payload.forgeMenu
         local elementsList = glue.childsbyparent(state.forgeMenu.elementsList,
-                                               state.forgeMenu.desiredElement)
+                                                 state.forgeMenu.desiredElement)
         if (not elementsList) then
             state.forgeMenu.desiredElement = "root"
             elementsList = glue.childsbyparent(state.forgeMenu.elementsList,
@@ -131,7 +130,8 @@ local function forgeReducer(state, action)
             -- Create list pagination
             state.forgeMenu.currentElementsList = glue.chunks(keysList, 6)
         else
-            error("Element " .. tostring(state.forgeMenu.desiredElement) .. " does not exist in the state list")
+            error("Element " .. tostring(state.forgeMenu.desiredElement) ..
+                      " does not exist in the state list")
         end
         return state
     elseif (action.type == "INCREMENT_FORGE_MENU_PAGE") then
@@ -231,12 +231,13 @@ local function forgeReducer(state, action)
                                            expectedObjects
                     state.loadingMenu.currentBarSize = glue.floor(newBarSize)
                     if (state.loadingMenu.currentBarSize >= constants.maximumLoadingProgressBarSize) then
+                        if (forgeAnimationTimer) then
+                            dprint("Stoping forge animation timer!")
+                            stop_timer(forgeAnimationTimer)
+                        end
                         menu.close(constants.uiWidgetDefinitions.loadingMenu)
                     end
                 else
-                    if (forgeAnimationTimer) then
-                        stop_timer(forgeAnimationTimer)
-                    end
                     menu.close(constants.uiWidgetDefinitions.loadingMenu)
                 end
             end

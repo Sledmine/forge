@@ -33,6 +33,10 @@ local projectileTagPath, projectileTagId = core.findTag("forge", tagClasses.proj
 constants.forgeProjectilePath = projectileTagPath
 constants.forgeProjectile = projectileTagId
 
+local projectileTagPath, projectileTagId = core.findTag("slash", tagClasses.projectile)
+constants.swordProjectilePath = projectileTagPath
+constants.swordProjectile = projectileTagId
+
 -- Constant Forge requests data
 constants.requests = {
     spawnObject = {
@@ -104,12 +108,12 @@ constants.requests = {
         requestFormat = {{"requestType"}}
     },
     appendVoteMap = {
-        actionType = "APPEND_VOTE_MAP",
+        actionType = "APPEND_MAP_VOTE",
         requestType = "#av",
         requestFormat = {
             {"requestType"},
-            {"mapName"},
-            {"mapGametype"},
+            {"name"},
+            {"gametype"},
             {"mapIndex"}
         }
     },
@@ -178,5 +182,8 @@ constants.unicodeStrings = {
     mapsList = "[shm]\\halo_4\\ui\\shell\\pause_game\\strings\\maps_name",
     pauseGameStrings = "[shm]\\halo_4\\ui\\shell\\pause_game\\strings\\titles_and_headers"
 }
+
+local monitorTag = blam.getTag(constants.bipeds.monitor, tagClasses.biped)
+constants.monitorTagId = monitorTag.id
 
 return constants

@@ -175,7 +175,7 @@ function OnMapLoad()
     votingStore:subscribe(votingReflector)
     -- Dispatch forge objects list update
     votingStore:dispatch({
-       type = "FLUSH_MAP_VOTES"
+        type = "FLUSH_MAP_VOTES"
     })
 
     local isForgeMap = core.isForgeMap(map)
@@ -512,7 +512,7 @@ function OnTick()
                 features.unhighlightAll()
 
                 -- Update crosshair
-                features.setCrosshairState(2)
+                features.setCrosshairState(3)
 
                 -- This was disabled because now objects can be spawned everywhere!
                 -- if (playerState.zOffset < constants.minimumZSpawnPoint) then
@@ -523,7 +523,7 @@ function OnTick()
             else
 
                 -- Set crosshair to not selected state
-                features.setCrosshairState(0)
+                features.setCrosshairState(1)
 
                 features.unhighlightAll()
 
@@ -532,7 +532,7 @@ function OnTick()
                     -- Player is taking the object
                     -- Unhighlight objects
                     features.highlightObject(objectIndex, 1)
-                    features.setCrosshairState(1)
+                    features.setCrosshairState(2)
                     if (player.weaponPTH and not player.jumpHold) then
                         -- Hightlight the object that the player is looking at
                         playerStore:dispatch({
@@ -569,78 +569,6 @@ function OnTick()
                         })
                     end
                 end
-                --[[for objectId, composedObject in pairs(forgeObjects) do
-                    -- Object exists
-                    if (composedObject) then
-                        local tempObject = blam.object(get_object(objectId))
-                        local tagType = get_tag_type(tempObject.tagId)
-                        if (tagType == tagClasses.scenery) then
-                            local isPlayerLookingAt = core.playerIsLookingAt(objectId, 0.047, 0)
-                            if (isPlayerLookingAt) then
-
-                                -- Get and parse object name
-                                local objectPath =
-                                    glue.string.split(get_tag_path(tempObject.tagId), "\\")
-                                local objectName = objectPath[#objectPath - 1]
-                                local objectCategory = objectPath[#objectPath - 2]
-
-                                -- // FIXME This is totally not oook!
-                                if (objectCategory:sub(1, 1) == "_") then
-                                    objectCategory = objectCategory:sub(2, -1)
-                                end
-
-                                objectName = objectName:gsub("^%l", string.upper)
-                                objectCategory = objectCategory:gsub("^%l", string.upper)
-
-                                features.printHUD("NAME:  " .. objectName,
-                                                  "CATEGORY:  " .. objectCategory, 25)
-
-                                -- Update crosshair state
-                                if (features.setCrosshairState) then
-                                    features.setCrosshairState(1)
-                                end
-
-                                -- Hightlight the object that the player is looking at
-                                if (features.highlightObject) then
-                                    features.highlightObject(objectId, 1)
-                                end
-
-                                -- Player is taking the object
-                                if (player.weaponPTH and not player.jumpHold) then
-                                    -- Set lock distance to true, to take object from perspective
-                                    playerStore:dispatch(
-                                        {
-                                            type = "ATTACH_OBJECT",
-                                            payload = {
-                                                objectId = objectId,
-                                                fromPerspective = true
-                                            }
-                                        })
-                                elseif (player.actionKey) then
-                                    playerStore:dispatch(
-                                        {
-                                            type = "SET_ROTATION_DEGREES",
-                                            payload = {
-                                                yaw = composedObject.yaw,
-                                                pitch = composedObject.pitch,
-                                                roll = composedObject.roll
-                                            }
-                                        })
-                                    local tagId = blam.object(get_object(objectId)).tagId
-                                    playerStore:dispatch(
-                                        {
-                                            type = "CREATE_AND_ATTACH_OBJECT",
-                                            payload = {
-                                                path = get_tag_path(tagId)
-                                            }
-                                        })
-                                end
-                                -- Stop searching for other objects
-                                break
-                            end
-                        end
-                    end
-                end]]
                 -- Open Forge menu by pressing "Q"
                 if (player.flashlightKey) then
                     dprint("Opening Forge menu...")
@@ -654,8 +582,7 @@ function OnTick()
                         }
                     })
                     features.openMenu(constants.uiWidgetDefinitions.forgeMenu)
-                elseif (player.crouchHold) then
-                    features.setCrosshairState(-1)
+                elseif (player.crouchHold and server_type == "local") then
                     features.swapBiped()
                     playerStore:dispatch({
                         type = "DETACH_OBJECT"
@@ -663,6 +590,15 @@ function OnTick()
                 end
             end
         else
+            local projectile, projectileIndex = core.getPlayerAimingSword()
+            if (projectile) then
+                dprint(player.xVel .. " " .. player.yVel .. " " .. player.zVel)
+                player.xVel = player.cameraX * 0.2
+                player.yVel = player.cameraY * 0.2
+                player.zVel = player.cameraZ * 0.06
+                --delete_object(projectileIndex)
+            end
+            features.setCrosshairState(0)
             -- Convert into monitor
             if (player.flashlightKey and not player.crouchHold) then
                 features.swapBiped()
@@ -725,6 +661,8 @@ function OnMapUnload()
     -- Save configuration
     write_file(defaultConfigurationPath .. "\\forge_island.ini", ini.encode(configuration))
 end
+
+OnMapLoad()
 
 -- Prepare event callbacks
 set_callback("map load", "OnMapLoad")

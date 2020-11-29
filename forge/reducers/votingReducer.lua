@@ -13,20 +13,24 @@ local function votingReducer(state, action)
             votingMenu = {
                 mapsList = {
                     {
-                        name = "Forge",
-                        gametype = "Slayer"
+                        name = "Begotten",
+                        gametype = "Team Slayer",
+                        mapIndex = 1
                     },
                     {
-                        name = "Forge",
-                        gametype = "Slayer"
+                        name = "Octagon",
+                        gametype = "Slayer",
+                        mapIndex = 1
                     },
                     {
-                        name = "Forge",
-                        gametype = "Slayer"
+                        name = "Strong Enough",
+                        gametype = "CTF",
+                        mapIndex = 1
                     },
                     {
-                        name = "Forge",
-                        gametype = "Slayer"
+                        name = "Castle",
+                        gametype = "CTF",
+                        mapIndex = 1
                     }
                 },
                 votesList = {0, 0, 0, 0}
@@ -37,7 +41,7 @@ local function votingReducer(state, action)
         dprint("-> [Voting Store]")
         dprint("Action: " .. action.type, "category")
     end
-    if (action.type == "APPEND_MAP_VOTE") then
+    if (action.type == constants.requests.appendVoteMap.actionType) then
         if (#state.votingMenu.mapsList < 4) then
             local map = action.payload.map
             glue.append(state.votingMenu.mapsList, map)

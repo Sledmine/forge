@@ -400,7 +400,8 @@ end
 function core.isForgeMap(mapName)
     dprint(mapName)
     dprint(map)
-    return (mapName == map .. "_dev" or mapName == map .. "_beta" or mapName == map) or (mapName == map:gsub("_dev", ""))
+    return (mapName == map .. "_dev" or mapName == map .. "_beta" or mapName == map) or
+               (mapName == map:gsub("_dev", ""))
 end
 
 function core.loadForgeMap(mapName)
@@ -1033,6 +1034,26 @@ function core.getPlayerAimingObject()
         end
     end
     createSelector()
+end
+
+function core.getPlayerAimingSword()
+    for objectNumber, objectIndex in pairs(blam.getObjects()) do
+        local projectile = blam.projectile(get_object(objectIndex))
+        local selectedObjIndex
+        if (projectile and projectile.type == objectClasses.projectile) then
+            local projectileTag = blam.getTag(projectile.tagId)
+            if (projectileTag and projectileTag.index == constants.swordProjectile) then
+                if (projectile.attachedToObjectId) then
+                    local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
+                    if (selectedObject) then
+
+                        selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
+                        return projectile, objectIndex
+                    end
+                end
+            end
+        end
+    end
 end
 
 return core

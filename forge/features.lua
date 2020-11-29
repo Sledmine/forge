@@ -13,60 +13,26 @@ local features = {}
 --- Changes default crosshair values
 ---@param state number
 function features.setCrosshairState(state)
-    local forgeDefaultInterface = blam.weaponHudInterface(constants.weaponHudInterfaces.forgeCrosshair)
-    local forgeWeaponInterface = blam.weaponHudInterface(constants.weaponHudInterfaces.forgeWeaponCrosshair)
-    if (forgeWeaponInterface) then
+    local forgeDefaultInterface = blam.weaponHudInterface(
+                                      constants.weaponHudInterfaces.forgeCrosshair)
+    local forgeWeaponInterface = blam.weaponHudInterface(
+                                     constants.weaponHudInterfaces.forgeWeaponCrosshair)
+    if (forgeWeaponInterface and forgeDefaultInterface) then
         local newCrosshairs = forgeWeaponInterface.crosshairs
-        if (state == 0) then
-            newCrosshairs[1].overlays[1].sequenceIndex = 1
-            --[[blam35.weaponHudInterface(forgeCrosshairAddress, {
-                defaultRed = 64,
-                defaultGreen = 169,
-                defaultBlue = 255,
-                sequenceIndex = 1
-            })]]
-        elseif (state == 1) then
-            newCrosshairs[1].overlays[1].sequenceIndex = 2
-            --[[blam35.weaponHudInterface(forgeCrosshairAddress, {
-                defaultRed = 0,
-                defaultGreen = 255,
-                defaultBlue = 0,
-                sequenceIndex = 2
-            })]]
-        elseif (state == 2) then
-            newCrosshairs[1].overlays[1].sequenceIndex = 3
-            --[[blam35.weaponHudInterface(forgeCrosshairAddress, {
-                defaultRed = 0,
-                defaultGreen = 255,
-                defaultBlue = 0,
-                sequenceIndex = 3
-            })]]
-        elseif (state == 3) then
-            newCrosshairs[1].overlays[1].sequenceIndex = 4
-            --[[blam35.weaponHudInterface(forgeCrosshairAddress, {
-                defaultRed = 255,
-                defaultGreen = 0,
-                defaultBlue = 0,
-                sequenceIndex = 4
-            })]]
-        else
-            newCrosshairs[1].overlays[1].sequenceIndex = 0
-            --[[blam35.weaponHudInterface(forgeCrosshairAddress, {
-                defaultRed = 64,
-                defaultGreen = 169,
-                defaultBlue = 255,
-                sequenceIndex = 0
-            })]]
+        if (state and state < 5) then
+            if (newCrosshairs[1].overlays[1].sequenceIndex ~= state) then
+                -- // TODO Add ARGB colors to this
+                newCrosshairs[1].overlays[1].sequenceIndex = state
+                forgeWeaponInterface.crosshairs = newCrosshairs
+                forgeDefaultInterface.crosshairs = newCrosshairs
+            end
         end
-        forgeWeaponInterface.crosshairs = newCrosshairs
-        forgeDefaultInterface.crosshairs = newCrosshairs
     end
 end
 
-function features.unhighlightAll(exceptionId)
+function features.unhighlightAll()
     local forgeObjects = eventsStore:getState().forgeObjects
     for objectIndex, composedObject in pairs(forgeObjects) do
-        if (objectIndex ~= exceptionId) then
             local tempObject = blam.object(get_object(objectIndex))
             -- Object exists
             if (tempObject) then
@@ -76,7 +42,6 @@ function features.unhighlightAll(exceptionId)
                     tempObject.health = 0
                 end
             end
-        end
     end
 end
 
@@ -121,10 +86,10 @@ function features.swapBiped()
                 end
             end
         end
-    else
-        dprint("Requesting monitor biped...")
+        -- else
+        -- dprint("Requesting monitor biped...")
         -- // TODO Replace this with a send request function
-        execute_script("rcon forge #b")
+        -- execute_script("rcon forge #b")
     end
 end
 
@@ -175,8 +140,10 @@ function features.animateForgeLoading()
     local bitmapPath = constants.bitmaps.mapLoading0
     if (loadingFrame == 0) then
         bitmapPath = constants.bitmaps.mapLoading1
+        loadingFrame = 1
     else
         bitmapPath = constants.bitmaps.mapLoading0
+        loadingFrame = 0
     end
 
     -- Animate Forge loading image
