@@ -50,8 +50,6 @@ Every scenery stored in the scenery database is automatically split into categor
 - Spawn reflection system
 
 ## In progress
-- ~~- Better dynamic object selection, taking objects from distance or objects that are too big is really difficult by now.~~
-- ~~- Map voting menu, non admin required servers are a key piece in the Forge project, let players play what they want to play.~~
 - Automatic constant tag detection, there are some base tags and constant values needed by Forge to work, this must be done dynamically in client and server side. **(ALMOST DONE)**
 
 ## To do
