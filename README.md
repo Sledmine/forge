@@ -1,12 +1,13 @@
 
-
-<center>
-<img width="450px" src="assets/forge_logo.png"></img>
-<br>
-<h1>Halo Custom Edition - Forge</h1>
-Halo Custom Edition Forge system using Chimera and SAPP
-</center>
-<br>
+<html>
+    <p align="center">
+        <img width="450px" src="assets/forge_logo.png"/>
+    </p>
+    <h1 align="center">Halo Custom Edition - Forge</h1>
+    <p align="center">
+       Halo Custom Edition Forge system using Chimera and SAPP
+    </p>
+</html>
 
 # What is it?
 
