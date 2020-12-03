@@ -13,7 +13,9 @@ local ini = require "lua-ini"
 local maeth = require "maethrillian"
 
 -- Core module to export
-local core = {}
+local core = {
+    _VERSION = "1.0.0-beta-1"
+}
 
 --- Load Forge configuration from previous files
 ---@param path string Path of the configuration folder

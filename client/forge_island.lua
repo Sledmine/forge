@@ -528,13 +528,28 @@ function OnTick()
                 features.unhighlightAll()
 
                 local objectIndex, forgeObject, projectileIndex = core.getPlayerAimingObject()
+                -- Player is taking the object
                 if (objectIndex) then
-                    -- Player is taking the object
-                    -- Unhighlight objects
+                    -- Hightlight the object that the player is looking at
                     features.highlightObject(objectIndex, 1)
                     features.setCrosshairState(2)
+                    -- Get and parse object name
+                    local tagId = blam.object(get_object(objectIndex)).tagId
+                    local tagPath = blam.getTag(tagId).path
+                    local objectPath = glue.string.split(tagPath, "\\")
+                    local objectName = objectPath[#objectPath - 1]
+                    local objectCategory = objectPath[#objectPath - 2]
+
+                    if (objectCategory:sub(1, 1) == "_") then
+                        objectCategory = objectCategory:sub(2, -1)
+                    end
+
+                    objectName = objectName:gsub("^%l", string.upper)
+                    objectCategory = objectCategory:gsub("^%l", string.upper)
+
+                    features.printHUD("NAME:  " .. objectName, "CATEGORY:  " .. objectCategory, 25)
+                    
                     if (player.weaponPTH and not player.jumpHold) then
-                        -- Hightlight the object that the player is looking at
                         playerStore:dispatch({
                             type = "ATTACH_OBJECT",
                             payload = {
@@ -590,14 +605,13 @@ function OnTick()
                 end
             end
         else
-            local projectile, projectileIndex = core.getPlayerAimingSword()
+            --[[local projectile, projectileIndex = core.getPlayerAimingSword()
             if (projectile) then
                 dprint(player.xVel .. " " .. player.yVel .. " " .. player.zVel)
                 player.xVel = player.cameraX * 0.2
                 player.yVel = player.cameraY * 0.2
                 player.zVel = player.cameraZ * 0.06
-                --delete_object(projectileIndex)
-            end
+            end]]
             features.setCrosshairState(0)
             -- Convert into monitor
             if (player.flashlightKey and not player.crouchHold) then
@@ -662,7 +676,7 @@ function OnMapUnload()
     write_file(defaultConfigurationPath .. "\\forge_island.ini", ini.encode(configuration))
 end
 
-OnMapLoad()
+--OnMapLoad()
 
 -- Prepare event callbacks
 set_callback("map load", "OnMapLoad")

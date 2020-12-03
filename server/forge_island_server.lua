@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 -- Forge Island Server Script
 -- Sledmine
--- Version 1.0
+-- Version 1.0.0
 -- Script server side for Forge Island
 ------------------------------------------------------------------------------
 -- Constants

@@ -4,6 +4,7 @@
 -- Function reflector for store
 ------------------------------------------------------------------------------
 local menu = require "forge.menu"
+local core = require "forge.core"
 
 local inspect = require "inspect"
 
@@ -86,7 +87,13 @@ local function forgeReflector()
         forgeState.currentMap.name,
         forgeState.currentMap.author,
         forgeState.currentMap.version,
-        forgeState.currentMap.description
+        forgeState.currentMap.description,
+        "",
+        "",
+        "",
+        "",
+        "",
+        "v".. core._VERSION
     }
 end
 
