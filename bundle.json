@@ -27,5 +27,5 @@
         "forge.reflectors.votingReflector"
     ],
     "main":"client\\forge_island",
-    "output": "client\\bundled\\forge_island.lua"
+    "output": "D:\\Users\\Sledmine\\Documents\\My Games\\Halo CE\\chimera\\lua\\scripts\\map\\forge_island.lua"
 }
