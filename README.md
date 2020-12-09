@@ -94,13 +94,13 @@ This project is part of something just much bigger than creating a project with 
 
 - Forge is now an open source project for anything your mind can create, with Forge came different concepts and libraries to help you to expand Halo Custom Edition (just took us like 15 years to reach this point of content lol)
 
-# Special Thanks and Credits
+# Thanks and Credits
 
-- Visual Studio Code and EmmyLua for the fast workflow for Lua
+- Visual Studio Code and [EmmyLua](https://github.com/EmmyLua) for the fast workflow for Lua
 - Luaunit for the unit testing framework
 - Egor Skriptunoff for resolving the [old rotation function](https://stackoverflow.com/questions/30493826/yaw-pitch-and-roll-rotations-to-six-float-variables)
-- aLTis94 for providing help and examples of different implementation methods
-- Jerry for adding functionality to Chimera and keeping features updated
-- Sled for the entire Forge system designment, UI designment and reverse engineering game functions and stuff like tools and libraries
-- MrChromed for all shaders, models, sounds, fixes, and all what he does, I can't list all here
+- [aLTis94](https://github.com/aLTis94) for providing help and examples of different implementation methods
+- [JerryBrick](https://github.com/JerryBrick) for adding functionality to Chimera and keeping features updated
+- Sled for the entire Forge system desig, UI design, reverse engineering game functions, libraries, etc
+- MrChromed for doing shaders, models, sounds, tag fixes, etc
 - Solink for porting and optimizing models for Forge, such as the bsp and almost all the objects of the project
