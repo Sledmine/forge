@@ -548,7 +548,7 @@ function OnTick()
                     objectCategory = objectCategory:gsub("^%l", string.upper)
 
                     features.printHUD("NAME:  " .. objectName, "CATEGORY:  " .. objectCategory, 25)
-                    
+
                     if (player.weaponPTH and not player.jumpHold) then
                         playerStore:dispatch({
                             type = "ATTACH_OBJECT",
@@ -616,10 +616,12 @@ function OnTick()
             -- Convert into monitor
             if (player.flashlightKey and not player.crouchHold) then
                 features.swapBiped()
-            elseif (player.actionKey and player.crouchHold and server_type == "local") then
+            elseif (configuration.forge.debugMode and player.actionKey and player.crouchHold and
+                server_type == "local") then
                 core.spawnObject(tagClasses.biped, constants.bipeds.spartan, player.x, player.y,
                                  player.z)
-            elseif (player.flashlightKey and player.crouchHold and server_type == "local") then
+            elseif (configuration.forge.debugMode and player.flashlightKey and player.crouchHold and
+                server_type == "local") then
                 if (currentPermutation < 12) then
                     currentPermutation = currentPermutation + 1
                 else
@@ -676,7 +678,7 @@ function OnMapUnload()
     write_file(defaultConfigurationPath .. "\\forge_island.ini", ini.encode(configuration))
 end
 
---OnMapLoad()
+-- OnMapLoad()
 
 -- Prepare event callbacks
 set_callback("map load", "OnMapLoad")

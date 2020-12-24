@@ -13,9 +13,7 @@ local ini = require "lua-ini"
 local maeth = require "maethrillian"
 
 -- Core module to export
-local core = {
-    _VERSION = "1.0.0-beta-1"
-}
+local core = {_VERSION = "1.0.0-beta-2"}
 
 --- Load Forge configuration from previous files
 ---@param path string Path of the configuration folder
@@ -848,7 +846,7 @@ end
 
 --- Enable, update and disable vehicle spawns
 -- Must be called after adding scenery object to the store!!
--- @return true if found an available spawn
+---@return true if found an available spawn
 function core.updateVehicleSpawn(tagPath, forgeObject, disable)
     if (server_type == "dedicated") then
         return true

@@ -232,8 +232,9 @@ local function forgeReducer(state, action)
                     state.loadingMenu.currentBarSize = glue.floor(newBarSize)
                     if (state.loadingMenu.currentBarSize >= constants.maximumLoadingProgressBarSize) then
                         if (forgeAnimationTimer) then
-                            dprint("Stoping forge animation timer!")
                             stop_timer(forgeAnimationTimer)
+                            forgeAnimationTimer = nil
+                            dprint("Erasing forge animation timer!")
                         end
                         menu.close(constants.uiWidgetDefinitions.loadingMenu)
                     end

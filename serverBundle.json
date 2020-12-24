@@ -1,0 +1,33 @@
+{
+    "name": "Forge Island Server",
+    "target": "lua53",
+    "include": [
+    ],
+    "modules": [
+        "struct",
+        "glue",
+        "inspect",
+        "json",
+        "lua-redux",
+        "cbindings",
+        "maethrillian",
+        "blam",
+        "lua-ini",
+        "color",
+        "forge.commands",
+        "forge.constants",
+        "forge.core",
+        "forge.features",
+        "forge.hook",
+        "forge.menu",
+        "forge.triggers",
+        "forge.reducers.forgeReducer",
+        "forge.reducers.eventsReducer",
+        "forge.reducers.playerReducer",
+        "forge.reducers.votingReducer",
+        "forge.reflectors.forgeReflector",
+        "forge.reflectors.votingReflector"
+    ],
+    "main":"server\\forge_island_server",
+    "output": "D:\\Users\\Sledmine\\Documents\\My Games\\Halo CE\\sapp\\lua\\forge_island_server.lua"
+}
