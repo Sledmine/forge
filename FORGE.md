@@ -9,7 +9,7 @@ There is a list of commands you can use on Forge Island to perform some importan
 
 ### Map commands
 
-- `fname <mapName>`: Set a map name for your current Forge map.
+- `fname <mapName>`: Set a map name for your current Forge map, you can type a name with spaces as it will be saved with underscores instead of spaces and it will preserve spaces as the title name.
 - `fdesc <mapDescription>`: Set a description text for your Forge map.
 - `fsave`: This command saves the current Forge map into a **.fmap** file, it is usually located on **Documents\My Games\Halo CE\chimera\lua\data\map\forge_island\fmaps**
 
