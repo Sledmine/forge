@@ -7,8 +7,12 @@ clua_version = 2.042
 
 local blam = require "blam"
 tagClasses = blam.tagClasses
+objectClasses = blam.objectClasses
 local glue = require "glue"
 local inspect = require "inspect"
+
+local debugMode = false
+local fly = false
 
 function OnCommand(command)
     -- Split all the data in the command input
@@ -16,7 +20,7 @@ function OnCommand(command)
 
     -- Substract first console command
     local command = splitCommand[1]
-    if (command == "weaps") then
+    if (command == "dweaps") then
         for tagId = 0, blam.tagDataHeader.count - 1 do
             local tag = blam.getTag(tagId)
             if (tag.class == tagClasses.weapon) then
@@ -24,7 +28,7 @@ function OnCommand(command)
             end
         end
         return false
-    elseif (command == "weap") then
+    elseif (command == "dweap") then
         local weaponsList = {}
         for tagId = 0, blam.tagDataHeader.count - 1 do
             local tag = blam.getTag(tagId)
@@ -38,11 +42,118 @@ function OnCommand(command)
         local player = blam.biped(get_dynamic_player())
         local weaponResult = weaponsList[weaponName]
         if (weaponResult) then
-            local weaponObjectId = spawn_object(tagClasses.weapon, weaponResult, player.x,
-                                                    player.y, player.z + 0.5)
+            local weaponObjectId = spawn_object(tagClasses.weapon, weaponResult, player.x, player.y,
+                                                player.z + 0.5)
         end
+        return false
+    elseif (command == "dspeed") then
+        local newSpeed = tonumber(table.concat(glue.shift(splitCommand, 1, -1), " "))
+        if (newSpeed) then
+            local player = get_player()
+            write_float(player + 0x6C, newSpeed)
+        end
+        return false
+    elseif (command == "dobjects") then
+        local objectCount = 0
+        local tagName = table.concat(glue.shift(splitCommand, 1, -1), " ")
+        local objects = blam.getObjects()
+        for _, objectIndex in pairs(objects) do
+            local tempObject = blam.object(get_object(objectIndex))
+            if (tempObject) then
+                local tempTag = blam.getTag(tempObject.tagId)
+                if (tempTag and tempTag.path:find(tagName)) then
+                    objectCount = objectCount + 1
+                    console_out(objectIndex .. "    " .. tempTag.path .. "    " .. tempTag.class)
+                end
+            end
+        end
+        console_out(objectCount)
+        return false
+    elseif (command == "dspawn") then
+        local desiredTagClass = splitCommand[2]
+        local tagsList = {}
+        for tagId = 0, blam.tagDataHeader.count - 1 do
+            local tag = blam.getTag(tagId)
+            if (tag.class) then
+                local splitPath = glue.string.split(tag.path, "\\")
+                local tagName = splitPath[#splitPath]
+                tagsList[tagName] = tag.path
+            end
+        end
+        local desiredTagName = splitCommand[3]
+        local player = blam.biped(get_dynamic_player())
+        local tagResult = tagsList[desiredTagName]
+        if (tagResult) then
+            local weaponObjectId = spawn_object(desiredTagClass, tagResult, player.x, player.y,
+                                                player.z + 0.5)
+        end
+        return false
+    elseif (command == "plsnowhilex") then
+        debugMode = not debugMode
+        return false
+    elseif (command == "dinfo") then
+        local objectIndex = tonumber(table.concat(glue.shift(splitCommand, 1, -1), " "))
+        if (objectIndex) then
+            local tempObject = blam.object(get_object(objectIndex))
+            if (tempObject) then
+                console_out("Perm: " .. tempObject.regionPermutation1)
+                console_out("Health: " .. tempObject.health)
+                console_out("Shield: " .. tempObject.shield)
+            end
+        end
+        return false
+    elseif (command == "dtest") then
+        local objectIndex = tonumber(table.concat(glue.shift(splitCommand, 1, -1), " "))
+        if (objectIndex) then
+            local tempObject = blam.object(get_object(objectIndex))
+            if (tempObject) then
+                tempObject.regionPermutation1 = 5
+            end
+        end
+        return false
+    elseif (command == "dmenus") then
+        for tagId = 0, blam.tagDataHeader.count - 1 do
+            local tag = blam.getTag(tagId)
+            if (tag.class == tagClasses.uiWidgetDefinition) then
+                console_out(tag.path)
+            end
+        end
+        return false
+    elseif (command == "dmenu") then
+        local tagName = tonumber(table.concat(glue.shift(splitCommand, 1, -1), " "))
+        local tagsList = {}
+        for tagId = 0, blam.tagDataHeader.count - 1 do
+            local tag = blam.getTag(tagId)
+            if (tag.class == tagClasses.uiWidgetDefinition) then
+                local splitPath = glue.string.split(tag.path, "\\")
+                local uiTagName = splitPath[#splitPath]
+                tagsList[uiTagName] = tag.path
+            end
+        end
+        local desiredTagName = splitCommand[1]
+        local tagPath = tagsList[desiredTagName]
+        console_out(desiredTagName)
+        load_ui_widget(tagPath)
         return false
     end
 end
 
+
+function OnTick()
+    local player = blam.biped(get_dynamic_player())
+    if (player) then
+        if (debugMode and player.flashlightKey) then
+            fly = not fly
+        end
+        if (fly) then
+            player.ignoreCollision = true
+            player.zVel = player.zVel + 0.005
+        else
+            player.ignoreCollision = false
+        end
+    end
+    return false
+end
+
 set_callback("command", "OnCommand")
+set_callback("tick", "OnTick")

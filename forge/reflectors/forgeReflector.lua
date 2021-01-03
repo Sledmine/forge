@@ -5,6 +5,7 @@
 ------------------------------------------------------------------------------
 local menu = require "forge.menu"
 local core = require "forge.core"
+local forgeVersion = require "forge.version"
 
 local inspect = require "inspect"
 
@@ -93,7 +94,7 @@ local function forgeReflector()
         "",
         "",
         "",
-        "v".. core._VERSION
+        "v".. forgeVersion
     }
 end
 

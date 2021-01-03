@@ -26,7 +26,8 @@
         "forge.reducers.playerReducer",
         "forge.reducers.votingReducer",
         "forge.reflectors.forgeReflector",
-        "forge.reflectors.votingReflector"
+        "forge.reflectors.votingReflector",
+        "forge.version"
     ],
     "main":"server\\forge_island_server",
     "output": "D:\\Users\\Sledmine\\Documents\\My Games\\Halo CE\\sapp\\lua\\forge_island_server.lua"

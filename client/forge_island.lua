@@ -195,7 +195,7 @@ function OnMapLoad()
         set_callback("tick", "OnTick")
         set_callback("preframe", "OnPreFrame")
         set_callback("rcon message", "OnRcon")
-        set_callback("command", "onCommand")
+        set_callback("command", "OnCommand")
 
     else
         error("This is not a compatible Forge map!!!")
@@ -486,9 +486,12 @@ function OnTick()
                         type = "DESTROY_OBJECT"
                     })
                 elseif (player.weaponSTH) then
-                    playerStore:dispatch({
-                        type = "DETACH_OBJECT"
-                    })
+                    local tempObject = blam.object(get_object(playerAttachedObjectId))
+                    if (not core.isObjectOutOfBounds(tempObject)) then
+                        playerStore:dispatch({
+                            type = "DETACH_OBJECT"
+                        })
+                    end
                 end
 
                 if (not playerState.lockDistance) then
@@ -512,13 +515,11 @@ function OnTick()
                 features.unhighlightAll()
 
                 -- Update crosshair
-                features.setCrosshairState(3)
-
-                -- This was disabled because now objects can be spawned everywhere!
-                -- if (playerState.zOffset < constants.minimumZSpawnPoint) then
-                -- Set crosshair to not allowed
-                --    features.setCrosshairState(3)
-                -- end
+                if (core.isObjectOutOfBounds(tempObject)) then
+                    features.setCrosshairState(4)
+                else
+                    features.setCrosshairState(3)
+                end
 
             else
 
@@ -527,7 +528,7 @@ function OnTick()
 
                 features.unhighlightAll()
 
-                local objectIndex, forgeObject, projectileIndex = core.getPlayerAimingObject()
+                local objectIndex, forgeObject, projectile = core.getPlayerAimingObject()
                 -- Player is taking the object
                 if (objectIndex) then
                     -- Hightlight the object that the player is looking at
@@ -555,13 +556,16 @@ function OnTick()
                             payload = {
                                 objectId = objectIndex,
                                 attach = {
-                                    x = 0, -- projectile.x
-                                    y = 0, -- projectile.y
+                                    x = 0, -- projectile.x,
+                                    y = 0, -- projectile.y,
                                     z = 0 -- projectile.z
                                 },
                                 fromPerspective = true
                             }
                         })
+                        local tempObject = blam.object(get_object(objectIndex))
+                        dprint(tempObject.x .. " " .. tempObject.y .. " " .. tempObject.z)
+                        dprint(projectile.x .. " " .. projectile.y .. " " .. projectile.z)
                     elseif (player.actionKey) then
                         local tagId = blam.object(get_object(objectIndex)).tagId
                         local tagPath = blam.getTag(tagId).path
@@ -666,7 +670,7 @@ function OnRcon(message)
     return true
 end
 
-function onCommand(command)
+function OnCommand(command)
     return commands(command)
 end
 

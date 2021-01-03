@@ -31,11 +31,11 @@ constants.hudFontTagId = fontTagId
 
 local projectileTagPath, projectileTagId = core.findTag("forge", tagClasses.projectile)
 constants.forgeProjectilePath = projectileTagPath
-constants.forgeProjectile = projectileTagId
+constants.forgeProjectileTagId = projectileTagId
 
-local projectileTagPath, projectileTagId = core.findTag("slash", tagClasses.projectile)
+--[[local swordProjectilePath, swordProjectileTagId = core.findTag("slash", tagClasses.projectile)
 constants.swordProjectilePath = projectileTagPath
-constants.swordProjectile = projectileTagId
+constants.swordProjectileTagId = projectileTagId]]
 
 -- Constant Forge requests data
 constants.requests = {
@@ -162,6 +162,7 @@ constants.uiWidgetDefinitions = {
     -- forgeMenu = "[shm]\\halo_4\\ui\\shell\\forge_menu\\forge_menu",
     forgeMenu = core.findTag("forge_menu", tagClasses.uiWidgetDefinition),
     voteMenu = "[shm]\\halo_4\\ui\\shell\\map_vote_menu\\map_vote_menu",
+    voteMenuList = "[shm]\\halo_4\\ui\\shell\\map_vote_menu\\map_vote_menu_list\\vote_menu_list",
     objectsList = "[shm]\\halo_4\\ui\\shell\\forge_menu\\category_menu\\category_list",
     amountBar = "[shm]\\halo_4\\ui\\shell\\forge_menu\\budget_dialog\\budget_progress_bar",
     loadingMenu = "[shm]\\halo_4\\ui\\shell\\loading_menu\\loading_menu",

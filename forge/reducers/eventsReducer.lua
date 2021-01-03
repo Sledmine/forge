@@ -6,6 +6,17 @@ local inspect = require "inspect"
 local core = require "forge.core"
 local features = require "forge.features"
 
+-- // TODO Test this class structure
+---@class forgeObject
+---@field x number
+---@field y number
+---@field z number
+---@field yaw number
+---@field pitch number
+---@field roll number
+---@field remoteId number
+---@field reflectionId number
+
 local function eventsReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then

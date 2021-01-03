@@ -24,7 +24,8 @@
         "forge.reducers.playerReducer",
         "forge.reducers.votingReducer",
         "forge.reflectors.forgeReflector",
-        "forge.reflectors.votingReflector"
+        "forge.reflectors.votingReflector",
+        "forge.version"
     ],
     "main":"client\\forge_island",
     "output": "D:\\Users\\Sledmine\\Documents\\My Games\\Halo CE\\chimera\\lua\\scripts\\map\\forge_island.lua"

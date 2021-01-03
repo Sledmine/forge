@@ -9,11 +9,10 @@ local glue = require "glue"
 local json = require "json"
 local ini = require "lua-ini"
 
+local core = {}
+
 -- Halo libraries
 local maeth = require "maethrillian"
-
--- Core module to export
-local core = {_VERSION = "1.0.0-beta-2"}
 
 --- Load Forge configuration from previous files
 ---@param path string Path of the configuration folder
@@ -52,7 +51,9 @@ function core.loadForgeMaps(path)
             local extFile = splitFileName[#splitFileName]
             -- Only load files with extension .fmap
             if (extFile == "fmap") then
-                local mapName = string.gsub(file, ".fmap", ""):gsub("_", " ")
+                --local mapName = string.gsub(file, ".fmap", ""):gsub("_", " ")
+                
+                local mapName = string.gsub(" " .. file:gsub(".fmap", ""):gsub("_", " "), "%W%l", string.upper):sub(2)
                 glue.append(mapsList, mapName)
             end
         end
@@ -113,8 +114,7 @@ function core.playerIsAimingAt(target, sensitivity, zOffset)
 end
 
 -- Old internal functions for rotation calculation
---[[
-local function rotate(x, y, alpha)
+local function deprecatedRotate(x, y, alpha)
     local cosAlpha = math.cos(math.rad(alpha))
     local sinAlpha = math.sin(math.rad(alpha))
     local t1 = x[1] * sinAlpha
@@ -128,20 +128,19 @@ local function rotate(x, y, alpha)
     y[3] = y[3] * cosAlpha - t3
 end
 
-function core.eulerToMatrix(yaw, pitch, roll)
+function core.deprecatedEulerToRotation(yaw, pitch, roll)
     local F = {1, 0, 0}
     local L = {0, 1, 0}
     local T = {0, 0, 1}
-    rotate(F, L, yaw)
-    rotate(F, T, pitch)
-    rotate(T, L, roll)
+    deprecatedRotate(F, L, yaw)
+    deprecatedRotate(F, T, pitch)
+    deprecatedRotate(T, L, roll)
     return {F[1], -L[1], -T[1], -F[3], L[3], T[3]}, {
         F,
         L,
         T,
     }
 end
-]]
 
 --- Covert euler into game rotation array, optional rotation matrix
 ---@param yaw number
@@ -195,6 +194,10 @@ function core.rotateObject(objectId, yaw, pitch, roll)
     tempObject.v2X = rotation[4]
     tempObject.v2Y = rotation[5]
     tempObject.v2Z = rotation[6]
+end
+
+function core.rotatePoint(x, y, z)
+    
 end
 
 --- Check if current player is using a monitor biped
@@ -523,7 +526,7 @@ function core.saveForgeMap()
     local fmapContent = json.encode(forgeMap)
 
     -- Fix map name
-    mapName = string.gsub(mapName, " ", "_")
+    mapName = string.gsub(mapName, " ", "_"):lower()
 
     local forgeMapPath = defaultMapsPath .. "\\" .. mapName .. ".fmap"
 
@@ -580,10 +583,14 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
                 tempObject = blam.dumpObject(tempObject)
                 tempObject.isOutSideMap = true
             end
-            dprint("Object is outside map: " .. tostring(tempObject.isOutSideMap))
+            if (not noLog) then
+                dprint("Object is outside map: " .. tostring(tempObject.isOutSideMap))
+            end
         end
         if (tempObject.isOutSideMap) then
-            dprint("-> Object: " .. objectId .. " is INSIDE map!!!", "warning")
+            if (not noLog) then
+                dprint("-> Object: " .. objectId .. " is INSIDE map!!!", "warning")
+            end
 
             -- Erase object to spawn it later in a safe place
             delete_object(objectId)
@@ -606,7 +613,9 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
             end
         end
 
-        dprint("-> Object: " .. tagPath .. " succesfully spawned with id: " .. objectId, "success")
+        if (not noLog) then
+            dprint("-> Object: " .. tagPath .. " succesfully spawned with id: " .. objectId, "success")
+        end
         return objectId
     end
     dprint("Error at trying to spawn object!!!!", "error")
@@ -1008,32 +1017,51 @@ local function createSelector()
     end
 end
 
+--- Return data about object that the player is looking at
+---@return number, forgeObject, projectile
 function core.getPlayerAimingObject()
     local forgeObjects = eventsStore:getState().forgeObjects
     for objectNumber, objectIndex in pairs(blam.getObjects()) do
         local projectile = blam.projectile(get_object(objectIndex))
-        local composedObject
+        local forgeObject
         local selectedObjIndex
         if (projectile and projectile.type == objectClasses.projectile) then
             local projectileTag = blam.getTag(projectile.tagId)
-            if (projectileTag and projectileTag.index == constants.forgeProjectile) then
+            if (projectileTag and projectileTag.index == constants.forgeProjectileTagId) then
                 if (projectile.attachedToObjectId) then
                     local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
                     selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
-                    composedObject = forgeObjects[selectedObjIndex]
-                    if (composedObject and selectedObject) then
+                    forgeObject = forgeObjects[selectedObjIndex]
+                    if (forgeObject and selectedObject) then
                         -- Player is looking at this object
                         delete_object(objectIndex)
                         createSelector()
-                        return selectedObjIndex, composedObject, objectIndex
+                        return selectedObjIndex, forgeObject, blam.dumpObject(projectile) or nil
                     end
                 end
                 delete_object(objectIndex)
-                return nil
+                return nil, nil, blam.dumpObject(projectile) or nil
             end
         end
     end
     createSelector()
+end
+
+--- Return data about object that the player is looking at
+---@param object blamObject
+---@return boolean
+function core.isObjectOutOfBounds(object)
+    if (object) then
+        local projectileId = spawn_object(tagClasses.projectile, constants.forgeProjectilePath, object.x, object.y, object.z)
+        if (projectileId) then
+            local blamObject = blam.object(get_object(projectileId))
+            if (blamObject) then
+                local isObjectOutOfBounds = blamObject.isOutSideMap
+                delete_object(projectileId)
+                return isObjectOutOfBounds
+            end
+        end
+    end
 end
 
 function core.getPlayerAimingSword()
@@ -1042,7 +1070,7 @@ function core.getPlayerAimingSword()
         local selectedObjIndex
         if (projectile and projectile.type == objectClasses.projectile) then
             local projectileTag = blam.getTag(projectile.tagId)
-            if (projectileTag and projectileTag.index == constants.swordProjectile) then
+            if (projectileTag and projectileTag.index == constants.swordProjectileTagId) then
                 if (projectile.attachedToObjectId) then
                     local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
                     if (selectedObject) then

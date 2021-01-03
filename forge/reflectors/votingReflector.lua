@@ -33,6 +33,10 @@ local function votingReflector()
         glue.append(currentMapsList, map.name .. "\r" .. map.gametype)
     end
 
+    -- Get maps vote menu buttons lists
+    local votingMapsMenuList = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.voteMenuList)
+    votingMapsMenuList.childWidgetsCount = #glue.keys(currentMapsList)
+
     -- Get maps vote string list
     local votingMapsStrings = blam.unicodeStringList(constants.unicodeStrings.votingMapsList)
     votingMapsStrings.stringList = currentMapsList
