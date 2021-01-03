@@ -5,9 +5,10 @@
 ### Code changes:
 - Fixed a problem with the animation timer for the loading Forge objects menu
 - Added a new crosshair state that prevents you to place objects in a prohibited area
-- Fixed a problem with the count of buttons displayed in the map voting menu
+- Fixed a problem with the count of buttons displayed in the map voti ng menu
 - Added a debug message to print how many objects exist on the Forge objects database
 - Added a new format to save the name of all the Forge maps using a standard convention with underscores
+- Fixed a bug with a debug feature that allowed to spawn test bipeds
 
 ### Map changes:
 - New shield effects (plasma shader / shields gone / shields recharging)
@@ -80,6 +81,5 @@
   - UNSC Crate Large
 
 ### Known issues
-- In local/LAN mode a test biped can be spawned by pressing Ctrl + E
 - Monitor crosshair does not change colors and it can even dissapear sometimes
 - Forge objects menu options are reset when opening object properties
