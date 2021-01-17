@@ -2,12 +2,21 @@
 -- Forge Core
 -- Sledmine
 -- Core functionality for Forge
-------------------------------------------------------------------------------
+---------------------------------------------------------------------------
 -- Lua libraries
 local inspect = require "inspect"
 local glue = require "glue"
 local json = require "json"
 local ini = require "lua-ini"
+
+-- Optimizations
+local sin = math.sin
+local cos = math.cos
+local rad = math.rad
+local sqrt = math.sqrt
+local abs = math.abs
+local floor = math.floor
+local concat = table.concat
 
 local core = {}
 
@@ -51,9 +60,10 @@ function core.loadForgeMaps(path)
             local extFile = splitFileName[#splitFileName]
             -- Only load files with extension .fmap
             if (extFile == "fmap") then
-                --local mapName = string.gsub(file, ".fmap", ""):gsub("_", " ")
-                
-                local mapName = string.gsub(" " .. file:gsub(".fmap", ""):gsub("_", " "), "%W%l", string.upper):sub(2)
+                -- local mapName = string.gsub(file, ".fmap", ""):gsub("_", " ")
+
+                local mapName = string.gsub(" " .. file:gsub(".fmap", ""):gsub("_", " "), "%W%l",
+                                            string.upper):sub(2)
                 glue.append(mapsList, mapName)
             end
         end
@@ -86,21 +96,21 @@ function core.playerIsAimingAt(target, sensitivity, zOffset)
         -- Target location 2
         local targetX, targetY, targetZ = read_vector3d(targetObject + 0x5C)
         -- 3D distance
-        local distance = math.sqrt((targetX - playerX) ^ 2 + (targetY - playerY) ^ 2 +
-                                       (targetZ - playerZ) ^ 2)
+        local distance = sqrt((targetX - playerX) ^ 2 + (targetY - playerY) ^ 2 +
+                                  (targetZ - playerZ) ^ 2)
         local localX = targetX - playerX
         local localY = targetY - playerY
         local localZ = (targetZ + zOffset) - playerZ
         local pointX = 1 / distance * localX
         local pointY = 1 / distance * localY
         local pointZ = 1 / distance * localZ
-        local xDiff = math.abs(cameraX - pointX)
-        local yDiff = math.abs(cameraY - pointY)
-        local zDiff = math.abs(cameraZ - pointZ)
+        local xDiff = abs(cameraX - pointX)
+        local yDiff = abs(cameraY - pointY)
+        local zDiff = abs(cameraZ - pointZ)
         local average = (xDiff + yDiff + zDiff) / 3
         local scaler = 0
         if distance > 10 then
-            scaler = math.floor(distance) / 1000
+            scaler = floor(distance) / 1000
         end
         local autoAim = sensitivity - scaler
         if autoAim < baselineSensitivity then
@@ -115,8 +125,8 @@ end
 
 -- Old internal functions for rotation calculation
 local function deprecatedRotate(x, y, alpha)
-    local cosAlpha = math.cos(math.rad(alpha))
-    local sinAlpha = math.sin(math.rad(alpha))
+    local cosAlpha = cos(rad(alpha))
+    local sinAlpha = sin(rad(alpha))
     local t1 = x[1] * sinAlpha
     local t2 = x[2] * sinAlpha
     local t3 = x[3] * sinAlpha
@@ -138,7 +148,7 @@ function core.deprecatedEulerToRotation(yaw, pitch, roll)
     return {F[1], -L[1], -T[1], -F[3], L[3], T[3]}, {
         F,
         L,
-        T,
+        T
     }
 end
 
@@ -154,12 +164,12 @@ function core.eulerToRotation(yaw, pitch, roll)
         {0, 0, 1}
     }
 
-    local cosRoll = math.cos(math.rad(roll))
-    local sinRoll = math.sin(math.rad(roll))
-    local cosYaw = math.cos(math.rad(yaw))
-    local sinYaw = math.sin(math.rad(yaw))
-    local cosPitch = math.cos(math.rad(pitch))
-    local sinPitch = math.sin(math.rad(pitch))
+    local cosRoll = cos(rad(roll))
+    local sinRoll = sin(rad(roll))
+    local cosYaw = cos(rad(yaw))
+    local sinYaw = sin(rad(yaw))
+    local cosPitch = cos(rad(pitch))
+    local sinPitch = sin(rad(pitch))
     matrix[1][1] = cosRoll * cosYaw
     matrix[1][2] = sinRoll * sinPitch - cosRoll * sinYaw * cosPitch
     matrix[1][3] = cosRoll * sinYaw * sinPitch + sinRoll * cosPitch
@@ -197,7 +207,7 @@ function core.rotateObject(objectId, yaw, pitch, roll)
 end
 
 function core.rotatePoint(x, y, z)
-    
+
 end
 
 --- Check if current player is using a monitor biped
@@ -223,34 +233,26 @@ end
 ---@return string request
 function core.sendRequest(request, playerIndex)
     dprint("-> [ Sending request ]")
-    local requestType = glue.string.split(request, constants.requestSeparator)[1]
-    dprint("Request type: " .. requestType)
-    if (requestType) then
-        request = "rcon forge '" .. request .. "'"
-        dprint("Request: " .. request)
-        if (server_type == "local") then
-            -- We need to mockup the server response in local mode
-            local mockedResponse = string.gsub(string.gsub(request, "rcon forge '", ""), "'", "")
-            OnRcon(mockedResponse)
-            return true, mockedResponse
-        elseif (server_type == "dedicated") then
-            -- Player is connected to a server
-            execute_script(request)
-            return true, request
-        elseif (server_type == "sapp") then
-            local fixedRequest = string.gsub(request, "rcon forge '", "")
-            dprint("Server request: " .. fixedRequest)
-            -- We want to broadcast to every player in the server
-            if (not playerIndex) then
-                grprint(fixedRequest)
-            else
-                -- We are looking to send data to a specific player
-                rprint(playerIndex, fixedRequest)
-            end
-            return true, fixedRequest
+    dprint("Request: " .. request)
+    if (server_type == "local") then
+        OnRcon(request)
+        return true, request
+    elseif (server_type == "dedicated") then
+        -- Player is connected to a server
+        local fixedRequest = "rcon forge '" .. request .. "'"
+        execute_script(fixedRequest)
+        return true, fixedRequest
+    elseif (server_type == "sapp") then
+        dprint("Server request: " .. request)
+        -- We want to broadcast to every player in the server
+        if (not playerIndex) then
+            grprint(request)
+        else
+            -- We are looking to send data to a specific player
+            rprint(playerIndex, request)
         end
+        return true, request
     end
-    dprint("Error at trying to send request!!!!", "error")
     return false
 end
 
@@ -285,10 +287,10 @@ function core.createRequest(requestTable)
                 end
             end
             local encodedTable = maeth.encodeTable(instanceObject, requestFormat)
-            print(inspect(requestTable))
+            -- print(inspect(requestTable))
             request = maeth.tableToRequest(encodedTable, requestFormat, constants.requestSeparator)
         else
-            print(inspect(instanceObject))
+            -- print(inspect(instanceObject))
             error("There is no request type in this request!")
         end
         return request
@@ -441,29 +443,35 @@ function core.loadForgeMap(mapName)
                 core.flushForge()
             end
 
+            console_out(string.format("\nLoading Forge objects for %s...", mapName))
+            local time = os.clock()
+            local objectsList = {}
             for objectId, forgeObject in pairs(forgeMap.objects) do
-                local spawnRequest = glue.update({}, forgeObject)
+                local spawnRequest = forgeObject
                 local objectTag = blam.getTag(spawnRequest.tagPath, tagClasses.scenery)
                 if (objectTag and objectTag.id) then
                     spawnRequest.requestType = constants.requests.spawnObject.requestType
                     spawnRequest.tagPath = nil
                     spawnRequest.tagId = objectTag.id
-                    eventsStore:dispatch({
-                        type = constants.requests.spawnObject.actionType,
-                        payload = {
-                            requestObject = spawnRequest
-                        }
-                    })
+                    local dispatchObject = eventsStore:dispatch(
+                                               {
+                            type = constants.requests.spawnObject.actionType,
+                            payload = {
+                                requestObject = spawnRequest
+                            }
+                        })
                 else
                     dprint("WARNING!! Object with path '" .. spawnRequest.tagPath ..
                                "' can't be spawn...", "warning")
                 end
             end
+            forgeMapFinishedLoading = true
+            console_out(string.format("Done, elapsed time: %.6f\n", os.clock() - time))
+            dprint("Succesfully loaded '" .. mapName .. "' fmap!")
 
             if (server_type == "local") then
                 execute_script("sv_map_reset")
             end
-            dprint("Succesfully loaded '" .. mapName .. "' fmap!")
 
             return true
         else
@@ -614,7 +622,7 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
         end
 
         if (not noLog) then
-            dprint("-> Object: " .. tagPath .. " succesfully spawned with id: " .. objectId, "success")
+            dprint("-> \"" .. tagPath .. "\" succesfully spawned!", "success")
         end
         return objectId
     end
@@ -675,7 +683,7 @@ function core.updatePlayerSpawn(tagPath, forgeObject, disable)
                 mapSpawnPoints[spawnId].x = forgeObject.x
                 mapSpawnPoints[spawnId].y = forgeObject.y
                 mapSpawnPoints[spawnId].z = forgeObject.z
-                mapSpawnPoints[spawnId].rotation = math.rad(forgeObject.yaw)
+                mapSpawnPoints[spawnId].rotation = rad(forgeObject.yaw)
                 mapSpawnPoints[spawnId].teamIndex = teamIndex
                 mapSpawnPoints[spawnId].type = gameType
 
@@ -698,7 +706,7 @@ function core.updatePlayerSpawn(tagPath, forgeObject, disable)
         mapSpawnPoints[forgeObject.reflectionId].x = forgeObject.x
         mapSpawnPoints[forgeObject.reflectionId].y = forgeObject.y
         mapSpawnPoints[forgeObject.reflectionId].z = forgeObject.z
-        mapSpawnPoints[forgeObject.reflectionId].rotation = math.rad(forgeObject.yaw)
+        mapSpawnPoints[forgeObject.reflectionId].rotation = rad(forgeObject.yaw)
         dprint(mapSpawnPoints[forgeObject.reflectionId].type)
         -- Debug spawn index
         dprint("Updating spawn replacing index: " .. forgeObject.reflectionId)
@@ -760,7 +768,7 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject)
                 mapNetgameFlagsPoints[flagId].y = forgeObject.y
                 -- Z plus an offset to prevent flag from falling in lower bsp values
                 mapNetgameFlagsPoints[flagId].z = forgeObject.z + 0.15
-                mapNetgameFlagsPoints[flagId].rotation = math.rad(forgeObject.yaw)
+                mapNetgameFlagsPoints[flagId].rotation = rad(forgeObject.yaw)
                 mapNetgameFlagsPoints[flagId].teamIndex = teamIndex
                 mapNetgameFlagsPoints[flagId].type = flagType
 
@@ -776,7 +784,7 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject)
         mapNetgameFlagsPoints[forgeObject.reflectionId].x = forgeObject.x
         mapNetgameFlagsPoints[forgeObject.reflectionId].y = forgeObject.y
         mapNetgameFlagsPoints[forgeObject.reflectionId].z = forgeObject.z
-        mapNetgameFlagsPoints[forgeObject.reflectionId].rotation = math.rad(forgeObject.yaw)
+        mapNetgameFlagsPoints[forgeObject.reflectionId].rotation = rad(forgeObject.yaw)
         -- Debug spawn index
         dprint("Updating flag replacing index: " .. forgeObject.reflectionId, "warning")
     end
@@ -820,7 +828,7 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
                 netgameEquipmentPoints[equipmentId].x = forgeObject.x
                 netgameEquipmentPoints[equipmentId].y = forgeObject.y
                 netgameEquipmentPoints[equipmentId].z = forgeObject.z + 0.2
-                netgameEquipmentPoints[equipmentId].facing = math.rad(forgeObject.yaw)
+                netgameEquipmentPoints[equipmentId].facing = rad(forgeObject.yaw)
                 netgameEquipmentPoints[equipmentId].type1 = 12
                 netgameEquipmentPoints[equipmentId].levitate = true
                 netgameEquipmentPoints[equipmentId].itemCollection = itemCollectionTagId
@@ -845,7 +853,7 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
         netgameEquipmentPoints[forgeObject.reflectionId].x = forgeObject.x
         netgameEquipmentPoints[forgeObject.reflectionId].y = forgeObject.y
         netgameEquipmentPoints[forgeObject.reflectionId].z = forgeObject.z + 0.2
-        netgameEquipmentPoints[forgeObject.reflectionId].facing = math.rad(forgeObject.yaw)
+        netgameEquipmentPoints[forgeObject.reflectionId].facing = rad(forgeObject.yaw)
         -- Debug spawn index
         dprint("Updating equipment replacing index: " .. forgeObject.reflectionId)
     end
@@ -865,8 +873,11 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
     if (tagPath:find("banshee")) then
         dprint("banshee")
         vehicleType = 0
-    elseif (tagPath:find("hog")) then
-        dprint("hog")
+    elseif (tagPath:find("rocket warthog")) then
+        dprint("rocket warthog")
+        vehicleType = 5
+    elseif (tagPath:find("warthog")) then
+        dprint("normal warthog")
         vehicleType = 1
     elseif (tagPath:find("ghost")) then
         dprint("ghost")
@@ -877,9 +888,6 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
     elseif (tagPath:find("turret spawn")) then
         dprint("turret")
         vehicleType = 4
-    elseif (tagPath:find("ball spawn")) then
-        dprint("ball")
-        vehicleType = 5
     end
 
     -- Get scenario data
@@ -898,9 +906,9 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
                 vehicleSpawnPoints[spawnId].x = forgeObject.x
                 vehicleSpawnPoints[spawnId].y = forgeObject.y
                 vehicleSpawnPoints[spawnId].z = forgeObject.z
-                vehicleSpawnPoints[spawnId].yaw = math.rad(forgeObject.yaw)
-                vehicleSpawnPoints[spawnId].pitch = math.rad(forgeObject.pitch)
-                vehicleSpawnPoints[spawnId].roll = math.rad(forgeObject.roll)
+                vehicleSpawnPoints[spawnId].yaw = rad(forgeObject.yaw)
+                vehicleSpawnPoints[spawnId].pitch = rad(forgeObject.pitch)
+                vehicleSpawnPoints[spawnId].roll = rad(forgeObject.roll)
 
                 vehicleSpawnPoints[spawnId].type = vehicleType
 
@@ -965,7 +973,7 @@ function core.calculateDistanceFromObject(baseObject, targetObject)
     local calculatedX = (targetObject.x - baseObject.x) ^ 2
     local calculatedY = (targetObject.y - baseObject.y) ^ 2
     local calculatedZ = (targetObject.z - baseObject.z) ^ 2
-    return math.sqrt(calculatedX + calculatedY + calculatedZ)
+    return sqrt(calculatedX + calculatedY + calculatedZ)
 end
 
 --- Find the path, index and id of a tag given partial name and tag type
@@ -990,7 +998,7 @@ function core.getIndexById(id)
     for i = 5, #hex, 2 do
         glue.append(bytes, hex:sub(i, i + 1))
     end
-    return tonumber(table.concat(bytes, ""), 16)
+    return tonumber(concat(bytes, ""), 16)
 end
 
 local function createSelector()
@@ -1021,7 +1029,7 @@ end
 ---@return number, forgeObject, projectile
 function core.getPlayerAimingObject()
     local forgeObjects = eventsStore:getState().forgeObjects
-    for objectNumber, objectIndex in pairs(blam.getObjects()) do
+    for _, objectIndex in pairs(blam.getObjects()) do
         local projectile = blam.projectile(get_object(objectIndex))
         local forgeObject
         local selectedObjIndex
@@ -1042,6 +1050,10 @@ function core.getPlayerAimingObject()
                 delete_object(objectIndex)
                 return nil, nil, blam.dumpObject(projectile) or nil
             end
+        elseif (forgeObjects[objectIndex]) then
+            if (core.playerIsAimingAt(objectIndex, 0.0001, 0)) then
+                return objectIndex, forgeObjects[objectIndex], blam.dumpObject(projectile) or nil
+            end
         end
     end
     createSelector()
@@ -1052,7 +1064,8 @@ end
 ---@return boolean
 function core.isObjectOutOfBounds(object)
     if (object) then
-        local projectileId = spawn_object(tagClasses.projectile, constants.forgeProjectilePath, object.x, object.y, object.z)
+        local projectileId = spawn_object(tagClasses.projectile, constants.forgeProjectilePath,
+                                          object.x, object.y, object.z)
         if (projectileId) then
             local blamObject = blam.object(get_object(projectileId))
             if (blamObject) then

@@ -69,10 +69,12 @@ function testRcon:testCallback()
 end
 
 function testRcon:testDecodeSpawn()
+    local time = os.clock()
     local decodeResult, decodeData = OnRcon(
                                          "'#s&d2040000&0000803f&00000040&00004040&360&360&360&d2040000'")
     lu.assertEquals(decodeResult, false)
     lu.assertEquals(decodeData, self.expectedDecodeResultSpawn)
+    console_out(string.format("Elapsed time: %.6f\n", os.clock() - time))
 end
 
 function testRcon:testDecodeUpdate()
@@ -91,7 +93,7 @@ end
 
 testObjects = {}
 
-function testObjects:testSpawnAndRotateObjects()
+--[[function testObjects:testSpawnAndRotateObjects()
     for index, tagPath in pairs(forgeStore:getState().forgeMenu.objectsDatabase) do
         -- Spawn object in the game
         local objectId = core.spawnObject("scen", tagPath, 233, 41,
@@ -106,11 +108,10 @@ function testObjects:testSpawnAndRotateObjects()
             delete_object(objectId)
         end
     end
-end
+end]]
 
 function testObjects:testGetNetgameSpawnPoints()
     local scenario = blam.scenario(0)
-    console_out(scenario.vehicleLocationCount)
     lu.assertEquals(scenario.vehicleLocationCount, 33)
 end
 
@@ -125,6 +126,7 @@ function testRequest:setUp()
 end
 
 function testRequest:testSpawnRequestAsClient()
+    local time = os.clock()
     local objectExample = {
         requestType = "#s",
         tagId = 1234,
@@ -136,10 +138,12 @@ function testRequest:testSpawnRequestAsClient()
         roll = 360
     }
     local request = core.createRequest(objectExample)
+    console_out(string.format("Elapsed time: %.6f\n", os.clock() - time))
     lu.assertEquals(request, self.expectedEncodeSpawnResult)
 end
 
 function testRequest:testEncodeUpdateAsClient()
+    local time = os.clock()
     local objectExample = {
         requestType = "#u",
         x = 1.0,
@@ -151,6 +155,7 @@ function testRequest:testEncodeUpdateAsClient()
         remoteId = 1234
     }
     local request = core.createRequest(objectExample)
+    console_out(string.format("Elapsed time: %.6f\n", os.clock() - time))
     lu.assertEquals(request, self.expectedEncodeUpdateResult)
 end
 
@@ -211,7 +216,9 @@ function testCore:testEulerRotation()
 end
 
 function testCore.testFindTag()
+    local time = os.clock()
     local tagPath, tagIndex = core.findTag(constants.bipeds.spartan, tagClasses.biped)
+    console_out(string.format("Elapsed time: %.6f\n", os.clock() - time))
     lu.assertNotIsNil(tagPath)
     lu.assertNotIsNil(tagIndex)
     lu.assertEquals(tagPath, constants.bipeds.spartan)
@@ -222,14 +229,14 @@ end
 function unit.run(output)
     ftestingMode = true
     -- Disable debug printing
-    -- debugMode = not debugMode
+    configuration.forge.debugMode = not configuration.forge.debugMode
     local runner = lu.LuaUnit.new()
     if (output) then
         runner:setOutputType("junit", "forge_tests_results")
     end
     runner:runSuite()
     -- Restore debug printing
-    -- debugMode = not debugMode
+    configuration.forge.debugMode = not configuration.forge.debugMode
     ftestingMode = false
 end
 

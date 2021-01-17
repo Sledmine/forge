@@ -6,6 +6,10 @@ local inspect = require "inspect"
 local core = require "forge.core"
 local features = require "forge.features"
 
+-- Optimizations
+local getIndexById = core.getIndexById
+local rotateObject = core.rotateObject
+
 -- // TODO Test this class structure
 ---@class forgeObject
 ---@field x number
@@ -44,7 +48,7 @@ local function eventsReducer(state, action)
                                           forgeObject.z)
         dprint("objectId: " .. objectId)
 
-        local objectIndex = core.getIndexById(objectId)
+        local objectIndex = getIndexById(objectId)
         dprint("objectIndex: " .. objectIndex)
 
         if (not objectIndex or not objectId) then
@@ -58,7 +62,7 @@ local function eventsReducer(state, action)
         end
 
         -- Set object rotation after creating the object
-        core.rotateObject(objectIndex, forgeObject.yaw, forgeObject.pitch, forgeObject.roll)
+        rotateObject(objectIndex, forgeObject.yaw, forgeObject.pitch, forgeObject.roll)
 
         -- We are the server so the remote id is the local objectId/objectIndex
         if (server_type == "local" or server_type == "sapp") then
@@ -91,7 +95,9 @@ local function eventsReducer(state, action)
         if (server_type == "sapp") then
             local response = core.createRequest(forgeObject)
             state.cachedResponses[objectIndex] = response
-            core.sendRequest(response)
+            if (forgeMapFinishedLoading) then
+                core.sendRequest(response)
+            end
         end
 
         -- Clean and prepare object to store it
@@ -268,6 +274,10 @@ local function eventsReducer(state, action)
 
         return state
     elseif (action.type == constants.requests.flushForge.actionType) then
+        local forgeObjects = state.forgeObjects
+        for objectIndex, forgeObject in pairs(forgeObjects) do
+            delete_object(objectIndex)
+        end
         state.cachedResponses = {}
         state.forgeObjects = {}
         return state

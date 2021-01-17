@@ -1,5 +1,10 @@
+------------------------------------------------------------------------------
+-- Forge Island Project Compiler
+-- Sledmine
+-- Script utility to compile the entire Forge Island project
+------------------------------------------------------------------------------
 -- Import constants
-local forgeVersion = require "forge.version"
+local forgeVersion = require "modules.forge.version"
 local forgeBuild = arg[1]
 
 -- Generate bitmap version from code

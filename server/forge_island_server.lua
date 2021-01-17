@@ -1,12 +1,11 @@
 ------------------------------------------------------------------------------
 -- Forge Island Server Script
 -- Sledmine
--- Version 1.0.0
 -- Script server side for Forge Island
 ------------------------------------------------------------------------------
 -- Constants
--- Declare SAPP API Version before importing libraries
--- This is usefull for SAPP detection
+-- Declare SAPP API Version before importing modules
+-- This is used by lua-blam for SAPP detection
 api_version = "1.12.0.0"
 -- Replace Chimera server type variable for compatibility purposes
 server_type = "sapp"
@@ -15,6 +14,7 @@ scriptName = "forge_island_server" -- script_name:gsub(".lua", ""):gsub("_dev", 
 defaultConfigurationPath = "config"
 defaultMapsPath = "fmaps"
 
+-- Print server current Lua version
 print("Server is running " .. _VERSION)
 -- Bring compatibility with Lua 5.3
 require "compat53"
@@ -22,12 +22,12 @@ print("Compatibility with Lua 5.3 has been loaded!")
 -- Bring compatibility with Chimera Lua API
 require "cbindings"
 
--- Lua libraries
+-- Lua modules
 local inspect = require "inspect"
 local glue = require "glue"
 local redux = require "lua-redux"
 
--- Specific Halo Custom Edition libraries
+-- Specific Halo Custom Edition modules
 blam = require "blam"
 tagClasses = blam.tagClasses
 
@@ -41,15 +41,14 @@ local forgeReducer = require "forge.reducers.forgeReducer"
 
 -- Variable used to store the current Forge map in memory
 forgeMapName = "Octagon"
--- Controls if Forging is available or not for the current game
--- //FIXME For some reason Forge is not being blocked by this variable
-local bipedSwapping = true
+forgeMapFinishedLoading = false
+-- Controls if "Forging" is available or not in the current game
+local bipedSwapping = false
 local mapVotingEnabled = true
 
 -- // TODO This needs some refactoring, this configuration is useless on server side
 -- Forge default configuration
 configuration = {}
-
 configuration.forge = {
     debugMode = false,
     autoSave = false,
@@ -57,13 +56,8 @@ configuration.forge = {
     snapMode = false,
     objectsCastShadow = false
 }
-
--- Default debug mode state
-configuration.forge.debugMode = true
-
--- Internal functions and variables
-
--- Internal functions and variables
+-- Default debug mode state, set to false at release time to improve performance
+configuration.forge.debugMode = false
 -- Buffer to store all the debug printing
 debugBuffer = ""
 
@@ -100,54 +94,69 @@ function grprint(message)
     end
 end
 
-local playersObjIds = {}
+function getPlayersCount()
+    local count = 0
+    for i = 1, 16 do
+        if (player_present(i)) then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+local playersObjectId = {}
 local playersBiped = {}
-local playersTemPos = {}
-local playerQueuedObjects = {}
+local playersTempPosition = {}
+local playerSyncThread = {}
 
 -- // TODO This function should be used as thread controller instead of a function executor
 function OnTick()
-    for playerIndex = 1, 16 do
-        if (player_present(playerIndex)) then
-            local playerObjectId = playersObjIds[playerIndex]
-            if (playerObjectId) then
-                local player = blam.biped(get_object(playerObjectId))
-                if (player) then
-                    local co = playerQueuedObjects[playerIndex]
-                    if (co and coroutine.status(co) == "suspended") then
-                        local status, response = coroutine.resume(co)
-                        print("Thread status: " .. tostring(status))
-                        if (status == false) then
-                            print("Object sync finished for player " .. playerIndex)
-                            playerQueuedObjects[playerIndex] = nil
-                        elseif (status and response) then
+    if (forgeMapFinishedLoading) then
+        for playerIndex = 1, 16 do
+            if (player_present(playerIndex)) then
+                -- Run player object sync thread
+                local syncThread = playerSyncThread[playerIndex]
+                if (syncThread) then
+                    if (coroutine.status(syncThread) == "suspended") then
+                        local status, response = coroutine.resume(syncThread)
+                        if (status and response) then
                             core.sendRequest(response, playerIndex)
                         end
+                    else
+                        print("Object sync finished for player " .. playerIndex)
+                        playerSyncThread[playerIndex] = nil
                     end
-                    if (bipedSwapping) then
-                        if (constants.monitorTagId) then
-                            if (player.crouchHold and player.tagId == constants.monitorTagId) then
-                                dprint("playerObjectId: " .. tostring(playerObjectId))
-                                dprint("Trying to process a biped swap request...")
-                                playersBiped[playerIndex] = "spartan"
-                                playersTemPos[playerIndex] =
-                                    {
-                                        player.x,
-                                        player.y,
-                                        player.z
-                                    }
-                                delete_object(playerObjectId)
-                            elseif (player.flashlightKey and player.tagId ~= constants.monitorTagId) then
-                                dprint("playerObjectId: " .. tostring(playerObjectId))
-                                dprint("Trying to process a biped swap request...")
-                                playersBiped[playerIndex] = "monitor"
-                                playersTemPos[playerIndex] =
-                                    {
-                                        player.x,
-                                        player.y,
-                                        player.z
-                                    }
-                                delete_object(playerObjectId)
+                end
+                local playerObjectId = playersObjectId[playerIndex]
+                if (playerObjectId) then
+                    local player = blam.biped(get_object(playerObjectId))
+                    if (player) then
+                        if (bipedSwapping) then
+                            if (constants.monitorTagId) then
+                                if (player.crouchHold and player.tagId == constants.monitorTagId) then
+                                    dprint("playerObjectId: " .. tostring(playerObjectId))
+                                    dprint("Trying to process a biped swap request...")
+                                    playersBiped[playerIndex] = "spartan"
+                                    playersTempPosition[playerIndex] =
+                                        {
+                                            player.x,
+                                            player.y,
+                                            player.z
+                                        }
+                                    delete_object(playerObjectId)
+                                elseif (player.flashlightKey and player.tagId ~=
+                                    constants.monitorTagId) then
+                                    dprint("playerObjectId: " .. tostring(playerObjectId))
+                                    dprint("Trying to process a biped swap request...")
+                                    playersBiped[playerIndex] = "monitor"
+                                    playersTempPosition[playerIndex] =
+                                        {
+                                            player.x,
+                                            player.y,
+                                            player.z
+                                        }
+                                    delete_object(playerObjectId)
+                                end
                             end
                         end
                     end
@@ -158,24 +167,6 @@ function OnTick()
 end
 
 function OnScriptLoad()
-    register_callback(cb["EVENT_GAME_START"], "OnGameStart")
-    register_callback(cb["EVENT_GAME_END"], "OnGameEnd")
-    register_callback(cb["EVENT_COMMAND"], "OnRcon")
-    register_callback(cb["EVENT_OBJECT_SPAWN"], "OnObjectSpawn")
-    register_callback(cb["EVENT_JOIN"], "OnPlayerJoin")
-    register_callback(cb["EVENT_PRESPAWN"], "OnPlayerSpawn")
-end
-
-function OnGameStart()
-    -- Provide compatibily with Chimera by setting this as a global variable
-    map = get_var(0, "$map")
-    constants = require "forge.constants"
-
-    -- Store for all the forge and events data
-    forgeStore = forgeStore or redux.createStore(forgeReducer)
-    eventsStore = eventsStore or redux.createStore(eventsReducer)
-    votingStore = votingStore or redux.createStore(votingReducer)
-
     -- Add forge rcon as not dangerous for command interception
     execute_command("lua_call rcon_bypass submitRcon " .. "forge")
 
@@ -196,10 +187,26 @@ function OnGameStart()
         execute_command("lua_call rcon_bypass submitCommand " .. command)
     end
 
+    register_callback(cb["EVENT_GAME_START"], "OnGameStart")
+    register_callback(cb["EVENT_GAME_END"], "OnGameEnd")
+    register_callback(cb["EVENT_COMMAND"], "OnRcon")
+end
+
+function OnGameStart()
+    -- Provide compatibily with Chimera by setting this as a global variable
+    map = get_var(0, "$map")
+    constants = require "forge.constants"
+
+    -- Store for all the forge and events data
+    forgeStore = forgeStore or redux.createStore(forgeReducer)
+    eventsStore = eventsStore or redux.createStore(eventsReducer)
+    votingStore = votingStore or redux.createStore(votingReducer)
+
     -- // TODO Check if this is better to do on script load
     core.loadForgeMaps()
 
     if (forgeMapName) then
+        forgeMapFinishedLoading = false
         core.loadForgeMap(forgeMapName)
     end
 
@@ -208,18 +215,20 @@ function OnGameStart()
     })
     mapVotingEnabled = true
     register_callback(cb["EVENT_TICK"], "OnTick")
+    register_callback(cb["EVENT_JOIN"], "OnPlayerJoin")
+    register_callback(cb["EVENT_OBJECT_SPAWN"], "OnObjectSpawn")
+    register_callback(cb["EVENT_PRESPAWN"], "OnPlayerSpawn")
 end
 
 -- Change biped tag id from players and store their object ids
 function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
-    if (not player_present(playerIndex)) then
-        return true
-    else
+    -- Intercept objects that are related to a player
+    if (playerIndex) then
         for index, tagPath in pairs(constants.bipeds) do
             local bipedTag = blam.getTag(tagPath, tagClasses.biped)
             if (bipedTag and tagId == bipedTag.id) then
                 -- Track objectId of every player
-                playersObjIds[playerIndex] = objectId
+                playersObjectId[playerIndex] = objectId
                 local requestedBiped = playersBiped[playerIndex]
                 -- There is a requested biped by a player
                 if (requestedBiped) then
@@ -241,16 +250,14 @@ function OnPlayerSpawn(playerIndex)
     if (player) then
         -- Provide better movement to monitors
         if (core.isPlayerMonitor(playerIndex)) then
-            local tempObject = blam.biped(get_dynamic_player(playerIndex))
-            tempObject.ignoreCollision = true
+            player.ignoreCollision = true
         end
-        local playerPosition = playersTemPos[playerIndex]
+        local playerPosition = playersTempPosition[playerIndex]
         if (playerPosition) then
-            local tempObject = blam.object(get_dynamic_player(playerIndex))
-            tempObject.x = playerPosition[1]
-            tempObject.y = playerPosition[2]
-            tempObject.z = playerPosition[3]
-            playersTemPos[playerIndex] = nil
+            player.x = playerPosition[1]
+            player.y = playerPosition[2]
+            player.z = playerPosition[3]
+            playersTempPosition[playerIndex] = nil
         end
     end
 end
@@ -260,8 +267,6 @@ local function asyncObjectSync(playerIndex, cachedResponses)
     coroutine.yield()
     -- Send to to player all the current forged objects
     for objectIndex, response in pairs(cachedResponses) do
-        print("From co:")
-        print(playerIndex, response)
         coroutine.yield(response)
     end
 end
@@ -276,10 +281,9 @@ function OnPlayerJoin(playerIndex)
 
     local cachedResponses = eventsState.cachedResponses
 
-    -- There are objects to sync
+    -- There are Forge objects that need to be synced
     if (forgeMapName or objectCount > 0) then
-        print("Sending map info")
-        dprint("Sending sync responses for: " .. playerIndex)
+        print("Sending map info for: " .. playerIndex)
 
         -- Create a temporal Forge map object like to force data sync
         local onMemoryForgeMap = {}
@@ -289,10 +293,11 @@ function OnPlayerJoin(playerIndex)
         onMemoryForgeMap.author = forgeState.currentMap.author:gsub("Author: ", "")
         core.sendMapData(onMemoryForgeMap, playerIndex)
 
+        dprint("Creating sync thread for: " .. playerIndex)
         local co = coroutine.create(asyncObjectSync)
         -- Prepare function with desired parameters
         coroutine.resume(co, playerIndex, cachedResponses)
-        playerQueuedObjects[playerIndex] = co
+        playerSyncThread[playerIndex] = co
     end
 end
 
@@ -325,12 +330,12 @@ function OnRcon(playerIndex, message, environment, rconPassword)
         if (forgeCommand == "#b") then
             if (bipedSwapping) then
                 dprint("Trying to process a biped swap request...")
-                if (playersObjIds[playerIndex]) then
-                    local playerObjectId = playersObjIds[playerIndex]
+                if (playersObjectId[playerIndex]) then
+                    local playerObjectId = playersObjectId[playerIndex]
                     dprint("playerObjectId: " .. tostring(playerObjectId))
                     local player = blam.object(get_object(playerObjectId))
                     if (player) then
-                        playersTemPos[playerIndex] =
+                        playersTempPosition[playerIndex] =
                             {
                                 player.x,
                                 player.y,
@@ -402,19 +407,21 @@ function OnRcon(playerIndex, message, environment, rconPassword)
 end
 
 function OnGameEnd()
-    -- Start vote map screen
+    -- Events store are already loaded
     if (eventsStore) then
         -- Clean all forge objects
         eventsStore:dispatch({
             type = constants.requests.flushForge.actionType
         })
+        -- Start vote map screen
         if (mapVotingEnabled) then
             eventsStore:dispatch({
                 type = constants.requests.loadVoteMapScreen.actionType
             })
         end
     end
-    playersObjIds = {}
+    playersObjectId = {}
+    collectgarbage("collect")
 end
 
 function OnError()

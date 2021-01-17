@@ -2,6 +2,7 @@
     "name": "Forge Island",
     "target": "lua53",
     "include": [
+        "modules\\"
     ],
     "modules": [
         "glue",

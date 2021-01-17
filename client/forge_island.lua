@@ -1,14 +1,14 @@
 ------------------------------------------------------------------------------
 -- Forge Island Client Script
 -- Sledmine
--- Version 1.0.0
 -- Client side script for Forge Island
 ------------------------------------------------------------------------------
 -- Constants
 clua_version = 2.042
+
 -- Script name must be the base script name, without variants or extensions
-defaultConfigurationPath = "config"
 scriptName = script_name:gsub(".lua", ""):gsub("_dev", ""):gsub("_beta", "")
+defaultConfigurationPath = "config"
 defaultMapsPath = "fmaps"
 
 -- Lua libraries
@@ -682,7 +682,7 @@ function OnMapUnload()
     write_file(defaultConfigurationPath .. "\\forge_island.ini", ini.encode(configuration))
 end
 
--- OnMapLoad()
+OnMapLoad()
 
 -- Prepare event callbacks
 set_callback("map load", "OnMapLoad")

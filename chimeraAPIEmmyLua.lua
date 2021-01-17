@@ -1,0 +1,5 @@
+------------------------------------------------------------------------------
+-- Chimera API Bindings for SAPP
+-- Sledmine
+-- SAPP bindings for Chimera Lua functions, also EmmyLua helper
+------------------------------------------------------------------------------
