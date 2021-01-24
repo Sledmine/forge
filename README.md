@@ -15,21 +15,27 @@ Forge is a project that aims to add Forge-like system from posterior sequels of 
 
 # Features
 
-### **Multiple Biped Support**
+**Multiple Biped Support**
+
 There is a simple built in system to associate players with a specific biped, used to swap between spartan and monitor, other bipeds can be added to this system to achieve different armors, biped based gametypes, etc.
 
-### **Object Selection**
-Objects are highligted when a monitor is looking at them, object selection is calculated via projectile interception, this is suposed to change in the future due to objects must have a collision to be selected.
+**Object Selection**
 
-### **Dynamic Forge Objects Addition**
-Every Forge object is basically a scenery, so every scenery in a specific tag collection is taken as a Forge object and stored in a scenery database to be used.
+Objects are highligted when a monitor is looking at them, object selection is calculated via projectile interception and for objects withouth collision it calculates if the player is looking at the main frame of the object.
 
-### **Dynamic Forge menu**
-Every scenery stored in the scenery database is automatically split into categories and dynamically loaded in the Forge objects menu.
+**Dynamic Forge Objects Addition**
 
-- Create, update and delete for any Forge object
-- Forged maps file support, saving and loading
-- Spawn reflection system
+Every Forge object is basically a scenery, so every scenery in a specific tag collection is taken as a Forge object and stored in a scenery database to be used in game.
+
+**Dynamic Forge Menu**
+
+Every scenery stored in the scenery database is automatically converted into an option for the Forge objects menu by splitting the tag path of the object into categories to achieve dynamic menu options.
+
+**Others**
+
+- Create, update and delete for any Forge object in online or local mode
+- Forged maps file support, save and load Forge maps
+- Spawn reflection system, Forge objects can reflect data to the game spawn system
 
 ## In progress
 - Automatic constant tag detection, there are some base tags and constant values needed by Forge to work, this must be done dynamically in client and server side. **(ALMOST DONE)**
@@ -44,10 +50,12 @@ We are giving our best effort to make this project as complete and useful as pos
 - Object history placement, provide undo, redo operations along time.
 - Better controls implementation, multi input devices is key, keyboard, mouse and joystick support are must have features.
 
-# Controls, commands and general information
+# Documentation
 Checkout some of the markdowns hosted on this repository about Forge in general:
 
-[Forge - Controls and commands](FORGE.md)
+[Controls and commands](FORGE.md)
+
+[Changelog](CHANGELOG.md)
 
 # How was it created?
 
@@ -80,6 +88,7 @@ Forge reimplements some concepts from modern app libraries like the store from [
 - [luaunit](https://github.com/bluebird75/luaunit)
 - [lua-compat-5.3](https://github.com/keplerproject/lua-compat-5.3)
 - [lua-struct](https://github.com/iryont/lua-struct)
+- [rcon-bypass](https://github.com/Sledmine/rcon-bypass)
 
 # Building Forge
 

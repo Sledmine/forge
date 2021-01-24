@@ -1,8 +1,42 @@
 # Changelog
 
+# 1.0.0-beta-3
+## Code changes:
+- Improved performance and security in general
+- Restored colors for different crosshair states as a monitor
+- Restored ability to take objects without collision as a monitor
+  
+## Map changes:
+### **MISC**
+- Shields for the FP hands have been removed until further notice
+- Removed collision_geometry for spawn objects
+- Tweaked shaders for stock vehicles to mimic OG Xbox visuals
+- Added campaign lights for Ghost_MP vehicle
+- C Gun Turret contrail mimics the OG Xbox counterpart
+  
+### **GRENADES**
+- Added Frag grenade explosion sounds from Halo 4
+- Added grenade pickup sfx from Halo 4
+- Added Frag grenade throw sfx from Halo 4
+- Added Plasma grenade explosion sounds from Halo 4
+- Added Plasma grenade throw sfx from Halo 4
+
+### **SPARTANS**
+- Minor rigging tweaks for knees (still in progress)
+- Renamed "multibipeds 2" to "multibipeds"
+- Renamed "spartans 2.model_collision_geometry" to "multibipeds.model_collision_geometry"
+
+### **HUD**
+- H4 teammate indicator icon has been replaced with a modified version from "Flood 09"
+- Weapon pickup icons have been resized, including offset fixes
+- Multiple weapon pickup icons have been deleted from the texture since those weapon haven't been ported and/or included into the map yet
+
+## Known issues
+- Forge objects menu options are reset when opening object properties
+
 # 1.0.0-beta-2
 
-### Code changes:
+## Code changes:
 - Fixed a problem with the animation timer for the loading Forge objects menu
 - Added a new crosshair state that prevents you to place objects in a prohibited area
 - Fixed a problem with the count of buttons displayed in the map voting menu
@@ -10,7 +44,7 @@
 - Added a new format to save the name of all the Forge maps using a standard convention with underscores
 - Fixed a bug with a debug feature that allowed to spawn test bipeds
 
-### Map changes:
+## Map changes:
 - New shield effects (plasma shader / shields gone / shields recharging)
 - New announcer dialogues (still WIP and incomplete, I have to make some custom ones for certain events)
 - Rescaled crosshairs to match H4 MCC ones
@@ -23,10 +57,10 @@
 - Removed useless monitor Forge weapon (to prevent grenades interface appearing on the HUD)
 - Added new textures for the UNSC Crate Large object
 - New collisions and model optimizations for:
-  ### BARRICADES:
+  ### **BARRICADES**
   - Barricade large
 
-  ### CRATES:
+  ### **CRATES**
   - Container large
   - Container open large
   - Container small
@@ -41,10 +75,10 @@
   - Oni crate small
   - Oni crate thin
 
-  ### STRUCTURES/FORGE ISLAND:
+  ### **STRUCTURES/FORGE ISLAND**
   - Artifact base
 
-  ### BRIDGES AND PLATFORMS:
+  ### **BRIDGES AND PLATFORMS**
   - Bridge diag small
   - Bridge diagonal
   - Bridge large
@@ -52,16 +86,19 @@
   - Platform large
   - Platform xlarge
 
-  NATURAL
+  **NATURAL**
   - Rock 4
+
+## Known issues
+- Forge objects menu options are reset when opening object properties
 
 # 1.0.0-beta-1
 
-### Code changes:
+## Code changes:
 - Restored category and name text being displayed by looking at Forge objects
 - Added current project version number on pause menu
 
-### Map changes:
+## Map changes:
 - Weapons max ammo has been changed to be the same as Halo 4
 - New textures and shaders for the FP at the techsuit level
 - Corrected model of the Recruit armor for the FP Hands
@@ -80,6 +117,6 @@
   - UNSC Container Small
   - UNSC Crate Large
 
-### Known issues
+## Known issues
 - Monitor crosshair does not change colors and it can even dissapear sometimes
 - Forge objects menu options are reset when opening object properties
