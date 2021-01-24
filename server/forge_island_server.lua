@@ -20,7 +20,7 @@ print("Server is running " .. _VERSION)
 require "compat53"
 print("Compatibility with Lua 5.3 has been loaded!")
 -- Bring compatibility with Chimera Lua API
-require "cbindings"
+require "chimera-api"
 
 -- Lua modules
 local inspect = require "inspect"
@@ -30,6 +30,7 @@ local redux = require "lua-redux"
 -- Specific Halo Custom Edition modules
 blam = require "blam"
 tagClasses = blam.tagClasses
+local rcon = require "rcon"
 
 -- Forge modules
 local core = require "forge.core"
@@ -48,13 +49,14 @@ local mapVotingEnabled = true
 
 -- // TODO This needs some refactoring, this configuration is useless on server side
 -- Forge default configuration
-configuration = {}
-configuration.forge = {
-    debugMode = false,
-    autoSave = false,
-    autoSaveTime = 15000,
-    snapMode = false,
-    objectsCastShadow = false
+configuration = {
+    forge = {
+        debugMode = false,
+        autoSave = false,
+        autoSaveTime = 15000,
+        snapMode = false,
+        objectsCastShadow = false
+    }
 }
 -- Default debug mode state, set to false at release time to improve performance
 configuration.forge.debugMode = false
@@ -166,26 +168,117 @@ function OnTick()
     end
 end
 
-function OnScriptLoad()
-    -- Add forge rcon as not dangerous for command interception
-    execute_command("lua_call rcon_bypass submitRcon " .. "forge")
-
-    -- Add forge commands for interception
-    local forgeCommands = {
-        "#s",
-        "#d",
-        "#u",
-        "#l",
-        "#b",
-        "#v",
-        "fload",
-        "fsave",
-        "fmon",
-        "fbip"
-    }
-    for index, command in pairs(forgeCommands) do
-        execute_command("lua_call rcon_bypass submitCommand " .. command)
+rcon.commandInterceptor = function(playerIndex, message, environment, rconPassword)
+    -- // TODO Check rcon environment
+    dprint("Triggering rcon...")
+    -- // TODO Check if we have to avoid returning true or false
+    dprint("Incoming rcon message:", "warning")
+    dprint(message)
+    local request = string.gsub(message, "'", "")
+    local splitData = glue.string.split(request, constants.requestSeparator)
+    local incomingRequest = splitData[1]
+    local actionType
+    local currentRequest
+    for requestName, request in pairs(constants.requests) do
+        if (incomingRequest and incomingRequest == request.requestType) then
+            currentRequest = request
+            actionType = request.actionType
+        end
     end
+    if (actionType) then
+        return core.processRequest(actionType, request, currentRequest, playerIndex)
+        -- // TODO Move this into a server request
+    else
+        splitData = glue.string.split(request, " ")
+        for k, v in pairs(splitData) do
+            splitData[k] = v:gsub("\"", "")
+        end
+        local forgeCommand = splitData[1]
+        if (forgeCommand == "#b") then
+            if (bipedSwapping) then
+                dprint("Trying to process a biped swap request...")
+                if (playersObjectId[playerIndex]) then
+                    local playerObjectId = playersObjectId[playerIndex]
+                    dprint("playerObjectId: " .. tostring(playerObjectId))
+                    local player = blam.object(get_object(playerObjectId))
+                    if (player) then
+                        playersTempPosition[playerIndex] =
+                            {
+                                player.x,
+                                player.y,
+                                player.z
+                            }
+                        local monitorTag = blam.getTag(constants.bipeds.monitor, tagClasses.biped)
+                        if (monitorTag) then
+                            if (player.tagId == monitorTag.id) then
+                                playersBiped[playerIndex] = "spartan"
+                            else
+                                playersBiped[playerIndex] = "monitor"
+                            end
+                            delete_object(playerObjectId)
+                        end
+                    end
+                end
+            end
+            return false
+        elseif (forgeCommand == "fload") then
+            local mapName = splitData[2]
+            local gameType = splitData[3]
+            if (mapName) then
+                if (read_file("fmaps\\" .. mapName .. ".fmap", "t")) then
+                    forgeMapName = mapName
+                    mapVotingEnabled = false
+                    execute_script("sv_map " .. map .. " " .. gameType)
+                else
+                    grprint("Could not read Forge map " .. mapName .. " file!")
+                end
+            else
+                rprint(playerIndex, "You must specify a forge map name.")
+            end
+            return false
+        elseif (forgeCommand == "fbip") then
+            local bipedName = splitData[2]
+            if (bipedName) then
+                for i = 1, 16 do
+                    if (player_present(i)) then
+                        playersBiped[i] = bipedName
+                    end
+                end
+                execute_script("sv_map_reset")
+            else
+                rprint(playerIndex, "You must specify a biped name.")
+            end
+            return false
+        elseif (forgeCommand == "fmon") then
+            bipedSwapping = not bipedSwapping
+            grprint(tostring(bipedSwapping))
+            return false
+        elseif (forgeCommand == "fspawn") then
+            -- Get scenario data
+            local scenario = blam.scenario(0)
+
+            -- Get scenario player spawn points
+            local mapSpawnPoints = scenario.spawnLocationList
+
+            mapSpawnPoints[1].type = 12
+
+            scenario.spawnLocationList = mapSpawnPoints
+            return false
+        elseif (forgeCommand == "fdata") then
+            local eventsState = eventsStore:getState()
+            local cachedResponses = eventsState.cachedResponses
+            print(#glue.keys(cachedResponses))
+            return false
+        end
+    end
+end
+
+function OnRcon(playerIndex, command, environment, interceptedRcon)
+    return rcon.OnRcon(playerIndex, command, environment, interceptedRcon)
+end
+
+function OnScriptLoad()
+    rcon.attach()
 
     register_callback(cb["EVENT_GAME_START"], "OnGameStart")
     register_callback(cb["EVENT_GAME_END"], "OnGameEnd")
@@ -196,6 +289,31 @@ function OnGameStart()
     -- Provide compatibily with Chimera by setting this as a global variable
     map = get_var(0, "$map")
     constants = require "forge.constants"
+
+    -- Add forge rcon as not dangerous for command interception
+    rcon.submitRcon("forge")
+
+    -- Add forge public commands
+    local forgeCommands = {
+        constants.requests.spawnObject.requestType,
+        constants.requests.updateObject.requestType,
+        constants.requests.deleteObject.requestType,
+        constants.requests.sendMapVote.requestType
+    }
+    for _, command in pairs(forgeCommands) do
+        rcon.submitCommand(command)
+    end
+
+    -- Add forge admin commands
+    local adminForgeCommands = {
+        "fload",
+        "fsave",
+        "fmon",
+        "fbip"
+    }
+    for _, command in pairs(adminForgeCommands) do
+        rcon.submitAdmimCommand(command)
+    end
 
     -- Store for all the forge and events data
     forgeStore = forgeStore or redux.createStore(forgeReducer)
@@ -301,111 +419,6 @@ function OnPlayerJoin(playerIndex)
     end
 end
 
-function OnRcon(playerIndex, message, environment, rconPassword)
-    -- // TODO Check rcon environment
-    dprint("Triggering rcon...")
-    -- // TODO Check if we have to avoid returning true or false
-    dprint("Incoming rcon message:", "warning")
-    dprint(message)
-    local request = string.gsub(message, "'", "")
-    local splitData = glue.string.split(request, constants.requestSeparator)
-    local incomingRequest = splitData[1]
-    local actionType
-    local currentRequest
-    for requestName, request in pairs(constants.requests) do
-        if (incomingRequest and incomingRequest == request.requestType) then
-            currentRequest = request
-            actionType = request.actionType
-        end
-    end
-    if (actionType) then
-        return core.processRequest(actionType, request, currentRequest, playerIndex)
-        -- // TODO Move this into a server request
-    else
-        splitData = glue.string.split(request, " ")
-        for k, v in pairs(splitData) do
-            splitData[k] = v:gsub("\"", "")
-        end
-        local forgeCommand = splitData[1]
-        if (forgeCommand == "#b") then
-            if (bipedSwapping) then
-                dprint("Trying to process a biped swap request...")
-                if (playersObjectId[playerIndex]) then
-                    local playerObjectId = playersObjectId[playerIndex]
-                    dprint("playerObjectId: " .. tostring(playerObjectId))
-                    local player = blam.object(get_object(playerObjectId))
-                    if (player) then
-                        playersTempPosition[playerIndex] =
-                            {
-                                player.x,
-                                player.y,
-                                player.z
-                            }
-                        local monitorTag = blam.getTag(constants.bipeds.monitor, tagClasses.biped)
-                        if (monitorTag) then
-                            if (player.tagId == monitorTag.id) then
-                                playersBiped[playerIndex] = "spartan"
-                            else
-                                playersBiped[playerIndex] = "monitor"
-                            end
-                            delete_object(playerObjectId)
-                        end
-                    end
-                end
-            end
-            return false
-        elseif (forgeCommand == "fload") then
-            local mapName = splitData[2]
-            local gameType = splitData[3]
-            if (mapName) then
-                if (read_file("fmaps\\" .. mapName .. ".fmap", "t")) then
-                    forgeMapName = mapName
-                    mapVotingEnabled = false
-                    execute_script("sv_map " .. map .. " " .. gameType)
-                else
-                    grprint("Could not read Forge map " .. mapName .. " file!")
-                end
-            else
-                rprint(playerIndex, "You must specify a forge map name.")
-            end
-            return false
-        elseif (forgeCommand == "fbip") then
-            local bipedName = splitData[2]
-            if (bipedName) then
-                for i = 1, 16 do
-                    if (player_present(i)) then
-                        playersBiped[i] = bipedName
-                    end
-                end
-                execute_script("sv_map_reset")
-            else
-                rprint(playerIndex, "You must specify a biped name.")
-            end
-            return false
-        elseif (forgeCommand == "fmon") then
-            bipedSwapping = not bipedSwapping
-            grprint(tostring(bipedSwapping))
-            return false
-        elseif (forgeCommand == "fspawn") then
-            -- Get scenario data
-            local scenario = blam.scenario(0)
-
-            -- Get scenario player spawn points
-            local mapSpawnPoints = scenario.spawnLocationList
-
-            mapSpawnPoints[1].type = 12
-
-            scenario.spawnLocationList = mapSpawnPoints
-            return false
-        elseif (forgeCommand == "fdata") then
-            local eventsState = eventsStore:getState()
-            local cachedResponses = eventsState.cachedResponses
-            print(#glue.keys(cachedResponses))
-            return false
-        end
-    end
-end
-
 function OnGameEnd()
     -- Events store are already loaded
     if (eventsStore) then
@@ -429,4 +442,5 @@ function OnError()
 end
 
 function OnScriptUnload()
+    rcon.detach()
 end

@@ -76,12 +76,14 @@ function core.loadForgeMaps(path)
     })
 end
 
+-- //TODO Refactor this to use lua blam objects
 --- Check if player is looking at object main frame
 ---@param target number
 ---@param sensitivity number
 ---@param zOffset number
+---@param maximumDistance number
 -- Credits to Devieth and IceCrow14
-function core.playerIsAimingAt(target, sensitivity, zOffset)
+function core.playerIsAimingAt(target, sensitivity, zOffset, maximumDistance)
     -- Minimum amount for distance scaling
     local baselineSensitivity = 0.012
     local function read_vector3d(Address)
@@ -116,7 +118,7 @@ function core.playerIsAimingAt(target, sensitivity, zOffset)
         if autoAim < baselineSensitivity then
             autoAim = baselineSensitivity
         end
-        if average < autoAim then
+        if average < autoAim and distance < (maximumDistance or 15) then
             return true
         end
     end
@@ -206,9 +208,8 @@ function core.rotateObject(objectId, yaw, pitch, roll)
     tempObject.v2Z = rotation[6]
 end
 
-function core.rotatePoint(x, y, z)
-
-end
+--[[function core.rotatePoint(x, y, z)
+end]]
 
 --- Check if current player is using a monitor biped
 ---@return boolean
@@ -630,7 +631,7 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
     return nil
 end
 
---- Apply updates to player spawn points based on a given tag path
+--- Apply updates for player spawn points based on a given tag path
 ---@param tagPath string
 ---@param forgeObject table
 ---@param disable boolean
@@ -1035,7 +1036,7 @@ function core.getPlayerAimingObject()
         local selectedObjIndex
         if (projectile and projectile.type == objectClasses.projectile) then
             local projectileTag = blam.getTag(projectile.tagId)
-            if (projectileTag and projectileTag.index == constants.forgeProjectileTagId) then
+            if (projectileTag and projectileTag.index == constants.forgeProjectileTagIndex) then
                 if (projectile.attachedToObjectId) then
                     local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
                     selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
@@ -1077,24 +1078,23 @@ function core.isObjectOutOfBounds(object)
     end
 end
 
-function core.getPlayerAimingSword()
+--[[function core.getPlayerFragGrenade()
     for objectNumber, objectIndex in pairs(blam.getObjects()) do
         local projectile = blam.projectile(get_object(objectIndex))
         local selectedObjIndex
         if (projectile and projectile.type == objectClasses.projectile) then
             local projectileTag = blam.getTag(projectile.tagId)
-            if (projectileTag and projectileTag.index == constants.swordProjectileTagId) then
-                if (projectile.attachedToObjectId) then
-                    local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
-                    if (selectedObject) then
-
-                        selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
-                        return projectile, objectIndex
-                    end
+            if (projectileTag and projectileTag.index == constants.fragGrenadeProjectileTagIndex) then
+                local player = blam.biped(get_dynamic_player())
+                if (projectile.armingTimer > 1) then
+                    player.x = projectile.x
+                    player.y = projectile.y
+                    player.z = projectile.z
+                    delete_object(objectIndex)
                 end
             end
         end
     end
-end
+end]]
 
 return core

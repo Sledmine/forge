@@ -1,10 +1,9 @@
 ------------------------------------------------------------------------------
 -- Blam! library for Chimera/SAPP Lua scripting
 -- Sledmine, JerryBrick
--- Version 4.2
 -- Improves memory handle and provides standard functions for scripting
 ------------------------------------------------------------------------------
-local blam = {version = 4.2}
+local blam = {_VERSION = "1.0.0"}
 
 ------------------------------------------------------------------------------
 -- Useful functions for internal use
@@ -12,7 +11,6 @@ local blam = {version = 4.2}
 
 -- From legacy glue library!
 --- String or number to hex
----@param s string
 local function tohex(s, upper)
     if type(s) == "number" then
         return (upper and "%08.8X" or "%08.8x"):format(s)
@@ -50,7 +48,7 @@ local addressList = {
     gameOnMenus = 0x00622058
 }
 
--- Provide tag classes
+-- Provide global tag classes by default
 local tagClasses = {
     actorVariant = "actv",
     actor = "actr",
@@ -136,7 +134,7 @@ local tagClasses = {
     wind = "wind"
 }
 
--- Provide object classes
+-- Provide global object classes by default
 local objectClasses = {
     biped = 0,
     vehicle = 1,
@@ -196,8 +194,61 @@ local consoleColors = {
     success = {1, 0.235, 0.82, 0},
     warning = {1, 0.94, 0.75, 0.098},
     error = {1, 1, 0.2, 0.2},
-    unknown = {1, 0.66, 0.66, 0.66}
+    unknow = {1, 0.66, 0.66, 0.66}
 }
+
+------------------------------------------------------------------------------
+-- SAPP API bindings
+------------------------------------------------------------------------------
+
+if (api_version) then
+    -- Create and bind Chimera functions to the ones in SAPP
+
+    --- Return the memory address of a tag given tag id or type and path
+    ---@param tag string | number
+    ---@param path string
+    ---@return number
+    function get_tag(tag, path)
+        if (not path) then
+            return lookup_tag(tag)
+        else
+            return lookup_tag(tag, path)
+        end
+    end
+
+    --- Execute a game command or script block
+    ---@param command string
+    function execute_script(command)
+        return execute_command(command)
+    end
+
+    --- Return the address of the object memory given object id
+    ---@param objectId number
+    ---@return number
+    function get_object(objectId)
+        if (objectId) then
+            local object_memory = get_object_memory(objectId)
+            if (object_memory ~= 0) then
+                return object_memory
+            end
+        end
+        return nil
+    end
+
+    --- Delete an object given object id
+    ---@param objectId number
+    function delete_object(objectId)
+        destroy_object(objectId)
+    end
+
+    --- Print text into console
+    ---@param message string
+    function console_out(message)
+        cprint(message)
+    end
+
+    print("Chimera API functions are available now with LuaBlam!")
+end
 
 ------------------------------------------------------------------------------
 -- Generic functions
@@ -1151,132 +1202,25 @@ local weaponHudInterfaceStructure = {
                         type = "float",
                         offset = 0x8
                     },
-                    anchorOffset = {
-                        type = "table",
-                        offset = 0x0,
-                        jump = 0,
-                        rows = {
-                            x = {
-                                type = "word",
-                                offset = 0x0
-                            },
-                            y = {
-                                type = "word",
-                                offset = 0x2
-                            }
-                        }
+                    defaultColorB = {
+                        type = "byte",
+                        offset = 0x24
                     },
-                    --[[scalingFlags = {
-                        type = "table",
-                        offset = 0xC,
-                        jump = 0,
-                        rows = {
-                            dontScaleOffset = {
-                                type = "bit",
-                                offset = 0x0,
-                                bitLevel = 0
-                            },
-                            dontScaleSize = {
-                                type = "bit",
-                                offset = 0x0,
-                                bitLevel = 1
-                            },
-                            useHighResScale = {
-                                type = "bit",
-                                offset = 0x0,
-                                bitLevel = 2
-                            }
-                            -- padding1 = {type = "bit", offset = 0x0, bitLevel = 4}
-                        }
+                    defaultColorG = {
+                        type = "byte",
+                        offset = 0x25
                     },
-                    -- padding1 = {size = 0x2, offset = 0xE},
-                    -- padding2 = {size = 0x14, offset = 0x10},
-                    defaultColor = {
-                        type = "pointer",
-                        pointerType = "table",
-                        offset = 0x24,
-                        jump = 0,
-                        rows = {
-                            a = {
-                                type = "float",
-                                offset = 0x0
-                            },
-                            r = {
-                                type = "float",
-                                offset = 0x4
-                            },
-                            g = {
-                                type = "float",
-                                offset = 0x8
-                            },
-                            b = {
-                                type = "float",
-                                offset = 0xC
-                            }
-                        }
-                    }]]
-                    --[[
-                            flashingColor = {
-                        type = "pointer",
-                        pointerType = "table",
-                        offset = 0x28,
-                        jump = 0,
-                        rows = {
-                            a = {type = "float", offset = 0x0},
-                            r = {type = "float", offset = 0x4},
-                            g = {type = "float", offset = 0x8},
-                            b = {type = "float", offset = 0xC}
-                        }
+                    defaultColorR = {
+                        type = "byte",
+                        offset = 0x26
                     },
-                    
-                    flashPeriod = {type = "float", offset = 0x2C},
-                    flashDelay = {type = "float", offset = 0x30},
-                    numberOfFlashes = {type = "word", offset = 0x34},
-                    flashFlags = {
-                        type = "table",
-                        offset = 0x36,
-                        jump = 0,
-                        rows = {
-                            reverseDefault = {type = "bit", offset = 0x0, bitLevel = 0}
-                        }
+                    defaultColorA = {
+                        type = "byte",
+                        offset = 0x27
                     },
-                    flashLength = {type = "float", offset = 0x38},
-                    --[[
-                    disabledColor = {
-                        type = "pointer",
-                        pointerType = "table",
-                        offset = 0x3C,
-                        jump = 0,
-                        rows = {
-                            a = {type = "float", offset = 0x0},
-                            r = {type = "float", offset = 0x4},
-                            g = {type = "float", offset = 0x8},
-                            b = {type = "float", offset = 0xC}
-                        }
-                    },
-                    -- //FIXME This offsets are WRONG!
-                    --padding3 = {size = 0x4, offset = 0x40},]]
-                    --frameRate = {type = "word", offset = 0x44},
-                    --sequenceIndex = {type = "word", offset = 0x48},
                     sequenceIndex = {type = "byte", offset = 0x46}
-                    --[[flags = {
-                        type = "table",
-                        offset = 0x48,
-                        jump = 0,
-                        rows = {
-                            flashesWhenActive = {type = "bit", offset = 0x0, bitLevel = 0},
-                            notASprite = {type = "bit", offset = 0x0, bitLevel = 1},
-                            showOnlyWhenZoomed = {type = "bit", offset = 0x0, bitLevel = 2},
-                            showSniperData = {type = "bit", offset = 0x0, bitLevel = 3},
-                            hideAreaOutsideReticle = {type = "bit", offset = 0x0, bitLevel = 4},
-                            oneZoomLevel = {type = "bit", offset = 0x0, bitLevel = 5},
-                            dontShowWhenZoomed = {type = "bit", offset = 0x0, bitLevel = 6}
-                        }
-                    }]],
-                    --padding4 = {size = 0x20, offset = 0x4C}
                 }
             }
-            -- padding3 = {size = 0x28, offset = 0x40}
         }
     }
 
@@ -1530,6 +1474,7 @@ local modelStructure = {
 ---@class projectile : blamObject
 ---@field action number Enumeration of denotation action
 ---@field attachedToObjectId number Id of the attached object
+---@field armingTimer number PENDING
 ---@field xVel number Velocity in x direction
 ---@field yVel number Velocity in y direction
 ---@field zVel number Velocity in z direction
@@ -1544,6 +1489,7 @@ local projectileStructure = extendStructure(objectStructure, {
         type = "dword",
         offset = 0x11C
     },
+    armingTimer = {type = "float", offset = 0x248},
     --[[xVel = {type = "float", offset = 0x254},
     yVel = {type = "float", offset = 0x258},
     zVel = {type = "float", offset = 0x25C},]]

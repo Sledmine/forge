@@ -2,6 +2,7 @@
     "name": "Forge Island Server",
     "target": "lua53",
     "include": [
+        "modules\\"
     ],
     "modules": [
         "struct",
@@ -9,11 +10,12 @@
         "inspect",
         "json",
         "lua-redux",
-        "cbindings",
+        "chimera-api",
         "maethrillian",
         "blam",
         "lua-ini",
         "color",
+        "rcon",
         "forge.commands",
         "forge.constants",
         "forge.core",
@@ -30,5 +32,5 @@
         "forge.version"
     ],
     "main":"server\\forge_island_server",
-    "output": "D:\\Users\\Sledmine\\Documents\\My Games\\Halo CE\\sapp\\lua\\forge_island_server.lua"
+    "output": "dist\\forge_island_server.lua"
 }

@@ -15,16 +15,25 @@ local features = {}
 function features.setCrosshairState(state)
     local forgeDefaultInterface = blam.weaponHudInterface(
                                       constants.weaponHudInterfaces.forgeCrosshair)
-    --[[local forgeWeaponInterface = blam.weaponHudInterface(
-                                     constants.weaponHudInterfaces.forgeWeaponCrosshair)]]
     if (forgeDefaultInterface) then
         local newCrosshairs = forgeDefaultInterface.crosshairs
         if (state and state < 5) then
             if (newCrosshairs[1].overlays[1].sequenceIndex ~= state) then
-                -- // TODO Add ARGB colors to this
+                if (state == 4) then
+                    newCrosshairs[1].overlays[1].defaultColorR = 255
+                    newCrosshairs[1].overlays[1].defaultColorG = 0
+                    newCrosshairs[1].overlays[1].defaultColorB = 0
+                elseif (state == 2 or state == 3) then
+                    newCrosshairs[1].overlays[1].defaultColorR = 0
+                    newCrosshairs[1].overlays[1].defaultColorG = 255
+                    newCrosshairs[1].overlays[1].defaultColorB = 0
+                else
+                    newCrosshairs[1].overlays[1].defaultColorR = 64
+                    newCrosshairs[1].overlays[1].defaultColorG = 169
+                    newCrosshairs[1].overlays[1].defaultColorB = 255
+                end
                 newCrosshairs[1].overlays[1].sequenceIndex = state
                 forgeDefaultInterface.crosshairs = newCrosshairs
-                --forgeWeaponInterface.crosshairs = newCrosshairs
             end
         end
     end

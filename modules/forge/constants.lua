@@ -9,8 +9,7 @@ local constants = {}
 
 -- Constant core values
 -- constants.myGamesFolder = read_string(0x00647830)
-constants.mouseInputAddress = 0x64C73C 
---constants.mouseInputAddress = read_dword(0x12CDFF50)
+constants.mouseInputAddress = 0x64C73C
 
 -- Constant Forge values
 constants.requestSeparator = "&"
@@ -18,7 +17,9 @@ constants.maximumBudget = 1024
 constants.minimumZSpawnPoint = -18.69
 constants.forgeSelectorOffset = 0.33
 constants.forgeSelectorVelocity = 15
-constants.scenerysTagCollectionPath = core.findTag(map:gsub("_dev", ""):gsub("_beta", "") .. "_objects", tagClasses.tagCollection)
+constants.scenerysTagCollectionPath = core.findTag(
+                                          map:gsub("_dev", ""):gsub("_beta", "") .. "_objects",
+                                          tagClasses.tagCollection)
 
 -- Constant UI widget definition values
 constants.maximumSidebarSize = 249
@@ -29,13 +30,9 @@ constants.maximumLoadingProgressBarSize = 422
 local fontTagPath, fontTagId = core.findTag("blender_pro_medium_12", tagClasses.font)
 constants.hudFontTagId = fontTagId
 
-local projectileTagPath, projectileTagId = core.findTag("forge", tagClasses.projectile)
+local projectileTagPath, projectileTagIndex = core.findTag("forge", tagClasses.projectile)
 constants.forgeProjectilePath = projectileTagPath
-constants.forgeProjectileTagId = projectileTagId
-
---[[local swordProjectilePath, swordProjectileTagId = core.findTag("slash", tagClasses.projectile)
-constants.swordProjectilePath = projectileTagPath
-constants.swordProjectileTagId = projectileTagId]]
+constants.forgeProjectileTagIndex = projectileTagIndex
 
 -- Constant Forge requests data
 constants.requests = {

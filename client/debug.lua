@@ -88,7 +88,7 @@ function OnCommand(command)
                                                 player.z + 0.5)
         end
         return false
-    elseif (command == "plsnowhilex") then
+    elseif (command == "builex") then
         debugMode = not debugMode
         return false
     elseif (command == "dinfo") then

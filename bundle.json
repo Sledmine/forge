@@ -29,5 +29,5 @@
         "forge.version"
     ],
     "main":"client\\forge_island",
-    "output": "D:\\Users\\Sledmine\\Documents\\My Games\\Halo CE\\chimera\\lua\\scripts\\map\\forge_island.lua"
+    "output": "dist\\forge_island.lua"
 }

@@ -44,6 +44,11 @@ We are giving our best effort to make this project as complete and useful as pos
 - Object history placement, provide undo, redo operations along time.
 - Better controls implementation, multi input devices is key, keyboard, mouse and joystick support are must have features.
 
+# Controls, commands and general information
+Checkout some of the markdowns hosted on this repository about Forge in general:
+
+[Forge - Controls and commands](FORGE.md)
+
 # How was it created?
 
 This project was made with Chimera Lua Scripting for the client side and SAPP Lua Scripting for the server side, it has in built rcon communication system, allowing us to share data via rcon messages and intercept any message to execute client side or server side actions.

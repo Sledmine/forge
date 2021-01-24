@@ -45,5 +45,5 @@ luac.out
 # IntelliJ IDEA
 .idea
 
-# Final builds
-client/bundled/*
+# Distribution builds
+dist/
