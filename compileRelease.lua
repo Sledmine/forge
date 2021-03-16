@@ -7,6 +7,15 @@
 local forgeVersion = require "modules.forge.version"
 local forgeBuild = arg[1]
 
+if (forgeBuild) then
+    if (forgeBuild:find("dev")) then
+        forgeVersion = forgeVersion .. "-dev"
+    end
+else
+    print("Please specify a Forge build!")
+    os.exit(1)
+end
+
 -- Generate bitmap version from code
 
 local versionBitmapCmd =
