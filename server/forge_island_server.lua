@@ -41,7 +41,7 @@ local votingReducer = require "forge.reducers.votingReducer"
 local forgeReducer = require "forge.reducers.forgeReducer"
 
 -- Variable used to store the current Forge map in memory
-forgeMapName = "Octagon"
+forgeMapName = "Lockout"
 forgeMapFinishedLoading = false
 -- Controls if "Forging" is available or not in the current game
 local bipedSwapping = false
@@ -134,29 +134,24 @@ function OnTick()
                     local player = blam.biped(get_object(playerObjectId))
                     if (player) then
                         if (bipedSwapping) then
-                            if (constants.monitorTagId) then
-                                if (player.crouchHold and player.tagId == constants.monitorTagId) then
+                            if (constants.bipeds.monitorTagId) then
+                                if (player.crouchHold and player.tagId ==
+                                    constants.bipeds.monitorTagId) then
                                     dprint("playerObjectId: " .. tostring(playerObjectId))
                                     dprint("Trying to process a biped swap request...")
-                                    playersBiped[playerIndex] = "spartan"
+                                    -- FIXME Biped name should be parsed to remove tagId pattern
+                                    playersBiped[playerIndex] = "spartan" .. "TagId"
                                     playersTempPosition[playerIndex] =
-                                        {
-                                            player.x,
-                                            player.y,
-                                            player.z
-                                        }
+                                        {player.x, player.y, player.z}
                                     delete_object(playerObjectId)
                                 elseif (player.flashlightKey and player.tagId ~=
-                                    constants.monitorTagId) then
+                                    constants.bipeds.monitorTagId) then
                                     dprint("playerObjectId: " .. tostring(playerObjectId))
                                     dprint("Trying to process a biped swap request...")
-                                    playersBiped[playerIndex] = "monitor"
+                                    -- FIXME Biped name should be parsed to remove tagId pattern
+                                    playersBiped[playerIndex] = "monitor" .. "TagId"
                                     playersTempPosition[playerIndex] =
-                                        {
-                                            player.x,
-                                            player.y,
-                                            player.z
-                                        }
+                                        {player.x, player.y, player.z}
                                     delete_object(playerObjectId)
                                 end
                             end
@@ -202,21 +197,13 @@ rcon.commandInterceptor = function(playerIndex, message, environment, rconPasswo
                     dprint("playerObjectId: " .. tostring(playerObjectId))
                     local player = blam.object(get_object(playerObjectId))
                     if (player) then
-                        playersTempPosition[playerIndex] =
-                            {
-                                player.x,
-                                player.y,
-                                player.z
-                            }
-                        local monitorTag = blam.getTag(constants.bipeds.monitor, tagClasses.biped)
-                        if (monitorTag) then
-                            if (player.tagId == monitorTag.id) then
-                                playersBiped[playerIndex] = "spartan"
-                            else
-                                playersBiped[playerIndex] = "monitor"
-                            end
-                            delete_object(playerObjectId)
+                        playersTempPosition[playerIndex] = {player.x, player.y, player.z}
+                        if (player.tagId == constants.bipeds.monitorTagId) then
+                            playersBiped[playerIndex] = "spartanTagId"
+                        else
+                            playersBiped[playerIndex] = "monitorTagId"
                         end
+                        delete_object(playerObjectId)
                     end
                 end
             end
@@ -305,12 +292,7 @@ function OnGameStart()
     end
 
     -- Add forge admin commands
-    local adminForgeCommands = {
-        "fload",
-        "fsave",
-        "fmon",
-        "fbip"
-    }
+    local adminForgeCommands = {"fload", "fsave", "fmon", "fbip"}
     for _, command in pairs(adminForgeCommands) do
         rcon.submitAdmimCommand(command)
     end
@@ -328,9 +310,7 @@ function OnGameStart()
         core.loadForgeMap(forgeMapName)
     end
 
-    eventsStore:dispatch({
-        type = constants.requests.flushVotes.actionType
-    })
+    eventsStore:dispatch({type = constants.requests.flushVotes.actionType})
     mapVotingEnabled = true
     register_callback(cb["EVENT_TICK"], "OnTick")
     register_callback(cb["EVENT_JOIN"], "OnPlayerJoin")
@@ -342,9 +322,8 @@ end
 function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
     -- Intercept objects that are related to a player
     if (playerIndex) then
-        for index, tagPath in pairs(constants.bipeds) do
-            local bipedTag = blam.getTag(tagPath, tagClasses.biped)
-            if (bipedTag and tagId == bipedTag.id) then
+        for index, bipedTagId in pairs(constants.bipeds) do
+            if (tagId == bipedTagId) then
                 -- Track objectId of every player
                 playersObjectId[playerIndex] = objectId
                 local requestedBiped = playersBiped[playerIndex]
@@ -423,14 +402,10 @@ function OnGameEnd()
     -- Events store are already loaded
     if (eventsStore) then
         -- Clean all forge objects
-        eventsStore:dispatch({
-            type = constants.requests.flushForge.actionType
-        })
+        --eventsStore:dispatch({type = constants.requests.flushForge.actionType})
         -- Start vote map screen
         if (mapVotingEnabled) then
-            eventsStore:dispatch({
-                type = constants.requests.loadVoteMapScreen.actionType
-            })
+            eventsStore:dispatch({type = constants.requests.loadVoteMapScreen.actionType})
         end
     end
     playersObjectId = {}
