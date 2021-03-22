@@ -20,16 +20,24 @@ local rotateObject = core.rotateObject
 ---@field roll number
 ---@field remoteId number
 ---@field reflectionId number
+---@field teamIndex  number
+---@field color number
 
+---@class eventsState
+---@field forgeObjects forgeObject[]
+---@field cachedResponses string[]
+local defaultState = {
+    forgeObjects = {},
+    cachedResponses = {},
+    playerVotes = {},
+    mapVotesGroup = 0
+}
+
+---@param state eventsState
 local function eventsReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
-        state = {
-            forgeObjects = {},
-            cachedResponses = {},
-            playerVotes = {},
-            mapVotesGroup = 0
-        }
+        state = glue.deepcopy(defaultState)
     end
     if (action.type) then
         dprint("-> [Events Store]")
@@ -41,7 +49,7 @@ local function eventsReducer(state, action)
 
         -- Create a new object rather than passing it as "reference"
         local forgeObject = glue.update({}, requestObject)
-        local tagPath = blam.getTag(requestObject.tagId).path
+        local tagPath = blam.getTag(requestObject.tagId or requestObject.tagIndex).path
 
         -- Spawn object in the game
         local objectId = core.spawnObject(tagClasses.scenery, tagPath, forgeObject.x, forgeObject.y,
@@ -69,7 +77,13 @@ local function eventsReducer(state, action)
             forgeObject.remoteId = objectIndex
         end
 
-        dprint("objectId: " .. objectIndex)
+        -- Apply color to the object
+        if (server_type ~= "sapp" and requestObject.color) then
+            local tempObject = blam.object(get_object(objectIndex))
+            features.setObjectColor(constants.colorsNumber[requestObject.color], tempObject)
+        end
+
+        dprint("objectIndex: " .. objectIndex)
         dprint("remoteId: " .. forgeObject.remoteId)
 
         -- Check and take actions if the object is a special netgame object
@@ -86,7 +100,7 @@ local function eventsReducer(state, action)
                 dprint("WEAPON_SPAWN", "category")
                 core.updateNetgameEquipmentSpawn(tagPath, forgeObject)
             end
-        elseif (tagPath:find("objectives")) then
+        elseif (tagPath:find("objectives") or tagPath:find("teleporters")) then
             dprint("-> [Reflecting Flag]", "warning")
             core.updateNetgameFlagSpawn(tagPath, forgeObject)
         end
@@ -102,13 +116,15 @@ local function eventsReducer(state, action)
 
         -- Clean and prepare object to store it
         forgeObject.tagId = nil
+        forgeObject.requestType = nil
 
         -- Store the object in our state
         state.forgeObjects[objectIndex] = forgeObject
 
         -- Update the current map information
         forgeStore:dispatch({
-            type = "UPDATE_MAP_INFO"
+            type = "UPDATE_MAP_INFO",
+            payload = {loadingObjectPath = tagPath}
         })
 
         return state
@@ -127,6 +143,8 @@ local function eventsReducer(state, action)
             forgeObject.yaw = requestObject.yaw
             forgeObject.pitch = requestObject.pitch
             forgeObject.roll = requestObject.roll
+            forgeObject.color = requestObject.color
+            forgeObject.teamIndex = requestObject.teamIndex
 
             -- Update object rotation
             core.rotateObject(targetObjectId, forgeObject.yaw, forgeObject.pitch, forgeObject.roll)
@@ -136,6 +154,10 @@ local function eventsReducer(state, action)
             tempObject.x = forgeObject.x
             tempObject.y = forgeObject.y
             tempObject.z = forgeObject.z
+
+            if (requestObject.color) then
+                features.setObjectColor(constants.colorsNumber[requestObject.color], tempObject)
+            end
 
             -- Check and take actions if the object is reflecting a netgame point
             if (forgeObject.reflectionId) then
@@ -154,7 +176,7 @@ local function eventsReducer(state, action)
                         dprint("WEAPON_SPAWN", "category")
                         core.updateNetgameEquipmentSpawn(tagPath, forgeObject)
                     end
-                elseif (tagPath:find("objectives")) then
+                elseif (tagPath:find("objectives") or tagPath:find("teleporters")) then
                     dprint("-> [Reflecting Flag]", "warning")
                     core.updateNetgameFlagSpawn(tagPath, forgeObject)
                 end
@@ -201,6 +223,9 @@ local function eventsReducer(state, action)
                         dprint("WEAPON_SPAWN", "category")
                         core.updateNetgameEquipmentSpawn(tagPath, forgeObject, true)
                     end
+                elseif (tagPath:find("teleporters")) then
+                    dprint("-> [Reflecting Flag]", "warning")
+                    core.updateNetgameFlagSpawn(tagPath, forgeObject, true)
                 end
             end
 
@@ -270,7 +295,7 @@ local function eventsReducer(state, action)
         forgeAnimation = features.animateForgeLoading
         forgeAnimationTimer = set_timer(250, "forgeAnimation")
 
-        features.openMenu(constants.uiWidgetDefinitions.loadingMenu)
+        features.openMenu(constants.uiWidgetDefinitions.loadingMenu.path)
 
         return state
     elseif (action.type == constants.requests.flushForge.actionType) then
@@ -284,7 +309,7 @@ local function eventsReducer(state, action)
     elseif (action.type == constants.requests.loadVoteMapScreen.actionType) then
         if (server_type ~= "sapp") then
             function preventClose()
-                features.openMenu(constants.uiWidgetDefinitions.voteMenu)
+                features.openMenu(constants.uiWidgetDefinitions.voteMenu.path)
                 return false
             end
             set_timer(5000, "preventClose")

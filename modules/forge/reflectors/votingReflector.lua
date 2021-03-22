@@ -9,6 +9,7 @@ local menu = require "forge.menu"
 
 local function votingReflector()
     -- Get current forge state
+    ---@type votingState
     local votingState = votingStore:getState()
 
     local votesList = votingState.votingMenu.votesList
@@ -34,15 +35,15 @@ local function votingReflector()
     end
 
     -- Get maps vote menu buttons lists
-    local votingMapsMenuList = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.voteMenuList)
+    local votingMapsMenuList = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.voteMenuList.id)
     votingMapsMenuList.childWidgetsCount = #glue.keys(currentMapsList)
 
     -- Get maps vote string list
-    local votingMapsStrings = blam.unicodeStringList(constants.unicodeStrings.votingMapsList)
+    local votingMapsStrings = blam.unicodeStringList(constants.unicodeStrings.votingMapsListTagId)
     votingMapsStrings.stringList = currentMapsList
 
     -- Get maps vote count string list
-    local votingCountListStrings = blam.unicodeStringList(constants.unicodeStrings.votingCountList)
+    local votingCountListStrings = blam.unicodeStringList(constants.unicodeStrings.votingCountListTagId)
     votingCountListStrings.stringList = votesList
 
         -- // TODO Add count replacing for child widgets

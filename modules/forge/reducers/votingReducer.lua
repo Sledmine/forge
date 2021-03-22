@@ -3,39 +3,41 @@ local inspect = require "inspect"
 local glue = require "glue"
 
 -- Forge modules
-
 local menu = require "forge.menu"
+
+---@class votingReducer
+local defaultState = {
+    votingMenu = {
+        mapsList = {
+            {
+                name = "Begotten",
+                gametype = "Team Slayer",
+                mapIndex = 1
+            },
+            {
+                name = "Octagon",
+                gametype = "Slayer",
+                mapIndex = 1
+            },
+            {
+                name = "Strong Enough",
+                gametype = "CTF",
+                mapIndex = 1
+            },
+            {
+                name = "Castle",
+                gametype = "CTF",
+                mapIndex = 1
+            }
+        },
+        votesList = {0, 0, 0, 0}
+    }
+}
 
 local function votingReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
-        state = {
-            votingMenu = {
-                mapsList = {
-                    {
-                        name = "Begotten",
-                        gametype = "Team Slayer",
-                        mapIndex = 1
-                    },
-                    {
-                        name = "Octagon",
-                        gametype = "Slayer",
-                        mapIndex = 1
-                    },
-                    {
-                        name = "Strong Enough",
-                        gametype = "CTF",
-                        mapIndex = 1
-                    },
-                    {
-                        name = "Castle",
-                        gametype = "CTF",
-                        mapIndex = 1
-                    }
-                },
-                votesList = {0, 0, 0, 0}
-            }
-        }
+        state = glue.deepcopy(defaultState)
     end
     if (action.type) then
         dprint("-> [Voting Store]")

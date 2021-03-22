@@ -4,32 +4,37 @@ local glue = require "glue"
 local core = require "forge.core"
 local features = require "forge.features"
 
-function playerReducer(state, action)
+---@class position
+---@field x number
+---@field y number
+---@field z number
+
+---@class playerState
+---@field position position
+local defaultState = {
+    lockDistance = true,
+    distance = 5,
+    attachedObjectId = nil,
+    position = nil,
+    xOffset = 0,
+    yOffset = 0,
+    zOffset = 0,
+    attachX = 0,
+    attachY = 0,
+    attachZ = 0,
+    yaw = 0,
+    pitch = 0,
+    roll = 0,
+    rotationStep = 5,
+    currentAngle = "yaw",
+    color = 1,
+    teamIndex = 0
+}
+
+local function playerReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
-        ---@class position
-        ---@field x number
-        ---@field y number
-        ---@field z number
-        ---@class playerState
-        ---@field position position
-        state = {
-            lockDistance = true,
-            distance = 5,
-            attachedObjectId = nil,
-            position = nil,
-            xOffset = 0,
-            yOffset = 0,
-            zOffset = 0,
-            attachX = 0,
-            attachY = 0,
-            attachZ = 0,
-            yaw = 0,
-            pitch = 0,
-            roll = 0,
-            rotationStep = 5,
-            currentAngle = "yaw"
-        }
+        state = glue.deepcopy(defaultState)
     end
     if (action.type == "SET_LOCK_DISTANCE") then
         state.lockDistance = action.payload.lockDistance
@@ -41,6 +46,8 @@ function playerReducer(state, action)
         state.yaw = 0
         state.pitch = 0
         state.roll = 0
+        state.color = 1
+        state.teamIndex = 0
         if (state.attachedObjectId) then
             if (get_object(state.attachedObjectId)) then
                 delete_object(state.attachedObjectId)
@@ -53,10 +60,11 @@ function playerReducer(state, action)
                                                           state.zOffset)
             end
         else
-            state.attachedObjectId = core.spawnObject("scen", action.payload.path, state.xOffset,
-                                                      state.yOffset, state.zOffset)
+            state.attachedObjectId = core.spawnObject("scen", action.payload.path,
+                                                      state.xOffset, state.yOffset,
+                                                      state.zOffset)
         end
-        --core.rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
+        -- core.rotateObject(state.attachedObjectId, state.yaw, state.pitch, state.roll)
         features.highlightObject(state.attachedObjectId, 1)
         return state
     elseif (action.type == "ATTACH_OBJECT") then
@@ -79,11 +87,12 @@ function playerReducer(state, action)
             end
         end
         local forgeObjects = eventsStore:getState().forgeObjects
-        local composedObject = forgeObjects[state.attachedObjectId]
-        if (composedObject) then
-            state.yaw = composedObject.yaw
-            state.pitch = composedObject.pitch
-            state.roll = composedObject.roll
+        local forgeObject = forgeObjects[state.attachedObjectId]
+        if (forgeObject) then
+            state.yaw = forgeObject.yaw
+            state.pitch = forgeObject.pitch
+            state.roll = forgeObject.roll
+            state.teamIndex = forgeObject.teamIndex
         end
         features.highlightObject(state.attachedObjectId, 1)
         return state
@@ -96,35 +105,44 @@ function playerReducer(state, action)
             end
         end
         -- Send update request in case of needed
-        if (state.attachedObjectId and get_object(state.attachedObjectId)) then
-            local forgeObjects = eventsStore:getState().forgeObjects
-            local composedObject = forgeObjects[state.attachedObjectId]
-            if (not composedObject) then
-                -- Object does not exist, create request table and send request
-                local requestTable = {}
-                requestTable.requestType = constants.requests.spawnObject.requestType
-                local tempObject = blam.object(get_object(state.attachedObjectId))
-                requestTable.tagId = tempObject.tagId
-                requestTable.x = state.xOffset
-                requestTable.y = state.yOffset
-                requestTable.z = state.zOffset
-                requestTable.yaw = state.yaw
-                requestTable.pitch = state.pitch
-                requestTable.roll = state.roll
-                core.sendRequest(core.createRequest(requestTable))
-                delete_object(state.attachedObjectId)
-            else
-                local requestTable = composedObject
-                requestTable.requestType = constants.requests.updateObject.requestType
-                local tempObject = blam.object(get_object(state.attachedObjectId))
-                requestTable.x = tempObject.x
-                requestTable.y = tempObject.y
-                requestTable.z = tempObject.z
-                requestTable.yaw = state.yaw
-                requestTable.pitch = state.pitch
-                requestTable.roll = state.roll
-                -- Object already exists, send update request
-                core.sendRequest(core.createRequest(requestTable))
+        if (state.attachedObjectId) then
+            local tempObject = blam.object(get_object(state.attachedObjectId))
+            if (tempObject) then
+                ---@type eventsState
+                local eventsState = eventsStore:getState()
+                local forgeObjects = eventsState.forgeObjects
+                local forgeObject = forgeObjects[state.attachedObjectId]
+                if (not forgeObject) then
+                    -- Object does not exist, create request table and send request
+                    local requestTable = {}
+                    requestTable.requestType = constants.requests.spawnObject.requestType
+                    requestTable.tagId = tempObject.tagId
+                    requestTable.x = state.xOffset
+                    requestTable.y = state.yOffset
+                    requestTable.z = state.zOffset
+                    requestTable.yaw = state.yaw
+                    requestTable.pitch = state.pitch
+                    requestTable.roll = state.roll
+                    requestTable.color = state.color
+                    requestTable.teamIndex = state.teamIndex
+                    core.sendRequest(core.createRequest(requestTable))
+                    delete_object(state.attachedObjectId)
+                else
+                    local tempObject = blam.object(get_object(state.attachedObjectId))
+                    local requestTable = {}
+                    requestTable.objectId = forgeObject.remoteId
+                    requestTable.requestType = constants.requests.updateObject.requestType
+                    requestTable.x = tempObject.x
+                    requestTable.y = tempObject.y
+                    requestTable.z = tempObject.z
+                    requestTable.yaw = state.yaw
+                    requestTable.pitch = state.pitch
+                    requestTable.roll = state.roll
+                    requestTable.color = state.color
+                    requestTable.teamIndex = state.teamIndex
+                    -- Object already exists, send update request
+                    core.sendRequest(core.createRequest(requestTable))
+                end
             end
             state.attachedObjectId = nil
         end
@@ -138,13 +156,13 @@ function playerReducer(state, action)
         -- Delete attached object
         if (state.attachedObjectId and get_object(state.attachedObjectId)) then
             local forgeObjects = eventsStore:getState().forgeObjects
-            local composedObject = forgeObjects[state.attachedObjectId]
-            if (not composedObject) then
+            local forgeObject = forgeObjects[state.attachedObjectId]
+            if (not forgeObject) then
                 delete_object(state.attachedObjectId)
             else
-                local requestTable = composedObject
+                local requestTable = forgeObject
                 requestTable.requestType = constants.requests.deleteObject.requestType
-                requestTable.remoteId = composedObject.remoteId
+                requestTable.remoteId = forgeObject.remoteId
                 core.sendRequest(core.createRequest(requestTable))
             end
         end
@@ -171,7 +189,7 @@ function playerReducer(state, action)
             state.yOffset = yOffset
             state.zOffset = zOffset
         end
-        --dprint(state.xOffset .. " " ..  state.yOffset .. " " .. state.zOffset)
+        -- dprint(state.xOffset .. " " ..  state.yOffset .. " " .. state.zOffset)
         return state
     elseif (action.type == "UPDATE_DISTANCE") then
         if (state.attachedObjectId) then
@@ -246,14 +264,25 @@ function playerReducer(state, action)
         return state
     elseif (action.type == "SAVE_POSITION") then
         local tempObject = blam.biped(get_dynamic_player())
-        state.position = {
-            x = tempObject.x,
-            y = tempObject.y,
-            z = tempObject.z
-        }
+        state.position = {x = tempObject.x, y = tempObject.y, z = tempObject.z}
         return state
     elseif (action.type == "RESET_POSITION") then
         state.position = nil
+        return state
+    elseif (action.type == "SET_OBJECT_COLOR") then
+        if (action.payload) then
+            state.color = glue.index(constants.colorsNumber)[action.payload]
+        else
+            dprint("Warning, attempt set color state value to nil.")
+        end
+        return state
+    elseif (action.type == "SET_OBJECT_CHANNEL") then
+        if (action.payload) then
+            state.teamIndex = action.payload.channel
+            dprint("teamIndex: " .. state.teamIndex)
+        else
+            dprint("Warning, attempt set teamIndex state value to nil.")
+        end
         return state
     else
         return state

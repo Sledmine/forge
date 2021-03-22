@@ -3,48 +3,48 @@ local inspect = require "inspect"
 local glue = require "glue"
 
 -- Forge modules
-
 local menu = require "forge.menu"
 
-local function forgeReducer(state, action)
-    -- Create default state if it does not exist
-    if (not state) then
-        state = {
-            mapsMenu = {
-                mapsList = {},
-                currentMapsList = {},
-                currentPage = 1,
-                sidebar = {
-                    height = constants.maximumSidebarSize,
-                    position = 0,
-                    slice = 0,
-                    overflow = 0
-                }
-            },
-            forgeMenu = {
-                -- //TODO Implement a way to use this field for menu navigation purposes 
-                lastObject = "root",
-                desiredElement = "root",
-                objectsDatabase = {},
-                objectsList = {root = {}},
-                elementsList = {root = {}},
-                currentElementsList = {},
-                currentPage = 1,
-                currentBudget = "0",
-                currentBarSize = 0
-            },
-            loadingMenu = {
-                loadingObjectPath = "",
-                currentBarSize = 422,
-                expectedObjects = 1
-            },
-            currentMap = {
-                name = "Unsaved",
-                author = "Author: Unknown",
-                version = "1.0",
-                description = "No description given for this map."
-            }
+---@class forgeState
+local defaultState = {
+    mapsMenu = {
+        mapsList = {},
+        currentMapsList = {},
+        currentPage = 1,
+        sidebar = {
+            height = 0,--constants.maximumSidebarSize,
+            position = 0,
+            slice = 0,
+            overflow = 0
         }
+    },
+    forgeMenu = {
+        -- //TODO Implement a way to use this field for menu navigation purposes 
+        lastObject = "root",
+        desiredElement = "root",
+        objectsDatabase = {},
+        objectsList = {root = {}},
+        elementsList = {root = {}},
+        currentElementsList = {},
+        currentPage = 1,
+        currentBudget = "0",
+        currentBarSize = 0
+    },
+    loadingMenu = {loadingObjectPath = "", currentBarSize = 422, expectedObjects = 1},
+    currentMap = {
+        name = "Unsaved",
+        author = "Author: Unknown",
+        version = "1.0",
+        description = "No description given for this map."
+    }
+}
+
+---@param state forgeState
+local function forgeReducer(state, action)
+    if (not state) then
+        -- Create default state if it does not exist
+        state = glue.deepcopy(defaultState)
+        state.mapsMenu.sidebar.height = constants.maximumSidebarSize
     end
     if (action.type) then
         dprint("[Forge Reducer]:")
@@ -67,16 +67,19 @@ local function forgeReducer(state, action)
             end
             local spaceLeft = constants.maximumSidebarSize - sidebarHeight
             state.mapsMenu.sidebar.slice = glue.round(spaceLeft / (totalPages - 1))
-            local fullSize = sidebarHeight + (state.mapsMenu.sidebar.slice * (totalPages - 1))
+            local fullSize = sidebarHeight +
+                                 (state.mapsMenu.sidebar.slice * (totalPages - 1))
             state.mapsMenu.sidebar.overflow = fullSize - constants.maximumSidebarSize
-            state.mapsMenu.sidebar.height = sidebarHeight - state.mapsMenu.sidebar.overflow
+            state.mapsMenu.sidebar.height = sidebarHeight -
+                                                state.mapsMenu.sidebar.overflow
         end
         return state
     elseif (action.type == "INCREMENT_MAPS_MENU_PAGE") then
         if (state.mapsMenu.currentPage < #state.mapsMenu.currentMapsList) then
             state.mapsMenu.currentPage = state.mapsMenu.currentPage + 1
             local newHeight = state.mapsMenu.sidebar.height + state.mapsMenu.sidebar.slice
-            local newPosition = state.mapsMenu.sidebar.position + state.mapsMenu.sidebar.slice
+            local newPosition = state.mapsMenu.sidebar.position +
+                                    state.mapsMenu.sidebar.slice
             if (state.mapsMenu.currentPage == 3) then
                 newHeight = newHeight + state.mapsMenu.sidebar.overflow
             end
@@ -92,7 +95,8 @@ local function forgeReducer(state, action)
         if (state.mapsMenu.currentPage > 1) then
             state.mapsMenu.currentPage = state.mapsMenu.currentPage - 1
             local newHeight = state.mapsMenu.sidebar.height - state.mapsMenu.sidebar.slice
-            local newPosition = state.mapsMenu.sidebar.position - state.mapsMenu.sidebar.slice
+            local newPosition = state.mapsMenu.sidebar.position -
+                                    state.mapsMenu.sidebar.slice
             if (state.mapsMenu.currentPage == 2) then
                 newHeight = newHeight - state.mapsMenu.sidebar.overflow
             end
@@ -221,16 +225,18 @@ local function forgeReducer(state, action)
                     local objectState = eventsStore:getState().forgeObjects
                     local currentObjects = #glue.keys(objectState)
                     local newBarSize = currentObjects * constants.maximumProgressBarSize /
-                                           constants.maximumBudget
+                                           constants.maximumObjectsBudget
                     state.forgeMenu.currentBarSize = glue.floor(newBarSize)
                     state.forgeMenu.currentBudget = tostring(currentObjects)
 
                     -- Set loading map bar data
                     local expectedObjects = state.loadingMenu.expectedObjects
-                    local newBarSize = currentObjects * constants.maximumLoadingProgressBarSize /
+                    local newBarSize = currentObjects *
+                                           constants.maximumLoadingProgressBarSize /
                                            expectedObjects
                     state.loadingMenu.currentBarSize = glue.floor(newBarSize)
-                    if (state.loadingMenu.currentBarSize >= constants.maximumLoadingProgressBarSize) then
+                    if (state.loadingMenu.currentBarSize >=
+                        constants.maximumLoadingProgressBarSize) then
                         if (forgeAnimationTimer) then
                             stop_timer(forgeAnimationTimer)
                             forgeAnimationTimer = nil
