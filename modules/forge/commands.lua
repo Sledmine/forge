@@ -113,10 +113,21 @@ local function forgeCommands(command)
                 }
             })
             return false
+        elseif (forgeCommand == "fspawn" and server_type == "local") then
+            -- Get scenario data
+            local scenario = blam.scenario(0)
+
+            -- Get scenario player spawn points
+            local mapSpawnPoints = scenario.spawnLocationList
+
+            mapSpawnPoints[1].type = 12
+
+            scenario.spawnLocationList = mapSpawnPoints
+            return false
             -------------- DEBUGGING COMMANDS ONLY ---------------
         elseif (configuration.forge.debugMode) then
             if (forgeCommand == "fmenu") then
-                votingStore:dispatch({
+                --[[votingStore:dispatch({
                     type = "APPEND_MAP_VOTE",
                     payload = {
                         map = {
@@ -124,8 +135,8 @@ local function forgeCommands(command)
                             gametype = "Slayer"
                         }
                     }
-                })
-                features.openMenu("[shm]\\halo_4\\ui\\shell\\map_vote_menu\\map_vote_menu")
+                })]]
+                features.openMenu(constants.uiWidgetDefinitions.loadingMenu.path)
                 return false
             elseif (forgeCommand == "fsize") then
                 dprint(collectgarbage("count") / 1024)
@@ -184,10 +195,11 @@ local function forgeCommands(command)
                 end
                 return false
             elseif (forgeCommand == "fdump") then
-                write_file("player_dump.json", inspect(playerStore:getState()))
-                write_file("forge_dump.json", inspect(forgeStore:getState()))
-                write_file("events_dump.json", inspect(eventsStore:getState()))
-                write_file("voting_dump.json", inspect(votingStore:getState()))
+                write_file("player_dump.lua", inspect(playerStore:getState()))
+                write_file("forge_dump.lua", inspect(forgeStore:getState()))
+                write_file("events_dump.lua", inspect(eventsStore:getState()))
+                write_file("voting_dump.lua", inspect(votingStore:getState()))
+                write_file("constants.lua", inspect(constants))
                 write_file("debug_dump.txt", debugBuffer)
                 return false
             elseif (forgeCommand == "fixmaps") then
@@ -218,7 +230,7 @@ local function forgeCommands(command)
 
                 return false
             elseif (forgeCommand == "fblam") then
-                console_out("lua-blam " .. blam.version)
+                console_out("lua-blam " .. blam._VERSION)
                 return false
             elseif (forgeCommand == "fspeed") then
                 local newSpeed = tonumber(table.concat(glue.shift(splitCommand, 1, -1), " "))
@@ -226,17 +238,6 @@ local function forgeCommands(command)
                     local player = get_player()
                     write_float(player + 0x6C, newSpeed)
                 end
-                return false
-            elseif (forgeCommand == "fspawn") then
-                -- Get scenario data
-                local scenario = blam.scenario(0)
-
-                -- Get scenario player spawn points
-                local mapSpawnPoints = scenario.spawnLocationList
-
-                mapSpawnPoints[1].type = 12
-
-                scenario.spawnLocationList = mapSpawnPoints
                 return false
             end
         end

@@ -8,6 +8,8 @@ clua_version = 2.042
 
 -- Script name must be the base script name, without variants or extensions
 scriptName = script_name:gsub(".lua", ""):gsub("_dev", ""):gsub("_beta", "")
+-- Map name should be the base project name, without build env variants
+absoluteMapName = map:gsub("_dev", ""):gsub("_beta", "")
 defaultConfigurationPath = "config"
 defaultMapsPath = "fmaps"
 
@@ -106,7 +108,6 @@ end
 function OnMapLoad()
     -- Dinamically load constants for the current Forge map
     constants = require "forge.constants"
-    constants.scenarioPath = "[shm]\\halo_reach\\maps\\forge_world\\forge_world"
 
     -- Like Redux we have some kind of store baby!! the rest is pure magic..
     playerStore = redux.createStore(playerReducer)
@@ -116,7 +117,7 @@ function OnMapLoad()
 
     local forgeState = forgeStore:getState()
 
-    local tagCollection = blam.tagCollection(constants.scenerysTagCollectionPath)
+    local tagCollection = blam.tagCollection(constants.tagCollections.forgeObjectsTagId)
 
     -- // TODO Refactor this entire loop, has been implemented from the old script!!!
     -- Iterate over all the sceneries available in the sceneries tag collection
@@ -146,7 +147,8 @@ function OnMapLoad()
         for currentLevel, categoryLevel in pairs(sceneriesSplit) do
             -- // TODO This is horrible, remove this "sort" implementation
             if (categoryLevel:sub(1, 1) == "_") then
-                categoryLevel = glue.string.fromhex(tostring((0x2))) .. categoryLevel:sub(2, -1)
+                categoryLevel = glue.string.fromhex(tostring((0x2))) ..
+                                    categoryLevel:sub(2, -1)
             end
             if (not treePosition[categoryLevel]) then
                 treePosition[categoryLevel] = {}
@@ -167,16 +169,12 @@ function OnMapLoad()
     -- Dispatch forge objects list update
     forgeStore:dispatch({
         type = "UPDATE_FORGE_ELEMENTS_LIST",
-        payload = {
-            forgeMenu = forgeState.forgeMenu
-        }
+        payload = {forgeMenu = forgeState.forgeMenu}
     })
 
     votingStore:subscribe(votingReflector)
     -- Dispatch forge objects list update
-    votingStore:dispatch({
-        type = "FLUSH_MAP_VOTES"
-    })
+    votingStore:dispatch({type = "FLUSH_MAP_VOTES"})
 
     local isForgeMap = core.isForgeMap(map)
     if (isForgeMap) then
@@ -189,7 +187,8 @@ function OnMapLoad()
 
         -- Start autosave timer
         if (not autoSaveTimer and server_type == "local") then
-            autoSaveTimer = set_timer(configuration.forge.autoSaveTime, "autoSaveForgeMap")
+            autoSaveTimer =
+                set_timer(configuration.forge.autoSaveTime, "autoSaveForgeMap")
         end
 
         set_callback("tick", "OnTick")
@@ -227,16 +226,13 @@ function OnPreFrame()
         if (menuPressedButton) then
             if (menuPressedButton == 9) then
                 -- Dispatch an event to increment current page
-                forgeStore:dispatch({
-                    type = "DECREMENT_MAPS_MENU_PAGE"
-                })
+                forgeStore:dispatch({type = "DECREMENT_MAPS_MENU_PAGE"})
             elseif (menuPressedButton == 10) then
                 -- Dispatch an event to decrement current page
-                forgeStore:dispatch({
-                    type = "INCREMENT_MAPS_MENU_PAGE"
-                })
+                forgeStore:dispatch({type = "INCREMENT_MAPS_MENU_PAGE"})
             else
-                local elementsList = blam.unicodeStringList(constants.unicodeStrings.mapsList)
+                local elementsList = blam.unicodeStringList(
+                                         constants.unicodeStrings.mapsListTagId)
                 local mapName = elementsList.stringList[menuPressedButton]:gsub(" ", "_")
                 core.loadForgeMap(mapName)
             end
@@ -259,25 +255,20 @@ function OnPreFrame()
             local forgeState = forgeStore:getState()
             if (menuPressedButton == 9) then
                 if (forgeState.forgeMenu.desiredElement ~= "root") then
-                    forgeStore:dispatch({
-                        type = "UPWARD_NAV_FORGE_MENU"
-                    })
+                    forgeStore:dispatch({type = "UPWARD_NAV_FORGE_MENU"})
                 else
                     dprint("Closing Forge menu...")
                     menu.close(constants.uiWidgetDefinitions.forgeMenu)
                 end
             elseif (menuPressedButton == 8) then
-                forgeStore:dispatch({
-                    type = "INCREMENT_FORGE_MENU_PAGE"
-                })
+                forgeStore:dispatch({type = "INCREMENT_FORGE_MENU_PAGE"})
             elseif (menuPressedButton == 7) then
-                forgeStore:dispatch({
-                    type = "DECREMENT_FORGE_MENU_PAGE"
-                })
+                forgeStore:dispatch({type = "DECREMENT_FORGE_MENU_PAGE"})
             else
                 if (playerState.attachedObjectId) then
                     local elementsList = blam.unicodeStringList(
-                                             constants.unicodeStrings.forgeMenuElements)
+                                             constants.unicodeStrings
+                                                 .forgeMenuElementsTagId)
                     local selectedElement = elementsList.stringList[menuPressedButton]
                     if (selectedElement) then
                         local elementsFunctions = features.getObjectMenuFunctions()
@@ -285,33 +276,30 @@ function OnPreFrame()
                         if (buttonFunction) then
                             buttonFunction()
                         else
-                            forgeStore:dispatch({
-                                type = "DOWNWARD_NAV_FORGE_MENU",
-                                payload = {
-                                    desiredElement = selectedElement
-                                }
-                            })
+                            forgeStore:dispatch(
+                                {
+                                    type = "DOWNWARD_NAV_FORGE_MENU",
+                                    payload = {desiredElement = selectedElement}
+                                })
                         end
                     end
                 else
                     local elementsList = blam.unicodeStringList(
-                                             constants.unicodeStrings.forgeMenuElements)
+                                             constants.unicodeStrings
+                                                 .forgeMenuElementsTagId)
                     local selectedSceneryName = elementsList.stringList[menuPressedButton]
-                    local sceneryPath = forgeState.forgeMenu.objectsDatabase[selectedSceneryName]
+                    local sceneryPath =
+                        forgeState.forgeMenu.objectsDatabase[selectedSceneryName]
                     if (sceneryPath) then
                         playerStore:dispatch({
                             type = "CREATE_AND_ATTACH_OBJECT",
-                            payload = {
-                                path = sceneryPath
-                            }
+                            payload = {path = sceneryPath}
                         })
                         menu.close(constants.uiWidgetDefinitions.forgeMenu)
                     else
                         forgeStore:dispatch({
                             type = "DOWNWARD_NAV_FORGE_MENU",
-                            payload = {
-                                desiredElement = selectedSceneryName
-                            }
+                            payload = {desiredElement = selectedSceneryName}
                         })
                     end
                 end
@@ -340,27 +328,17 @@ function OnPreFrame()
             if (mouse.scroll > 0) then
                 playerStore:dispatch({
                     type = "STEP_ROTATION_DEGREE",
-                    payload = {
-                        substraction = true,
-                        multiplier = mouse.scroll
-                    }
+                    payload = {substraction = true, multiplier = mouse.scroll}
                 })
-                playerStore:dispatch({
-                    type = "ROTATE_OBJECT"
-                })
+                playerStore:dispatch({type = "ROTATE_OBJECT"})
                 features.printHUD(playerState.currentAngle:upper() .. ": " ..
                                       playerState[playerState.currentAngle])
             elseif (mouse.scroll < 0) then
                 playerStore:dispatch({
                     type = "STEP_ROTATION_DEGREE",
-                    payload = {
-                        substraction = false,
-                        multiplier = mouse.scroll
-                    }
+                    payload = {substraction = false, multiplier = mouse.scroll}
                 })
-                playerStore:dispatch({
-                    type = "ROTATE_OBJECT"
-                })
+                playerStore:dispatch({type = "ROTATE_OBJECT"})
                 features.printHUD(playerState.currentAngle:upper() .. ": " ..
                                       playerState[playerState.currentAngle])
             end
@@ -378,14 +356,25 @@ function OnTick()
     ---@type playerState
     local playerState = playerStore:getState()
     if (player) then
+        --[[core.getPlayerFragGrenade()
+        -- //TODO Create a better implementation for this
+        local projectile, objectIndex = core.getPlayerAimingSword()
+        if (projectile) then
+            player.xVel = player.xVel + (player.cameraX * 0.2)
+            player.yVel = player.yVel + (player.cameraY * 0.2)
+            if (player.zVel >= 0) then
+                player.zVel = player.zVel + (player.cameraZ * 0.19)
+            else
+                player.zVel = player.zVel + (player.cameraZ * 0.005)
+            end
+            delete_object(objectIndex)
+        end]]
         local oldPosition = playerState.position
         if (oldPosition) then
             player.x = oldPosition.x
             player.y = oldPosition.y
             player.z = oldPosition.z + 0.1
-            playerStore:dispatch({
-                type = "RESET_POSITION"
-            })
+            playerStore:dispatch({type = "RESET_POSITION"})
         end
         if (core.isPlayerMonitor()) then
             -- Provide better movement to monitors
@@ -397,56 +386,12 @@ function OnTick()
             local playerAttachedObjectId = playerState.attachedObjectId
             if (playerAttachedObjectId) then
                 -- Calculate player point of view
-                playerStore:dispatch({
-                    type = "UPDATE_OFFSETS"
-                })
+                playerStore:dispatch({type = "UPDATE_OFFSETS"})
                 -- Change rotation angle
                 if (player.flashlightKey) then
-                    ---@type forgeState
-                    local forgeState = forgeStore:getState()
-                    forgeState.forgeMenu.currentPage = 1
-                    forgeState.forgeMenu.desiredElement = "root"
-                    forgeState.forgeMenu.elementsList =
-                        {
-                            root = {
-                                ["colors (beta)"] = {
-                                    white = {},
-                                    black = {},
-                                    red = {},
-                                    blue = {},
-                                    gray = {},
-                                    yellow = {},
-                                    green = {},
-                                    pink = {},
-                                    purple = {},
-                                    cyan = {},
-                                    cobalt = {},
-                                    orange = {},
-                                    teal = {},
-                                    sage = {},
-                                    brown = {},
-                                    tan = {},
-                                    maroon = {},
-                                    salmon = {}
-                                },
-                                ["reset rotation"] = {},
-                                ["rotate 5"] = {},
-                                ["rotate 45"] = {},
-                                ["rotate 90"] = {},
-                                ["snap mode"] = {}
-                            }
-                        }
-                    forgeStore:dispatch({
-                        type = "UPDATE_FORGE_ELEMENTS_LIST",
-                        payload = {
-                            forgeMenu = forgeState.forgeMenu
-                        }
-                    })
-                    features.openMenu(constants.uiWidgetDefinitions.forgeMenu)
+                    features.openForgeObjectPropertiesMenu()
                 elseif (player.actionKey) then
-                    playerStore:dispatch({
-                        type = "CHANGE_ROTATION_ANGLE"
-                    })
+                    playerStore:dispatch({type = "CHANGE_ROTATION_ANGLE"})
                     features.printHUD("Rotating in " .. playerState.currentAngle)
                 elseif (player.weaponPTH and player.jumpHold) then
                     local forgeObjects = eventsStore:getState().forgeObjects
@@ -461,46 +406,35 @@ function OnTick()
                                           forgeObject.pitch, forgeObject.roll)
                         playerStore:dispatch({
                             type = "DETACH_OBJECT",
-                            payload = {
-                                undo = true
-                            }
+                            payload = {undo = true}
                         })
                         return true
                     end
                 elseif (player.meleeKey) then
                     playerStore:dispatch({
                         type = "SET_LOCK_DISTANCE",
-                        payload = {
-                            lockDistance = not playerState.lockDistance
-                        }
+                        payload = {lockDistance = not playerState.lockDistance}
                     })
                     features.printHUD("Distance from object is " ..
-                                          tostring(glue.round(playerState.distance)) .. " units.")
+                                          tostring(glue.round(playerState.distance)) ..
+                                          " units.")
                     if (playerState.lockDistance) then
                         features.printHUD("Push n pull.")
                     else
                         features.printHUD("Closer or further.")
                     end
                 elseif (player.jumpHold) then
-                    playerStore:dispatch({
-                        type = "DESTROY_OBJECT"
-                    })
+                    playerStore:dispatch({type = "DESTROY_OBJECT"})
                 elseif (player.weaponSTH) then
                     local tempObject = blam.object(get_object(playerAttachedObjectId))
                     if (not core.isObjectOutOfBounds(tempObject)) then
-                        playerStore:dispatch({
-                            type = "DETACH_OBJECT"
-                        })
+                        playerStore:dispatch({type = "DETACH_OBJECT"})
                     end
                 end
 
                 if (not playerState.lockDistance) then
-                    playerStore:dispatch({
-                        type = "UPDATE_DISTANCE"
-                    })
-                    playerStore:dispatch({
-                        type = "UPDATE_OFFSETS"
-                    })
+                    playerStore:dispatch({type = "UPDATE_DISTANCE"})
+                    playerStore:dispatch({type = "UPDATE_OFFSETS"})
                 end
 
                 -- Update object position
@@ -526,9 +460,12 @@ function OnTick()
                 -- Set crosshair to not selected state
                 features.setCrosshairState(1)
 
+                -- Unhide spawning related Forge objects
+                features.hideReflectionObjects(false)
                 features.unhighlightAll()
 
-                local objectIndex, forgeObject, projectile = core.getPlayerAimingObject()
+                local objectIndex, forgeObject, projectile =
+                    core.getForgeObjectFromPlayerAim()
                 -- Player is taking the object
                 if (objectIndex) then
                     -- Hightlight the object that the player is looking at
@@ -548,7 +485,8 @@ function OnTick()
                     objectName = objectName:gsub("^%l", string.upper)
                     objectCategory = objectCategory:gsub("^%l", string.upper)
 
-                    features.printHUD("NAME:  " .. objectName, "CATEGORY:  " .. objectCategory, 25)
+                    features.printHUD("NAME:  " .. objectName,
+                                      "CATEGORY:  " .. objectCategory, 25)
 
                     if (player.weaponPTH and not player.jumpHold) then
                         playerStore:dispatch({
@@ -569,11 +507,10 @@ function OnTick()
                     elseif (player.actionKey) then
                         local tagId = blam.object(get_object(objectIndex)).tagId
                         local tagPath = blam.getTag(tagId).path
+                        -- // TODO Add color copy from object
                         playerStore:dispatch({
                             type = "CREATE_AND_ATTACH_OBJECT",
-                            payload = {
-                                path = tagPath
-                            }
+                            payload = {path = tagPath}
                         })
                         playerStore:dispatch({
                             type = "SET_ROTATION_DEGREES",
@@ -583,9 +520,7 @@ function OnTick()
                                 roll = forgeObject.roll
                             }
                         })
-                        playerStore:dispatch({
-                            type = "ROTATE_OBJECT"
-                        })
+                        playerStore:dispatch({type = "ROTATE_OBJECT"})
                     end
                 end
                 -- Open Forge menu by pressing "Q"
@@ -596,16 +531,12 @@ function OnTick()
                         glue.deepcopy(forgeState.forgeMenu.objectsList)
                     forgeStore:dispatch({
                         type = "UPDATE_FORGE_ELEMENTS_LIST",
-                        payload = {
-                            forgeMenu = forgeState.forgeMenu
-                        }
+                        payload = {forgeMenu = forgeState.forgeMenu}
                     })
-                    features.openMenu(constants.uiWidgetDefinitions.forgeMenu)
+                    features.openMenu(constants.uiWidgetDefinitions.forgeMenu.path)
                 elseif (player.crouchHold and server_type == "local") then
                     features.swapBiped()
-                    playerStore:dispatch({
-                        type = "DETACH_OBJECT"
-                    })
+                    playerStore:dispatch({type = "DETACH_OBJECT"})
                 end
             end
         else
@@ -616,16 +547,18 @@ function OnTick()
                 player.yVel = player.cameraY * 0.2
                 player.zVel = player.cameraZ * 0.06
             end]]
+            features.hideReflectionObjects(true)
             features.setCrosshairState(0)
             -- Convert into monitor
             if (player.flashlightKey and not player.crouchHold) then
                 features.swapBiped()
-            elseif (configuration.forge.debugMode and player.actionKey and player.crouchHold and
-                server_type == "local") then
-                core.spawnObject(tagClasses.biped, constants.bipeds.spartan, player.x, player.y,
+            elseif (configuration.forge.debugMode and player.actionKey and
+                player.crouchHold and server_type == "local") then
+                local bipedTag = blam.getTag(constants.bipeds.spartanTagId)
+                core.spawnObject(tagClasses.biped, bipedTag.path, player.x, player.y,
                                  player.z)
-            elseif (configuration.forge.debugMode and player.flashlightKey and player.crouchHold and
-                server_type == "local") then
+            elseif (configuration.forge.debugMode and player.flashlightKey and
+                player.crouchHold and server_type == "local") then
                 if (currentPermutation < 12) then
                     currentPermutation = currentPermutation + 1
                 else
