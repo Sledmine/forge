@@ -1,5 +1,14 @@
 # Changelog
 
+# 1.0.0-beta-4
+## Code changes:
+- General optmization for object spawn requests.
+- Fixed a problem with Forge maps at saving garbage properties.
+- Moved `fspawn` command to normal commands instead of debug commands.
+- Fixed oddball game mode spawning.
+- Added feature to hide Forge spawn objects when in spartan mode.
+- Added support for teleporters and object colors
+
 # 1.0.0-beta-3
 ## Code changes:
 - Improved performance and security in general

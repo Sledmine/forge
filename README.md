@@ -13,6 +13,9 @@
 
 Forge is a project that aims to add Forge-like system from posterior sequels of the Halo saga into any Halo Custom Edition map, mostly by replacing the Sapien capabilities, by now Forge is only compatible with the [Forge Island](https://www.youtube.com/watch?v=K_QViDBnpq0) map project, there are plans to add compatibility with other maps like [Forge World](https://www.youtube.com/watch?v=kUDYwVF0OLk) in the future!
 
+Forge is not magic.. it is the compilation of enthusiast modders, developers that have a strong understanding of the Halo Custom Edition Blam Engine and are passionate about Halo in general and
+projects with a professional built.
+
 # Features
 
 **Multiple Biped Support**
