@@ -1,8 +1,7 @@
 ------------------------------------------------------------------------------
 -- Forge Tests
--- Author: Sledmine
--- Version: 1.0
--- Couple of tests for Forge functionality
+-- Sledmine
+-- Couple unit tests of Forge functionality
 ------------------------------------------------------------------------------
 local lu = require "luaunit"
 local inspect = require "inspect"
@@ -43,7 +42,9 @@ function testRcon:setUp()
         x = 1,
         y = 2,
         yaw = 360,
-        z = 3
+        z = 3,
+        color = 1,
+        teamIndex = 0
     }
 
     self.expectedDecodeResultUpdate = {
@@ -54,13 +55,12 @@ function testRcon:setUp()
         x = 1,
         y = 2,
         yaw = 360,
-        z = 3
+        z = 3,
+        color = 1,
+        teamIndex = 0
     }
 
-    self.expectedDecodeResultDelete = {
-        requestType = "#d",
-        objectId = 1234
-    }
+    self.expectedDecodeResultDelete = {requestType = "#d", objectId = 1234}
 end
 
 function testRcon:testCallback()
@@ -69,16 +69,15 @@ function testRcon:testCallback()
 end
 
 function testRcon:testDecodeSpawn()
-    local time = os.clock()
     local decodeResult, decodeData = OnRcon(
-                                         "'#s&d2040000&0000803f&00000040&00004040&360&360&360&d2040000'")
+                                         "'#s&d2040000&0000803f&00000040&00004040&360&360&360&1&0&d2040000'")
     lu.assertEquals(decodeResult, false)
     lu.assertEquals(decodeData, self.expectedDecodeResultSpawn)
-    console_out(string.format("Elapsed time: %.6f\n", os.clock() - time))
 end
 
 function testRcon:testDecodeUpdate()
-    local decodeResult, decodeData = OnRcon("'#u&1234&0000803f&00000040&00004040&360&360&360'")
+    local decodeResult, decodeData = OnRcon(
+                                         "'#u&1234&0000803f&00000040&00004040&360&360&360&1&0'")
     lu.assertEquals(decodeResult, false)
     lu.assertEquals(decodeData, self.expectedDecodeResultUpdate)
 end
@@ -120,22 +119,24 @@ end
 testRequest = {}
 
 function testRequest:setUp()
-    self.expectedEncodeSpawnResult = "#s&d2040000&0000803f&00000040&00004040&360&360&360"
-    self.expectedEncodeUpdateResult = "#u&1234&0000803f&00000040&00004040&360&360&360"
+    self.expectedEncodeSpawnResult = "#s&d2040000&0000803f&00000040&00004040&360&360&360&1&0"
+    self.expectedEncodeUpdateResult = "#u&1234&0000803f&00000040&00004040&360&360&360&1&0"
     self.expectedEncodeDeleteResult = "#d&1234"
 end
 
 function testRequest:testSpawnRequestAsClient()
     local time = os.clock()
     local objectExample = {
-        requestType = "#s",
+        requestType = constants.requests.spawnObject.requestType,
         tagId = 1234,
         x = 1.0,
         y = 2.0,
         z = 3.0,
         yaw = 360,
         pitch = 360,
-        roll = 360
+        roll = 360,
+        color = 1,
+        teamIndex = 0
     }
     local request = core.createRequest(objectExample)
     console_out(string.format("Elapsed time: %.6f\n", os.clock() - time))
@@ -145,14 +146,16 @@ end
 function testRequest:testEncodeUpdateAsClient()
     local time = os.clock()
     local objectExample = {
-        requestType = "#u",
+        requestType = constants.requests.updateObject.requestType,
+        objectId = 1234,
         x = 1.0,
         y = 2.0,
         z = 3.0,
         yaw = 360,
         pitch = 360,
         roll = 360,
-        remoteId = 1234
+        color = 1,
+        teamIndex = 0
     }
     local request = core.createRequest(objectExample)
     console_out(string.format("Elapsed time: %.6f\n", os.clock() - time))
@@ -160,10 +163,7 @@ function testRequest:testEncodeUpdateAsClient()
 end
 
 function testRequest:testEncodeDeleteAsClient()
-    local objectExample = {
-        requestType = "#d",
-        remoteId = 1234
-    }
+    local objectExample = {requestType =  constants.requests.deleteObject.requestType, remoteId = 1234}
     local request = core.createRequest(objectExample)
     lu.assertEquals(request, self.expectedEncodeDeleteResult)
 end
@@ -173,8 +173,7 @@ end
 testMenus = {}
 
 function testMenus:setUp()
-    local forgeMenuTagPath = constants.uiWidgetDefinitions.forgeMenu
-    self.expectedTagId = get_simple_tag_id(tagClasses.uiWidgetDefinition, forgeMenuTagPath)
+    -- // TODO Some cool testing can be added here for triggers and hooks
 end
 
 ----------------- Core Functions Tests -----------------------
@@ -184,28 +183,14 @@ testCore = {}
 function testCore:setUp()
     -- yaw 0, pitch 0, roll 0
     self.case1Array = {1, 0, 0, 0, 0, 1}
-    self.case1Matrix = {
-        {1, 0, 0},
-        {0, 1, 0},
-        {0, 0, 1}
-    }
+    self.case1Matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
     -- yaw 45, pitch 0, roll 0
-    self.case2Array = {
-        0.70710678118655,
-        0.70710678118655,
-        0,
-        0,
-        0,
-        1
-    }
-    self.case2Matrix = {
-        {1, 0, 0},
-        {0, 1, 0},
-        {0, 0, 1}
-    }
+    self.case2Array = {0.70710678118655, 0.70710678118655, 0, 0, 0, 1}
+    self.case2Matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
 end
 
 function testCore:testEulerRotation()
+    -- // TODO Add more test cases, rotation is in theory really broken
     local case1Array, case1Matrix = core.eulerToRotation(0, 0, 0)
     lu.assertEquals(case1Array, self.case1Array, "Rotation array must match", true)
     lu.assertEquals(case1Matrix, self.case1Matrix, "Rotation matrix must match", true)
@@ -217,11 +202,14 @@ end
 
 function testCore.testFindTag()
     local time = os.clock()
-    local tagPath, tagIndex = core.findTag(constants.bipeds.spartan, tagClasses.biped)
+    local tag = core.findTag("cyborg_mp", tagClasses.biped)
     console_out(string.format("Elapsed time: %.6f\n", os.clock() - time))
-    lu.assertNotIsNil(tagPath)
-    lu.assertNotIsNil(tagIndex)
-    lu.assertEquals(tagPath, constants.bipeds.spartan)
+    lu.assertNotIsNil(tag.path)
+    lu.assertNotIsNil(tag.indexed)
+    lu.assertNotIsNil(tag.index)
+    lu.assertNotIsNil(tag.id)
+    lu.assertNotIsNil(tag.class)
+    -- lu.assertEquals(tagPath, constants.bipeds.spartanTagId)
 end
 
 ----------------------------------
