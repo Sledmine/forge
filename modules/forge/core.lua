@@ -61,28 +61,24 @@ function core.loadForgeMaps(path)
             -- Only load files with extension .fmap
             if (extFile == "fmap") then
                 -- local mapName = string.gsub(file, ".fmap", ""):gsub("_", " ")
-
-                local mapName = string.gsub(" " .. file:gsub(".fmap", ""):gsub("_", " "), "%W%l",
-                                            string.upper):sub(2)
+                local mapName = string.gsub(" " .. file:gsub(".fmap", ""):gsub("_", " "),
+                                            "%W%l", string.upper):sub(2)
                 glue.append(mapsList, mapName)
             end
         end
     end
     -- Dispatch state modification!
     local data = {mapsList = mapsList}
-    forgeStore:dispatch({
-        type = "UPDATE_MAP_LIST",
-        payload = data
-    })
+    forgeStore:dispatch({type = "UPDATE_MAP_LIST", payload = data})
 end
 
 -- //TODO Refactor this to use lua blam objects
+-- Credits to Devieth and IceCrow14
 --- Check if player is looking at object main frame
 ---@param target number
 ---@param sensitivity number
 ---@param zOffset number
 ---@param maximumDistance number
--- Credits to Devieth and IceCrow14
 function core.playerIsAimingAt(target, sensitivity, zOffset, maximumDistance)
     -- Minimum amount for distance scaling
     local baselineSensitivity = 0.012
@@ -147,11 +143,7 @@ function core.deprecatedEulerToRotation(yaw, pitch, roll)
     deprecatedRotate(F, L, yaw)
     deprecatedRotate(F, T, pitch)
     deprecatedRotate(T, L, roll)
-    return {F[1], -L[1], -T[1], -F[3], L[3], T[3]}, {
-        F,
-        L,
-        T
-    }
+    return {F[1], -L[1], -T[1], -F[3], L[3], T[3]}, {F, L, T}
 end
 
 --- Covert euler into game rotation array, optional rotation matrix
@@ -160,11 +152,7 @@ end
 ---@param roll number
 ---@return table<number, number>, table<number, table<number, number>>
 function core.eulerToRotation(yaw, pitch, roll)
-    local matrix = {
-        {1, 0, 0},
-        {0, 1, 0},
-        {0, 0, 1}
-    }
+    local matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
 
     local cosRoll = cos(rad(roll))
     local sinRoll = sin(rad(roll))
@@ -220,11 +208,8 @@ function core.isPlayerMonitor(playerIndex)
     else
         tempObject = blam.object(get_dynamic_player())
     end
-    if (tempObject) then
-        local tempTag = blam.getTag(constants.bipeds.monitor, tagClasses.biped)
-        if (tempTag and tempObject.tagId == tempTag.id) then
-            return true
-        end
+    if (tempObject and tempObject.tagId == constants.bipeds.monitorTagId) then
+        return true
     end
     return false
 end
@@ -273,7 +258,7 @@ function core.createRequest(requestTable)
             elseif (requestType == constants.requests.updateObject.requestType) then
                 if (server_type ~= "sapp") then
                     -- Desired object id is our remote id
-                    instanceObject.objectId = requestTable.remoteId
+                    -- instanceObject.objectId = requestTable.remoteId
                 end
             elseif (requestType == constants.requests.deleteObject.requestType) then
                 if (server_type ~= "sapp") then
@@ -288,8 +273,12 @@ function core.createRequest(requestTable)
                 end
             end
             local encodedTable = maeth.encodeTable(instanceObject, requestFormat)
-            -- print(inspect(requestTable))
-            request = maeth.tableToRequest(encodedTable, requestFormat, constants.requestSeparator)
+            --[[print(inspect(requestFormat))
+            print(inspect(requestTable))]]
+            request = maeth.tableToRequest(encodedTable, requestFormat,
+                                           constants.requestSeparator)
+            -- TODO Add size validation for requests
+            dprint("Request size: " .. #request)
         else
             -- print(inspect(instanceObject))
             error("There is no request type in this request!")
@@ -314,6 +303,7 @@ function core.processRequest(actionType, request, currentRequest, playerIndex)
         return false, nil
     end
     dprint("Decoding incoming " .. actionType .. " ...", "warning")
+    dprint("Request size: " .. #request)
     local requestObject = maeth.decodeTable(requestTable, currentRequest.requestFormat)
     if (requestObject) then
         dprint("Done.", "success")
@@ -324,9 +314,7 @@ function core.processRequest(actionType, request, currentRequest, playerIndex)
     if (not ftestingMode) then
         eventsStore:dispatch({
             type = actionType,
-            payload = {
-                requestObject = requestObject
-            },
+            payload = {requestObject = requestObject},
             playerIndex = playerIndex
         })
     end
@@ -364,12 +352,10 @@ function core.flushForge()
         if (#glue.keys(forgeObjects) > 0 and #blam.getObjects() > 0) then
             -- saveForgeMap('unsaved')
             -- execute_script('object_destroy_all')
-            for objectId, composedObject in pairs(forgeObjects) do
+            for objectId, forgeObject in pairs(forgeObjects) do
                 delete_object(objectId)
             end
-            eventsStore:dispatch({
-                type = "FLUSH_FORGE"
-            })
+            eventsStore:dispatch({type = "FLUSH_FORGE"})
         end
     end
 end
@@ -454,16 +440,16 @@ function core.loadForgeMap(mapName)
                     spawnRequest.requestType = constants.requests.spawnObject.requestType
                     spawnRequest.tagPath = nil
                     spawnRequest.tagId = objectTag.id
+                    spawnRequest.color = forgeObject.color or 1
+                    spawnRequest.teamIndex = forgeObject.teamIndex or 0
                     local dispatchObject = eventsStore:dispatch(
                                                {
                             type = constants.requests.spawnObject.actionType,
-                            payload = {
-                                requestObject = spawnRequest
-                            }
+                            payload = {requestObject = spawnRequest}
                         })
                 else
-                    dprint("WARNING!! Object with path '" .. spawnRequest.tagPath ..
-                               "' can't be spawn...", "warning")
+                    dprint("Warning, object with path \"" .. spawnRequest.tagPath ..
+                               "\" can not be spawned...", "warning")
                 end
             end
             forgeMapFinishedLoading = true
@@ -476,7 +462,7 @@ function core.loadForgeMap(mapName)
 
             return true
         else
-            console_out("Error at decoding data from '" .. mapName .. "' forge map...")
+            console_out("Error at decoding data from \"" .. mapName .. "\" forge map...")
             return false
         end
     else
@@ -517,24 +503,25 @@ function core.saveForgeMap()
         local sceneryPath = blam.getTag(tempObject.tagId).path
 
         -- Create a copy of the composed object in the store to avoid replacing useful values
-        local fmapObject = glue.update({}, forgeObject)
+        local forgeObjectInstance = glue.update({}, forgeObject)
 
         -- Remove all the unimportant data
-        fmapObject.objectId = nil
-        fmapObject.reflectionId = nil
-        fmapObject.remoteId = nil
+        forgeObjectInstance.objectId = nil
+        forgeObjectInstance.reflectionId = nil
+        forgeObjectInstance.remoteId = nil
+        forgeObjectInstance.requestType = nil
 
         -- Add tag path property
-        fmapObject.tagPath = sceneryPath
+        forgeObjectInstance.tagPath = sceneryPath
 
         -- Add forge object to list
-        glue.append(forgeMap.objects, fmapObject)
+        glue.append(forgeMap.objects, forgeObjectInstance)
     end
 
     -- Encode map info as json
     local fmapContent = json.encode(forgeMap)
 
-    -- Fix map name
+    -- Standarize map name
     mapName = string.gsub(mapName, " ", "_"):lower()
 
     local forgeMapPath = defaultMapsPath .. "\\" .. mapName .. ".fmap"
@@ -719,10 +706,12 @@ end
 --- Apply updates to netgame flags spawn points based on a tag path
 ---@param tagPath string
 ---@param forgeObject table
-function core.updateNetgameFlagSpawn(tagPath, forgeObject)
+---@param disable boolean
+function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
     -- // TODO Review if some flags use team index as "group index"!
     local teamIndex = 0
     local flagType = 0
+    local netgameFlagsTypes = blam.netgameFlagTypes
 
     -- Set flag type from tag path
     --[[
@@ -738,7 +727,7 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject)
     ]]
     if (tagPath:find("flag stand")) then
         dprint("FLAG POINT")
-        flagType = 0
+        flagType = netgameFlagsTypes.ctfFlag
         -- // TODO Check if double setting team index against default value is needed!
         if (tagPath:find("red")) then
             dprint("RED TEAM FLAG")
@@ -747,8 +736,18 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject)
             dprint("BLUE TEAM FLAG")
             teamIndex = 1
         end
-    elseif (tagPath:find("weapons")) then
+    elseif (tagPath:find("oddball")) then
         -- // TODO Check and add weapon based netgame flags like oddball!
+        dprint("ODDBALL FLAG")
+        flagType = netgameFlagsTypes.ballSpawn
+    elseif (tagPath:find("receiver")) then
+        dprint("TELEPORT TO")
+        flagType = netgameFlagsTypes.teleportTo
+    elseif (tagPath:find("sender")) then
+        dprint("TELEPORT FROM")
+        flagType = netgameFlagsTypes.teleportFrom
+    else
+        dprint("Unknown netgame flag tag: " .. tagPath, "error")
     end
 
     -- Get scenario data
@@ -759,35 +758,68 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject)
 
     -- Object is not already reflecting a flag point
     if (not forgeObject.reflectionId) then
-        for flagId = 1, #mapNetgameFlagsPoints do
+        for flagIndex = 1, #mapNetgameFlagsPoints do
             -- // FIXME This control block is not neccessary but needs improvements!
             -- If this flag point is using the same flag type
-            if (mapNetgameFlagsPoints[flagId].type == flagType and
-                mapNetgameFlagsPoints[flagId].teamIndex == teamIndex) then
+            if (mapNetgameFlagsPoints[flagIndex].type == flagType and
+                mapNetgameFlagsPoints[flagIndex].teamIndex == teamIndex and
+                (flagType ~= netgameFlagsTypes.teleportFrom and flagType ~=
+                    netgameFlagsTypes.teleportTo)) then
                 -- Replace spawn point values
-                mapNetgameFlagsPoints[flagId].x = forgeObject.x
-                mapNetgameFlagsPoints[flagId].y = forgeObject.y
+                mapNetgameFlagsPoints[flagIndex].x = forgeObject.x
+                mapNetgameFlagsPoints[flagIndex].y = forgeObject.y
                 -- Z plus an offset to prevent flag from falling in lower bsp values
-                mapNetgameFlagsPoints[flagId].z = forgeObject.z + 0.15
-                mapNetgameFlagsPoints[flagId].rotation = rad(forgeObject.yaw)
-                mapNetgameFlagsPoints[flagId].teamIndex = teamIndex
-                mapNetgameFlagsPoints[flagId].type = flagType
+                mapNetgameFlagsPoints[flagIndex].z = forgeObject.z + 0.15
+                mapNetgameFlagsPoints[flagIndex].rotation = rad(forgeObject.yaw)
+                mapNetgameFlagsPoints[flagIndex].teamIndex = teamIndex
+                mapNetgameFlagsPoints[flagIndex].type = flagType
 
                 -- Debug spawn index
-                dprint("Creating flag replacing index: " .. flagId, "warning")
-                forgeObject.reflectionId = flagId
+                dprint("Creating flag replacing index: " .. flagIndex, "warning")
+                forgeObject.reflectionId = flagIndex
+                break
+            elseif (mapNetgameFlagsPoints[flagIndex].type == netgameFlagsTypes.vegasBank and
+                (flagType == netgameFlagsTypes.teleportTo or flagType ==
+                netgameFlagsTypes.teleportFrom)) then
+                dprint("Creating teleport replacing index: " .. flagIndex, "warning")
+                dprint("With team index: " .. forgeObject.teamIndex, "warning")
+                -- Replace spawn point values
+                mapNetgameFlagsPoints[flagIndex].x = forgeObject.x
+                mapNetgameFlagsPoints[flagIndex].y = forgeObject.y
+                -- Z plus an offset to prevent flag from falling in lower bsp values
+                mapNetgameFlagsPoints[flagIndex].z = forgeObject.z + 0.15
+                mapNetgameFlagsPoints[flagIndex].rotation = rad(forgeObject.yaw)
+                mapNetgameFlagsPoints[flagIndex].teamIndex = forgeObject.teamIndex
+                mapNetgameFlagsPoints[flagIndex].type = flagType
+                forgeObject.reflectionId = flagIndex
                 break
             end
         end
     else
-        dprint("Erasing netgame flag with index: " .. forgeObject.reflectionId)
-        -- Replace spawn point values
-        mapNetgameFlagsPoints[forgeObject.reflectionId].x = forgeObject.x
-        mapNetgameFlagsPoints[forgeObject.reflectionId].y = forgeObject.y
-        mapNetgameFlagsPoints[forgeObject.reflectionId].z = forgeObject.z
-        mapNetgameFlagsPoints[forgeObject.reflectionId].rotation = rad(forgeObject.yaw)
-        -- Debug spawn index
-        dprint("Updating flag replacing index: " .. forgeObject.reflectionId, "warning")
+        if (disable) then
+            if (flagType == netgameFlagsTypes.teleportTo or flagType ==
+                netgameFlagsTypes.teleportFrom) then
+                dprint("Erasing netgame flag teleport with index: " ..
+                           forgeObject.reflectionId)
+                -- Vegas bank is a unused gametype, so this is basically the same as disabling it
+                mapNetgameFlagsPoints[forgeObject.reflectionId].type =
+                    netgameFlagsTypes.vegasBank
+            end
+        else
+            -- Replace spawn point values
+            mapNetgameFlagsPoints[forgeObject.reflectionId].x = forgeObject.x
+            mapNetgameFlagsPoints[forgeObject.reflectionId].y = forgeObject.y
+            mapNetgameFlagsPoints[forgeObject.reflectionId].z = forgeObject.z
+            mapNetgameFlagsPoints[forgeObject.reflectionId].rotation =
+                rad(forgeObject.yaw)
+            if (flagType == netgameFlagsTypes.teleportFrom or flagType == netgameFlagsTypes.teleportTo) then
+                dprint("Update teamIndex: " .. forgeObject.teamIndex)
+                mapNetgameFlagsPoints[forgeObject.reflectionId].teamIndex = forgeObject.teamIndex
+            end
+            -- Debug spawn index
+            dprint("Updating flag replacing index: " .. forgeObject.reflectionId,
+                   "warning")
+        end
     end
     -- Update spawn point list
     scenario.netgameFlagsList = mapNetgameFlagsPoints
@@ -804,13 +836,12 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
     dprint(desiredWeapon)
     -- Get equipment info from tag name
     if (desiredWeapon) then
-        local itcTagPath, itcTagIndex, itcTagId = core.findTag(desiredWeapon,
-                                                               tagClasses.itemCollection)
-        itemCollectionTagId = itcTagId
+        itemCollectionTagId = core.findTag(desiredWeapon, tagClasses.itemCollection).index
     end
     if (not itemCollectionTagId) then
         -- // TODO This needs more review
-        error("Could not find item collection tag id for desired weapon spawn: " .. tagPath)
+        error("Could not find item collection tag id for desired weapon spawn: " ..
+                  tagPath)
         return false
     end
 
@@ -921,7 +952,8 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
                 scenario.vehicleLocationList = vehicleSpawnPoints
 
                 dprint("object_create_anew v" .. vehicleSpawnPoints[spawnId].nameIndex)
-                execute_script("object_create_anew v" .. vehicleSpawnPoints[spawnId].nameIndex)
+                execute_script("object_create_anew v" ..
+                                   vehicleSpawnPoints[spawnId].nameIndex)
                 -- Stop looking for "available" spawn slots
                 break
             end
@@ -933,7 +965,8 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
             vehicleSpawnPoints[forgeObject.reflectionId].type = 65535
             -- Update spawn point list
             scenario.vehicleLocationList = vehicleSpawnPoints
-            dprint("object_create_anew v" .. vehicleSpawnPoints[forgeObject.reflectionId].nameIndex)
+            dprint("object_create_anew v" ..
+                       vehicleSpawnPoints[forgeObject.reflectionId].nameIndex)
             execute_script("object_destroy v" ..
                                vehicleSpawnPoints[forgeObject.reflectionId].nameIndex)
             return true
@@ -958,8 +991,8 @@ end
 ---@param remoteId number
 ---@return number
 function core.getObjectIndexByRemoteId(objects, remoteId)
-    for objectIndex, composedObject in pairs(objects) do
-        if (composedObject.remoteId == remoteId) then
+    for objectIndex, forgeObject in pairs(objects) do
+        if (forgeObject.remoteId == remoteId) then
             return objectIndex
         end
     end
@@ -980,12 +1013,30 @@ end
 --- Find the path, index and id of a tag given partial name and tag type
 ---@param partialName string
 ---@param searchTagType string
+---@return tag tag
 function core.findTag(partialName, searchTagType)
     for tagIndex = 0, blam.tagDataHeader.count - 1 do
         local tempTag = blam.getTag(tagIndex)
         if (tempTag and tempTag.path:find(partialName) and tempTag.class == searchTagType) then
-            return tempTag.path, tempTag.index, tempTag.id
+            return {
+                id = tempTag.id,
+                path = tempTag.path,
+                index = tempTag.index,
+                class = tempTag.class,
+                indexed = tempTag.indexed,
+                data = tempTag.data
+            }
         end
+    end
+    return nil
+end
+
+--- Find tag data given index number
+---@param tagIndex number
+function core.findTagByIndex(tagIndex)
+    local tempTag = blam.getTag(tagIndex)
+    if (tempTag) then
+        return tempTag.path, tempTag.index, tempTag.id
     end
     return nil
 end
@@ -1002,7 +1053,8 @@ function core.getIndexById(id)
     return tonumber(concat(bytes, ""), 16)
 end
 
-local function createSelector()
+--- Create a projectile "selector" from player view
+local function createProjectileSelector()
     local player = blam.biped(get_dynamic_player())
     if (player) then
         local selector = {
@@ -1010,8 +1062,9 @@ local function createSelector()
             y = player.y + player.yVel + player.cameraY * constants.forgeSelectorOffset,
             z = player.z + player.zVel + player.cameraZ * constants.forgeSelectorOffset
         }
-        local projectileId = core.spawnObject(tagClasses.projectile, constants.forgeProjectilePath,
-                                              selector.x, selector.y, selector.z, true)
+        local projectileId = core.spawnObject(tagClasses.projectile,
+                                              constants.forgeProjectilePath, selector.x,
+                                              selector.y, selector.z, true)
         if (projectileId) then
             local projectile = blam.projectile(get_object(projectileId))
             if (projectile) then
@@ -1028,36 +1081,42 @@ end
 
 --- Return data about object that the player is looking at
 ---@return number, forgeObject, projectile
-function core.getPlayerAimingObject()
+function core.getForgeObjectFromPlayerAim()
     local forgeObjects = eventsStore:getState().forgeObjects
-    for _, objectIndex in pairs(blam.getObjects()) do
-        local projectile = blam.projectile(get_object(objectIndex))
+    for _, projectileObjectIndex in pairs(blam.getObjects()) do
+        local projectile = blam.projectile(get_object(projectileObjectIndex))
         local forgeObject
         local selectedObjIndex
         if (projectile and projectile.type == objectClasses.projectile) then
             local projectileTag = blam.getTag(projectile.tagId)
             if (projectileTag and projectileTag.index == constants.forgeProjectileTagIndex) then
                 if (projectile.attachedToObjectId) then
-                    local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
+                    local selectedObject = blam.object(
+                                               get_object(projectile.attachedToObjectId))
                     selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
                     forgeObject = forgeObjects[selectedObjIndex]
+                    -- Player is looking at this object
                     if (forgeObject and selectedObject) then
-                        -- Player is looking at this object
-                        delete_object(objectIndex)
-                        createSelector()
-                        return selectedObjIndex, forgeObject, blam.dumpObject(projectile) or nil
+                        -- Erase current projectile selector
+                        delete_object(projectileObjectIndex)
+                        -- Create a new one
+                        createProjectileSelector()
+                        return selectedObjIndex, forgeObject,
+                               blam.dumpObject(projectile) or nil
                     end
                 end
-                delete_object(objectIndex)
+                delete_object(projectileObjectIndex)
                 return nil, nil, blam.dumpObject(projectile) or nil
             end
-        elseif (forgeObjects[objectIndex]) then
-            if (core.playerIsAimingAt(objectIndex, 0.0001, 0)) then
-                return objectIndex, forgeObjects[objectIndex], blam.dumpObject(projectile) or nil
+        elseif (forgeObjects[projectileObjectIndex]) then
+            if (core.playerIsAimingAt(projectileObjectIndex, 0.03, 0)) then
+                return projectileObjectIndex, forgeObjects[projectileObjectIndex],
+                       blam.dumpObject(projectile) or nil
             end
         end
     end
-    createSelector()
+    -- No object was found from player view, create a new selector
+    createProjectileSelector()
 end
 
 --- Return data about object that the player is looking at
@@ -1065,8 +1124,9 @@ end
 ---@return boolean
 function core.isObjectOutOfBounds(object)
     if (object) then
-        local projectileId = spawn_object(tagClasses.projectile, constants.forgeProjectilePath,
-                                          object.x, object.y, object.z)
+        local projectileId = spawn_object(tagClasses.projectile,
+                                          constants.forgeProjectilePath, object.x,
+                                          object.y, object.z)
         if (projectileId) then
             local blamObject = blam.object(get_object(projectileId))
             if (blamObject) then
@@ -1078,19 +1138,40 @@ function core.isObjectOutOfBounds(object)
     end
 end
 
---[[function core.getPlayerFragGrenade()
+--[[unction core.getPlayerFragGrenade()
     for objectNumber, objectIndex in pairs(blam.getObjects()) do
         local projectile = blam.projectile(get_object(objectIndex))
         local selectedObjIndex
         if (projectile and projectile.type == objectClasses.projectile) then
             local projectileTag = blam.getTag(projectile.tagId)
-            if (projectileTag and projectileTag.index == constants.fragGrenadeProjectileTagIndex) then
+            if (projectileTag and projectileTag.index ==
+                constants.fragGrenadeProjectileTagIndex) then
                 local player = blam.biped(get_dynamic_player())
                 if (projectile.armingTimer > 1) then
                     player.x = projectile.x
                     player.y = projectile.y
                     player.z = projectile.z
                     delete_object(objectIndex)
+                end
+            end
+        end
+    end
+end]]
+
+--[[function core.getPlayerAimingSword()
+    for objectNumber, objectIndex in pairs(blam.getObjects()) do
+        local projectile = blam.projectile(get_object(objectIndex))
+        local selectedObjIndex
+        if (projectile and projectile.type == objectClasses.projectile) then
+            local projectileTag = blam.getTag(projectile.tagId)
+            if (projectileTag and projectileTag.index == constants.swordProjectileTagIndex) then
+                if (projectile.attachedToObjectId) then
+                    local selectedObject = blam.object(
+                                               get_object(projectile.attachedToObjectId))
+                    if (selectedObject) then
+                        dprint(projectile.attachedToObjectId)
+                        return projectile, objectIndex
+                    end
                 end
             end
         end
