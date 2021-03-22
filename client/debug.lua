@@ -1,15 +1,17 @@
 ------------------------------------------------------------------------------
 -- Debug script
 -- Sledmine
--- This script is intended to provide tools to debug any game map
+-- This script is intended to provide tools to test and debug any game map
 ------------------------------------------------------------------------------
 clua_version = 2.042
 
-local blam = require "blam"
+blam = require "blam"
 tagClasses = blam.tagClasses
 objectClasses = blam.objectClasses
 local glue = require "glue"
 local inspect = require "inspect"
+
+local core = require "forge.core"
 
 local debugMode = false
 local fly = false
@@ -28,6 +30,14 @@ function OnCommand(command)
             end
         end
         return false
+    elseif (command == "dvehis") then
+        for tagId = 0, blam.tagDataHeader.count - 1 do
+            local tag = blam.getTag(tagId)
+            if (tag.class == tagClasses.vehicle) then
+                console_out(tag.path)
+            end
+        end
+        return false
     elseif (command == "dweap") then
         local weaponsList = {}
         for tagId = 0, blam.tagDataHeader.count - 1 do
@@ -42,8 +52,8 @@ function OnCommand(command)
         local player = blam.biped(get_dynamic_player())
         local weaponResult = weaponsList[weaponName]
         if (weaponResult) then
-            local weaponObjectId = spawn_object(tagClasses.weapon, weaponResult, player.x, player.y,
-                                                player.z + 0.5)
+            local weaponObjectId = spawn_object(tagClasses.weapon, weaponResult, player.x,
+                                                player.y, player.z + 0.5)
         end
         return false
     elseif (command == "dspeed") then
@@ -63,7 +73,8 @@ function OnCommand(command)
                 local tempTag = blam.getTag(tempObject.tagId)
                 if (tempTag and tempTag.path:find(tagName)) then
                     objectCount = objectCount + 1
-                    console_out(objectIndex .. "    " .. tempTag.path .. "    " .. tempTag.class)
+                    console_out(objectIndex .. "    " .. tempTag.path .. "    " ..
+                                    tempTag.class)
                 end
             end
         end
@@ -74,18 +85,20 @@ function OnCommand(command)
         local tagsList = {}
         for tagId = 0, blam.tagDataHeader.count - 1 do
             local tag = blam.getTag(tagId)
-            if (tag.class) then
+            if (tag and tag.class == desiredTagClass) then
                 local splitPath = glue.string.split(tag.path, "\\")
                 local tagName = splitPath[#splitPath]
                 tagsList[tagName] = tag.path
             end
         end
-        local desiredTagName = splitCommand[3]
+        local desiredTagName = table.concat(glue.shift(splitCommand, 1, -2), " ")
         local player = blam.biped(get_dynamic_player())
         local tagResult = tagsList[desiredTagName]
+        console_out(desiredTagName)
+        console_out(tagResult)
         if (tagResult) then
-            local weaponObjectId = spawn_object(desiredTagClass, tagResult, player.x, player.y,
-                                                player.z + 0.5)
+            local objectId = spawn_object(desiredTagClass, tagResult, player.x, player.y,
+                                          player.z + 0.5)
         end
         return false
     elseif (command == "builex") then
@@ -103,14 +116,6 @@ function OnCommand(command)
         end
         return false
     elseif (command == "dtest") then
-        local objectIndex = tonumber(table.concat(glue.shift(splitCommand, 1, -1), " "))
-        if (objectIndex) then
-            local tempObject = blam.object(get_object(objectIndex))
-            if (tempObject) then
-                tempObject.regionPermutation1 = 5
-            end
-        end
-        return false
     elseif (command == "dmenus") then
         for tagId = 0, blam.tagDataHeader.count - 1 do
             local tag = blam.getTag(tagId)
@@ -135,9 +140,28 @@ function OnCommand(command)
         console_out(desiredTagName)
         load_ui_widget(tagPath)
         return false
+    elseif (command == "dstrings") then
+        for tagId = 0, blam.tagDataHeader.count - 1 do
+            local tag = blam.getTag(tagId)
+            if (tag.class == tagClasses.unicodeStringList) then
+                console_out(tag.path)
+            end
+        end
+        return false
+    elseif (command == "dsounds") then
+        for tagId = 0, blam.tagDataHeader.count - 1 do
+            local tag = blam.getTag(tagId)
+            if (tag.class == tagClasses.sound) then
+                console_out(tag.path)
+            end
+        end
+        return false
+    elseif (command == "did") then
+        local biped = blam.object(get_object(splitCommand[2]))
+        console_out(blam.getTag(biped.tagId).path)
+        return false
     end
 end
-
 
 function OnTick()
     local player = blam.biped(get_dynamic_player())
