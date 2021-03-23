@@ -10,7 +10,7 @@ local features = require "forge.features"
 local getIndexById = core.getIndexById
 local rotateObject = core.rotateObject
 
--- // TODO Test this class structure
+-- TODO Test this class structure
 ---@class forgeObject
 ---@field x number
 ---@field y number
@@ -65,7 +65,7 @@ local function eventsReducer(state, action)
 
         if (server_type == "sapp") then
             -- SAPP functions can't handle object indexes
-            -- // TODO This requires some refactor and testing to use ids instead of indexes on the client side
+            -- TODO This requires some refactor and testing to use ids instead of indexes on the client side
             objectIndex = objectId
         end
 
@@ -326,7 +326,7 @@ local function eventsReducer(state, action)
                 votingStore:dispatch({
                     type = "FLUSH_MAP_VOTES"
                 })
-                -- // TODO This needs testing and probably a better implementation
+                -- TODO This needs testing and probably a better implementation
                 local mapGroups = glue.chunks(forgeState.mapsMenu.mapsList, 4)
                 state.mapVotesGroup = state.mapVotesGroup + 1
                 local currentGroup = mapGroups[state.mapVotesGroup]

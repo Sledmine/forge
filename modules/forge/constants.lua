@@ -156,12 +156,12 @@ constants.uiWidgetDefinitions = {
     loadingAnimation = core.findTag("loading_menu_progress_animation",
                                     tagClasses.uiWidgetDefinition),
     loadingProgress = core.findTag("loading_progress_bar", tagClasses.uiWidgetDefinition),
-    -- // TODO An implementation of this should be possible on the future
+    -- TODO An implementation of this should be possible on the future
     -- loadoutMenu = "[shm]\\halo_4\\ui\\shell\\loadout_menu\\loadout_menu_no_background",
     mapsList = core.findTag("maps_list", tagClasses.uiWidgetDefinition),
     sidebar = core.findTag("forge_map_list_sidebar_bar", tagClasses.uiWidgetDefinition)
 }
--- // TODO Migrate all the references to these strings, ensure the correct properties are being used
+-- TODO Migrate all the references to these strings, ensure the correct properties are being used
 -- Unicode string definitions
 constants.unicodeStrings = {
     budgetCountTagId = core.findTag("budget_count", tagClasses.unicodeStringList).id,

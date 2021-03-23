@@ -173,7 +173,7 @@ end
 testMenus = {}
 
 function testMenus:setUp()
-    -- // TODO Some cool testing can be added here for triggers and hooks
+    -- TODO Some cool testing can be added here for triggers and hooks
 end
 
 ----------------- Core Functions Tests -----------------------
@@ -190,7 +190,7 @@ function testCore:setUp()
 end
 
 function testCore:testEulerRotation()
-    -- // TODO Add more test cases, rotation is in theory really broken
+    -- TODO Add more test cases, rotation is in theory really broken
     local case1Array, case1Matrix = core.eulerToRotation(0, 0, 0)
     lu.assertEquals(case1Array, self.case1Array, "Rotation array must match", true)
     lu.assertEquals(case1Matrix, self.case1Matrix, "Rotation matrix must match", true)

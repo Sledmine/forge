@@ -46,7 +46,7 @@ local function votingReflector()
     local votingCountListStrings = blam.unicodeStringList(constants.unicodeStrings.votingCountListTagId)
     votingCountListStrings.stringList = votesList
 
-        -- // TODO Add count replacing for child widgets
+        -- TODO Add count replacing for child widgets
 end
 
 return votingReflector

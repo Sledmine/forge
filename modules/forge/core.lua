@@ -571,7 +571,7 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
         if (configuration.forge.objectsCastShadow) then
             tempObject.isNotCastingShadow = false
         end
-        -- // FIXME Object inside bsp detection is not working in SAPP, use minimumZSpawnPoint instead!
+        -- FIXME Object inside bsp detection is not working in SAPP, use minimumZSpawnPoint instead!
         if (server_type == "sapp") then
             -- SAPP for some reason can not detect if an object was spawned inside the map
             -- So we need to create an instance of the object and add the flag to it
@@ -708,7 +708,7 @@ end
 ---@param forgeObject table
 ---@param disable boolean
 function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
-    -- // TODO Review if some flags use team index as "group index"!
+    -- TODO Review if some flags use team index as "group index"!
     local teamIndex = 0
     local flagType = 0
     local netgameFlagsTypes = blam.netgameFlagTypes
@@ -728,7 +728,7 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
     if (tagPath:find("flag stand")) then
         dprint("FLAG POINT")
         flagType = netgameFlagsTypes.ctfFlag
-        -- // TODO Check if double setting team index against default value is needed!
+        -- TODO Check if double setting team index against default value is needed!
         if (tagPath:find("red")) then
             dprint("RED TEAM FLAG")
             teamIndex = 0
@@ -737,7 +737,7 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
             teamIndex = 1
         end
     elseif (tagPath:find("oddball")) then
-        -- // TODO Check and add weapon based netgame flags like oddball!
+        -- TODO Check and add weapon based netgame flags like oddball!
         dprint("ODDBALL FLAG")
         flagType = netgameFlagsTypes.ballSpawn
     elseif (tagPath:find("receiver")) then
@@ -759,7 +759,7 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
     -- Object is not already reflecting a flag point
     if (not forgeObject.reflectionId) then
         for flagIndex = 1, #mapNetgameFlagsPoints do
-            -- // FIXME This control block is not neccessary but needs improvements!
+            -- FIXME This control block is not neccessary but needs improvements!
             -- If this flag point is using the same flag type
             if (mapNetgameFlagsPoints[flagIndex].type == flagType and
                 mapNetgameFlagsPoints[flagIndex].teamIndex == teamIndex and
@@ -839,7 +839,7 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
         itemCollectionTagId = core.findTag(desiredWeapon, tagClasses.itemCollection).index
     end
     if (not itemCollectionTagId) then
-        -- // TODO This needs more review
+        -- TODO This needs more review
         error("Could not find item collection tag id for desired weapon spawn: " ..
                   tagPath)
         return false
@@ -874,7 +874,7 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
     else
         dprint("Erasing netgame equipment with index: " .. forgeObject.reflectionId)
         if (disable) then
-            -- // FIXME Weapon object is not being erased in fact, find a way to delete it!
+            -- FIXME Weapon object is not being erased in fact, find a way to delete it!
             -- Disable or "delete" equipment point by setting type as 0
             netgameEquipmentPoints[forgeObject.reflectionId].type1 = 0
             -- Update spawn point list

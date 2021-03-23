@@ -117,43 +117,43 @@ function OnMapLoad()
 
     local forgeState = forgeStore:getState()
 
-    local tagCollection = blam.tagCollection(constants.tagCollections.forgeObjectsTagId)
-
-    -- // TODO Refactor this entire loop, has been implemented from the old script!!!
+    local sceneriesTagCollection = blam.tagCollection(constants.tagCollections.forgeObjectsTagId)
+    local forgeObjectsList = features.getForgeObjects(sceneriesTagCollection)
     -- Iterate over all the sceneries available in the sceneries tag collection
-    for i = 1, tagCollection.count do
-        local tempTag = blam.getTag(tagCollection.tagList[i], tagClasses.scenery)
-        local sceneryPath = tempTag.path
+    for _, tagId in pairs(forgeObjectsList) do
+        local tempTag = blam.getTag(tagId)
+        if (tempTag and tempTag.path) then
+            local sceneryPath = tempTag.path
+            local sceneriesSplit = glue.string.split(sceneryPath, "\\")
+            local sceneryFolderIndex
+            for folderNameIndex, folderName in pairs(sceneriesSplit) do
+                if (folderName == "scenery") then
+                    sceneryFolderIndex = folderNameIndex + 1
+                    break
+                end
+            end
+            local fixedSplittedPath = {}
+            for l = sceneryFolderIndex, #sceneriesSplit do
+                fixedSplittedPath[#fixedSplittedPath + 1] = sceneriesSplit[l]
+            end
+            sceneriesSplit = fixedSplittedPath
+            local sceneriesSplitLast = sceneriesSplit[#sceneriesSplit]
 
-        local sceneriesSplit = glue.string.split(sceneryPath, "\\")
-        local sceneryFolderIndex
-        for folderNameIndex, folderName in pairs(sceneriesSplit) do
-            if (folderName == "scenery") then
-                sceneryFolderIndex = folderNameIndex + 1
-                break
+            forgeState.forgeMenu.objectsDatabase[sceneriesSplitLast] = sceneryPath
+            -- Set first level as the root of available current objects
+            -- Make a tree iteration to append sceneries
+            local treePosition = forgeState.forgeMenu.objectsList.root
+            for currentLevel, categoryLevel in pairs(sceneriesSplit) do
+                -- TODO This is horrible, remove this "sort" implementation
+                if (categoryLevel:sub(1, 1) == "_") then
+                    categoryLevel = glue.string.fromhex(tostring((0x2))) ..
+                                        categoryLevel:sub(2, -1)
+                end
+                if (not treePosition[categoryLevel]) then
+                    treePosition[categoryLevel] = {}
+                end
+                treePosition = treePosition[categoryLevel]
             end
-        end
-        local fixedSplittedPath = {}
-        for l = sceneryFolderIndex, #sceneriesSplit do
-            fixedSplittedPath[#fixedSplittedPath + 1] = sceneriesSplit[l]
-        end
-        sceneriesSplit = fixedSplittedPath
-        local sceneriesSplitLast = sceneriesSplit[#sceneriesSplit]
-
-        forgeState.forgeMenu.objectsDatabase[sceneriesSplitLast] = sceneryPath
-        -- Set first level as the root of available current objects
-        -- Make a tree iteration to append sceneries
-        local treePosition = forgeState.forgeMenu.objectsList.root
-        for currentLevel, categoryLevel in pairs(sceneriesSplit) do
-            -- // TODO This is horrible, remove this "sort" implementation
-            if (categoryLevel:sub(1, 1) == "_") then
-                categoryLevel = glue.string.fromhex(tostring((0x2))) ..
-                                    categoryLevel:sub(2, -1)
-            end
-            if (not treePosition[categoryLevel]) then
-                treePosition[categoryLevel] = {}
-            end
-            treePosition = treePosition[categoryLevel]
         end
     end
 
@@ -507,7 +507,7 @@ function OnTick()
                     elseif (player.actionKey) then
                         local tagId = blam.object(get_object(objectIndex)).tagId
                         local tagPath = blam.getTag(tagId).path
-                        -- // TODO Add color copy from object
+                        -- TODO Add color copy from object
                         playerStore:dispatch({
                             type = "CREATE_AND_ATTACH_OBJECT",
                             payload = {path = tagPath}

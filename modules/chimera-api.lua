@@ -19,7 +19,7 @@ if (api_version) then
         return glue.readfile(path)
     end
 
-    -- // TODO PENDING FUNCTION!!
+    -- TODO PENDING FUNCTION!!
     function directory_exists(dir)
         return true
     end
@@ -27,7 +27,7 @@ if (api_version) then
     --- Function wrapper for directory listing from Chimera to SAPP
     ---@param dir string
     function list_directory(dir)
-        -- // TODO This needs a way to separate folders from files
+        -- TODO This needs a way to separate folders from files
         if (dir) then
             local command = "dir " .. dir .. " /B"
             local pipe = io.popen(command, "r")

@@ -95,7 +95,7 @@ function features.swapBiped()
         end
         -- else
         -- dprint("Requesting monitor biped...")
-        -- // TODO Replace this with a send request function
+        -- TODO Replace this with a send request function
         -- execute_script("rcon forge #b")
     end
 end
@@ -168,7 +168,7 @@ function features.getMouseInput()
     return mouseInput
 end
 
--- // TODO Refactor this to execute all the needed steps in just one function
+-- TODO Refactor this to execute all the needed steps in just one function
 function features.setObjectColor(hexColor, blamObject)
     if (blamObject) then
         local r, g, b = color.hex(hexColor)
@@ -446,6 +446,26 @@ function features.hideReflectionObjects(hide)
             end
         end
     end
+end
+
+--- Get Forge objects from recursive tag collection
+---@param tagCollection tagCollection
+---@return number[] tagIdsArray
+function features.getForgeObjects(tagCollection)
+    local objects = {}
+    for _, tagId in pairs(tagCollection.tagList) do
+        local tag = blam.getTag(tagId)
+        if (tag.class == tagClasses.tagCollection) then
+            local subTagCollection = blam.tagCollection(tag.id)
+            if (subTagCollection) then
+                local subTags = features.getForgeObjects(subTagCollection)
+                glue.extend(objects, subTags)
+            end
+        else
+            glue.append(objects, tag.id) 
+        end
+    end
+    return objects
 end
 
 return features

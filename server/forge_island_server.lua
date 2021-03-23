@@ -47,7 +47,7 @@ forgeMapFinishedLoading = false
 local bipedSwapping = false
 local mapVotingEnabled = true
 
--- // TODO This needs some refactoring, this configuration is useless on server side
+-- TODO This needs some refactoring, this configuration is useless on server side
 -- Forge default configuration
 configuration = {
     forge = {
@@ -111,7 +111,7 @@ local playersBiped = {}
 local playersTempPosition = {}
 local playerSyncThread = {}
 
--- // TODO This function should be used as thread controller instead of a function executor
+-- TODO This function should be used as thread controller instead of a function executor
 function OnTick()
     if (forgeMapFinishedLoading) then
         for playerIndex = 1, 16 do
@@ -164,9 +164,9 @@ function OnTick()
 end
 
 rcon.commandInterceptor = function(playerIndex, message, environment, rconPassword)
-    -- // TODO Check rcon environment
+    -- TODO Check rcon environment
     dprint("Triggering rcon...")
-    -- // TODO Check if we have to avoid returning true or false
+    -- TODO Check if we have to avoid returning true or false
     dprint("Incoming rcon message:", "warning")
     dprint(message)
     local request = string.gsub(message, "'", "")
@@ -182,7 +182,7 @@ rcon.commandInterceptor = function(playerIndex, message, environment, rconPasswo
     end
     if (actionType) then
         return core.processRequest(actionType, request, currentRequest, playerIndex)
-        -- // TODO Move this into a server request
+        -- TODO Move this into a server request
     else
         splitData = glue.string.split(request, " ")
         for k, v in pairs(splitData) do
@@ -302,7 +302,7 @@ function OnGameStart()
     eventsStore = eventsStore or redux.createStore(eventsReducer)
     votingStore = votingStore or redux.createStore(votingReducer)
 
-    -- // TODO Check if this is better to do on script load
+    -- TODO Check if this is better to do on script load
     core.loadForgeMaps()
 
     if (forgeMapName) then
