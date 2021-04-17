@@ -183,40 +183,35 @@ function features.openForgeObjectPropertiesMenu()
     local forgeState = forgeStore:getState()
     forgeState.forgeMenu.currentPage = 1
     forgeState.forgeMenu.desiredElement = "root"
-    forgeState.forgeMenu.elementsList =
-        {
-            root = {
-                ["colors (beta)"] = {
-                    ["white (default)"] = {},
-                    black = {},
-                    red = {},
-                    blue = {},
-                    gray = {},
-                    yellow = {},
-                    green = {},
-                    pink = {},
-                    purple = {},
-                    cyan = {},
-                    cobalt = {},
-                    orange = {},
-                    teal = {},
-                    sage = {},
-                    brown = {},
-                    tan = {},
-                    maroon = {},
-                    salmon = {}
-                },
-                ["channel"] = {
-                    alpha = {},
-                    bravo = {},
-                    charly = {},
-                },
-                ["reset rotation"] = {},
-                ["rotate 45"] = {},
-                ["rotate 90"] = {},
-                ["snap mode"] = {}
-            }
+    forgeState.forgeMenu.elementsList = {
+        root = {
+            ["colors (beta)"] = {
+                ["white (default)"] = {},
+                black = {},
+                red = {},
+                blue = {},
+                gray = {},
+                yellow = {},
+                green = {},
+                pink = {},
+                purple = {},
+                cyan = {},
+                cobalt = {},
+                orange = {},
+                teal = {},
+                sage = {},
+                brown = {},
+                tan = {},
+                maroon = {},
+                salmon = {}
+            },
+            ["channel"] = {alpha = {}, bravo = {}, charly = {}},
+            ["reset rotation"] = {},
+            ["rotate 45"] = {},
+            ["rotate 90"] = {},
+            ["snap mode"] = {}
         }
+    }
     forgeStore:dispatch({
         type = "UPDATE_FORGE_ELEMENTS_LIST",
         payload = {forgeMenu = forgeState.forgeMenu}
@@ -253,13 +248,22 @@ function features.getObjectMenuFunctions()
             configuration.forge.snapMode = not configuration.forge.snapMode
         end,
         ["alpha"] = function()
-            playerStore:dispatch({type = "SET_OBJECT_CHANNEL", payload = {channel = constants.teleportersChannels.alpha}})
+            playerStore:dispatch({
+                type = "SET_OBJECT_CHANNEL",
+                payload = {channel = constants.teleportersChannels.alpha}
+            })
         end,
         ["bravo"] = function()
-            playerStore:dispatch({type = "SET_OBJECT_CHANNEL", payload = {channel = constants.teleportersChannels.bravo}})
+            playerStore:dispatch({
+                type = "SET_OBJECT_CHANNEL",
+                payload = {channel = constants.teleportersChannels.bravo}
+            })
         end,
         ["charly"] = function()
-            playerStore:dispatch({type = "SET_OBJECT_CHANNEL", payload = {channel = constants.teleportersChannels.charly}})
+            playerStore:dispatch({
+                type = "SET_OBJECT_CHANNEL",
+                payload = {channel = constants.teleportersChannels.charly}
+            })
         end,
         ["white (default)"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
@@ -427,19 +431,17 @@ function features.hideReflectionObjects(hide)
         local eventsStore = eventsStore:getState()
         for objectIndex, forgeObject in pairs(eventsStore.forgeObjects) do
             if (forgeObject and forgeObject.reflectionId) then
-                local tempObject = blam.object(get_object(objectIndex))
-                if (tempObject) then
-                    local tempTag = blam.getTag(tempObject.tagId)
+                local object = blam.object(get_object(objectIndex))
+                if (object) then
+                    local tempTag = blam.getTag(object.tagId)
                     if (not stringHas(tempTag.path, constants.hideObjectsExceptions)) then
                         if (hide) then
-                            -- Hide objects by setting null permutation
-                            tempObject.z = constants.minimumZSpawnPoint * 4
-                            tempObject.regionPermutation1 = -1
-                            tempObject.regionPermutation2 = -1
+                            -- Hide objects by setting different properties
+                            object.isGhost = true
+                            object.z = constants.minimumZSpawnPoint * 4
                         else
-                            tempObject.z = forgeObject.z
-                            tempObject.regionPermutation1 = 0
-                            tempObject.regionPermutation2 = 0
+                            object.isGhost = false
+                            object.z = forgeObject.z
                         end
                     end
                 end
@@ -448,24 +450,139 @@ function features.hideReflectionObjects(hide)
     end
 end
 
---- Get Forge objects from recursive tag collection
----@param tagCollection tagCollection
----@return number[] tagIdsArray
-function features.getForgeObjects(tagCollection)
-    local objects = {}
-    for _, tagId in pairs(tagCollection.tagList) do
-        local tag = blam.getTag(tagId)
-        if (tag.class == tagClasses.tagCollection) then
-            local subTagCollection = blam.tagCollection(tag.id)
-            if (subTagCollection) then
-                local subTags = features.getForgeObjects(subTagCollection)
-                glue.extend(objects, subTags)
+function features.playSound(tagPath, gain)
+    local playSoundCommand = constants.hsc.playSound:format(tagPath, gain)
+    execute_script(playSoundCommand)
+end
+
+-- TODO Move these variables to a better place
+local landedRecently = false
+local healthDepletedRecently = false
+local lastGrenadeType = nil
+
+--- Apply some special effects to the HUD like sounds, blips, etc
+function features.hudUpgrades()
+    local player = blam.biped(get_dynamic_player())
+    -- Player must exist and it should not be on a vehicle
+    if (player) then
+        local isPlayerOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
+        if (not isPlayerOnMenu) then
+            local localPlayer = read_dword(constants.localPlayerAddress)
+            local currentGrenadeType = read_word(localPlayer + 202)
+            if (not blam.isNull(currentGrenadeType)) then
+                if (not lastGrenadeType) then
+                    lastGrenadeType = currentGrenadeType
+                end
+                if (lastGrenadeType ~= currentGrenadeType) then
+                    lastGrenadeType = currentGrenadeType
+                    if (lastGrenadeType == 1) then
+                        features.playSound(constants.sounds.uiForwardPath.."2", 1)
+                    else
+                        features.playSound(constants.sounds.uiForwardPath, 1)
+                    end
+                end
             end
-        else
-            glue.append(objects, tag.id) 
+            -- When player is on critical health, low health sound is triggered also
+            if (player.health < 0.25 and blam.isNull(player.vehicleObjectId)) then
+                if (not healthDepletedRecently) then
+                    healthDepletedRecently = true
+                    execute_script([[(begin
+                        (cinematic_screen_effect_start true)
+                        (cinematic_screen_effect_set_convolution 2 1 1 1 5)
+                        (cinematic_screen_effect_start false)
+                    )]])
+                end
+            else
+                if (healthDepletedRecently) then
+                    execute_script([[(begin
+                    (cinematic_screen_effect_set_convolution 2 1 1 0 1)(cinematic_screen_effect_start false)
+                    (sleep 45)
+                    (cinematic_stop)
+                )]])
+                end
+                healthDepletedRecently = false
+            end
+        end
+        if (blam.isNull(player.vehicleObjectId)) then
+            -- Landing hard
+            if (player.landing == 1) then
+                if (not landedRecently) then
+                    landedRecently = true
+                    -- Play sound using hsc scripts
+                    features.playSound(constants.sounds.landHardPlayerDamagePath, 0.8)
+                end
+            else
+                landedRecently = false
+            end
         end
     end
-    return objects
 end
+
+function features.regenerateHealth(playerIndex)
+    if (server_type == "sapp" or server_type == "local") then
+        local player
+        if (playerIndex) then
+            player = blam.biped(get_dynamic_player(playerIndex))
+        else
+            player = blam.biped(get_dynamic_player())
+        end
+        if (player) then
+            -- Fix muted audio shield sync
+            if (server_type == "local") then
+                if (player.health <= 0) then
+                    player.health = 0.000000001
+                end
+            end
+            if (player.health < 1 and player.shield >= 1) then
+                local newPlayerHealth = player.health + constants.healthRegenerationAmount
+                if (newPlayerHealth > 1) then
+                    player.health = 1
+                else
+                    player.health = newPlayerHealth
+                end
+            end
+        end
+    end
+end
+
+--[[unction core.getPlayerFragGrenade()
+    for objectNumber, objectIndex in pairs(blam.getObjects()) do
+        local projectile = blam.projectile(get_object(objectIndex))
+        local selectedObjIndex
+        if (projectile and projectile.type == objectClasses.projectile) then
+            local projectileTag = blam.getTag(projectile.tagId)
+            if (projectileTag and projectileTag.index ==
+                constants.fragGrenadeProjectileTagIndex) then
+                local player = blam.biped(get_dynamic_player())
+                if (projectile.armingTimer > 1) then
+                    player.x = projectile.x
+                    player.y = projectile.y
+                    player.z = projectile.z
+                    delete_object(objectIndex)
+                end
+            end
+        end
+    end
+end]]
+
+--[[function core.getPlayerAimingSword()
+    for objectNumber, objectIndex in pairs(blam.getObjects()) do
+        local projectile = blam.projectile(get_object(objectIndex))
+        local selectedObjIndex
+        if (projectile and projectile.type == objectClasses.projectile) then
+            local projectileTag = blam.getTag(projectile.tagId)
+            if (projectileTag and projectileTag.index == constants.swordProjectileTagIndex) then
+                if (projectile.attachedToObjectId) then
+                    local selectedObject = blam.object(
+                                               get_object(projectile.attachedToObjectId))
+                    if (selectedObject) then
+                        dprint(projectile.attachedToObjectId)
+                        return projectile, objectIndex
+                    end
+                end
+            end
+        end
+    end
+end]]
 
 return features
