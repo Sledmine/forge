@@ -29,6 +29,9 @@ function core.loadForgeConfiguration(path)
     if (not path) then
         path = defaultConfigurationPath
     end
+    if (not directory_exists(path)) then
+        create_directory(path)
+    end
     local configurationFilePath = path .. "\\" .. scriptName .. ".ini"
     local configurationFile = read_file(configurationFilePath)
     if (configurationFile) then
@@ -42,6 +45,13 @@ function core.loadForgeConfiguration(path)
     end
 end
 
+--- Normalize any map name to a specific lower snake name
+---@field mapName string
+function core.normalizeMapName(mapName)
+    return string.gsub(" " .. mapName:gsub(".fmap", ""):gsub("_", " "),
+    "%W%l", string.upper):sub(2)
+end
+
 --- Load previous Forge maps
 ---@param path string Path of the maps folder
 function core.loadForgeMaps(path)
@@ -50,19 +60,17 @@ function core.loadForgeMaps(path)
     end
     if (not directory_exists(path)) then
         create_directory(path)
-        -- return false
     end
     local mapsFiles = list_directory(path)
     local mapsList = {}
     for fileIndex, file in pairs(mapsFiles) do
         if (not file:find("\\")) then
-            local splitFileName = glue.string.split(file, ".")
-            local extFile = splitFileName[#splitFileName]
+            local dotSplitFile = glue.string.split(file, ".")
+            local fileExtension = dotSplitFile[#dotSplitFile]
             -- Only load files with extension .fmap
-            if (extFile == "fmap") then
-                -- local mapName = string.gsub(file, ".fmap", ""):gsub("_", " ")
-                local mapName = string.gsub(" " .. file:gsub(".fmap", ""):gsub("_", " "),
-                                            "%W%l", string.upper):sub(2)
+            if (fileExtension == "fmap") then
+                -- Normalize map name
+                local mapName = core.normalizeMapName(file)
                 glue.append(mapsList, mapName)
             end
         end
@@ -475,14 +483,20 @@ function core.loadForgeMap(mapName)
 end
 
 function core.saveForgeMap()
-    console_out("Saving forge map...")
-
+    ---@type forgeState
     local forgeState = forgeStore:getState()
-
     local mapName = forgeState.currentMap.name
     local mapDescription = forgeState.currentMap.description
-    local mapAuthor = blam.readUnicodeString(get_player() + 0x4, true)
-
+    local mapAuthor = forgeState.currentMap.author
+    if (mapAuthor == "Unknown") then
+        mapAuthor = blam.readUnicodeString(get_player() + 0x4, true)
+    end
+    if (mapName == "Unsaved") then
+        console_out("WARNING, You have to give a name to your map before saving!")
+        console_out("Use command:")
+        console_out("fname <name_of_your_map>")
+        return false
+    end
     -- List used to store data of every object in the forge map
     local forgeMap = {
         name = mapName,
@@ -496,6 +510,7 @@ function core.saveForgeMap()
     -- Get the state of the forge objects
     local objectsState = eventsStore:getState().forgeObjects
 
+    console_out("Saving forge map...")
     -- Iterate through all the forge objects
     for objectId, forgeObject in pairs(objectsState) do
         -- Get scenery tag path to keep compatibility between versions
@@ -518,7 +533,27 @@ function core.saveForgeMap()
         glue.append(forgeMap.objects, forgeObjectInstance)
     end
 
+    ---@class forgeObjectData
+    ---@field tagPath string
+    ---@field x number
+    ---@field y number
+    ---@field z number
+    ---@field yaw number
+    ---@field pitch number
+    ---@field roll number
+    ---@field teamIndex  number
+    ---@field color number
+
+
+    ---@class forgeMap
+    ---@field description string
+    ---@field author string
+    ---@field map string
+    ---@field version string
+    ---@field objects forgeObjectData[]
+
     -- Encode map info as json
+    ---@type forgeMap
     local fmapContent = json.encode(forgeMap)
 
     -- Standarize map name
@@ -526,10 +561,10 @@ function core.saveForgeMap()
 
     local forgeMapPath = defaultMapsPath .. "\\" .. mapName .. ".fmap"
 
-    local forgeMapFile = write_file(forgeMapPath, fmapContent)
+    local forgeMapSaved = write_file(forgeMapPath, fmapContent)
 
     -- Check if file was created
-    if (forgeMapFile) then
+    if (forgeMapSaved) then
         console_out("Forge map " .. mapName .. " has been succesfully saved!",
                     blam.consoleColors.success)
 
@@ -626,6 +661,7 @@ function core.updatePlayerSpawn(tagPath, forgeObject, disable)
     local teamIndex = 0
     local gameType = 0
 
+    -- TODO Refactor this to make it dynamic, also use blam constants instad of static game types
     -- Get spawn info from tag name
     if (tagPath:find("ctf")) then
         dprint("CTF")
@@ -1085,6 +1121,7 @@ function core.getForgeObjectFromPlayerAim()
     local forgeObjects = eventsStore:getState().forgeObjects
     for _, projectileObjectIndex in pairs(blam.getObjects()) do
         local projectile = blam.projectile(get_object(projectileObjectIndex))
+        local dumpedProjectile = blam.dumpObject(projectile)
         local forgeObject
         local selectedObjIndex
         if (projectile and projectile.type == objectClasses.projectile) then
@@ -1102,16 +1139,16 @@ function core.getForgeObjectFromPlayerAim()
                         -- Create a new one
                         createProjectileSelector()
                         return selectedObjIndex, forgeObject,
-                               blam.dumpObject(projectile) or nil
+                        dumpedProjectile or nil
                     end
                 end
                 delete_object(projectileObjectIndex)
-                return nil, nil, blam.dumpObject(projectile) or nil
+                return nil, nil, dumpedProjectile or nil
             end
         elseif (forgeObjects[projectileObjectIndex]) then
             if (core.playerIsAimingAt(projectileObjectIndex, 0.03, 0)) then
                 return projectileObjectIndex, forgeObjects[projectileObjectIndex],
-                       blam.dumpObject(projectile) or nil
+                dumpedProjectile or nil
             end
         end
     end
@@ -1138,44 +1175,24 @@ function core.isObjectOutOfBounds(object)
     end
 end
 
---[[unction core.getPlayerFragGrenade()
-    for objectNumber, objectIndex in pairs(blam.getObjects()) do
-        local projectile = blam.projectile(get_object(objectIndex))
-        local selectedObjIndex
-        if (projectile and projectile.type == objectClasses.projectile) then
-            local projectileTag = blam.getTag(projectile.tagId)
-            if (projectileTag and projectileTag.index ==
-                constants.fragGrenadeProjectileTagIndex) then
-                local player = blam.biped(get_dynamic_player())
-                if (projectile.armingTimer > 1) then
-                    player.x = projectile.x
-                    player.y = projectile.y
-                    player.z = projectile.z
-                    delete_object(objectIndex)
-                end
+--- Get Forge objects from recursive tag collection
+---@param tagCollection tagCollection
+---@return number[] tagIdsArray
+function core.getForgeObjects(tagCollection)
+    local objects = {}
+    for _, tagId in pairs(tagCollection.tagList) do
+        local tag = blam.getTag(tagId)
+        if (tag.class == tagClasses.tagCollection) then
+            local subTagCollection = blam.tagCollection(tag.id)
+            if (subTagCollection) then
+                local subTags = core.getForgeObjects(subTagCollection)
+                glue.extend(objects, subTags)
             end
+        else
+            glue.append(objects, tag.id)
         end
     end
-end]]
-
---[[function core.getPlayerAimingSword()
-    for objectNumber, objectIndex in pairs(blam.getObjects()) do
-        local projectile = blam.projectile(get_object(objectIndex))
-        local selectedObjIndex
-        if (projectile and projectile.type == objectClasses.projectile) then
-            local projectileTag = blam.getTag(projectile.tagId)
-            if (projectileTag and projectileTag.index == constants.swordProjectileTagIndex) then
-                if (projectile.attachedToObjectId) then
-                    local selectedObject = blam.object(
-                                               get_object(projectile.attachedToObjectId))
-                    if (selectedObject) then
-                        dprint(projectile.attachedToObjectId)
-                        return projectile, objectIndex
-                    end
-                end
-            end
-        end
-    end
-end]]
+    return objects
+end
 
 return core

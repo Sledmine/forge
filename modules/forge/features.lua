@@ -451,8 +451,11 @@ function features.hideReflectionObjects(hide)
 end
 
 function features.playSound(tagPath, gain)
-    local playSoundCommand = constants.hsc.playSound:format(tagPath, gain)
-    execute_script(playSoundCommand)
+    local player = blam.player(get_player())
+    if (player) then
+        local playSoundCommand = constants.hsc.playSound:format(tagPath, player.index, gain)
+        execute_script(playSoundCommand)
+    end
 end
 
 -- TODO Move these variables to a better place

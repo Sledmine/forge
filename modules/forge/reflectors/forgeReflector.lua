@@ -3,7 +3,7 @@
 -- Sledmine
 -- Function reflector for store
 ------------------------------------------------------------------------------
-local menu = require "forge.menu"
+local interface = require "forge.interface"
 local core = require "forge.core"
 local forgeVersion = require "forge.version"
 
@@ -27,7 +27,7 @@ local function forgeReflector()
     local forgeMenuElementsStrings = blam.unicodeStringList(
                                          constants.unicodeStrings.forgeMenuElementsTagId)
     forgeMenuElementsStrings.stringList = currentElements
-    menu.update(constants.uiWidgetDefinitions.objectsList, #currentElements + 2)
+    interface.update(constants.uiWidgetDefinitions.objectsList, #currentElements + 2)
 
     local pagination = blam.unicodeStringList(constants.unicodeStrings.paginationTagId)
     if (pagination) then
@@ -71,7 +71,7 @@ local function forgeReflector()
     local mapsListStrings = blam.unicodeStringList(constants.unicodeStrings.mapsListTagId)
     mapsListStrings.stringList = currentMapsList
     -- Wich ui widget will be updated and how many items it will show
-    menu.update(constants.uiWidgetDefinitions.mapsList, #currentMapsList + 3)
+    interface.update(constants.uiWidgetDefinitions.mapsList, #currentMapsList + 3)
 
     -- Refresh fake sidebar in maps menu
     local sidebarWidget = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.sidebar.id)
@@ -87,7 +87,7 @@ local function forgeReflector()
         "",
         -- Forge maps menu 
         forgeState.currentMap.name,
-        forgeState.currentMap.author,
+        "Author: " .. forgeState.currentMap.author,
         forgeState.currentMap.version,
         forgeState.currentMap.description,
         -- Forge loading objects screen

@@ -1,6 +1,7 @@
 -- Lua libraries
 local glue = require "glue"
 local inspect = require "inspect"
+local json = require "json"
 
 -- Forge modules
 local core = require "forge.core"
@@ -52,8 +53,8 @@ local function eventsReducer(state, action)
         local tagPath = blam.getTag(requestObject.tagId or requestObject.tagIndex).path
 
         -- Spawn object in the game
-        local objectId = core.spawnObject(tagClasses.scenery, tagPath, forgeObject.x, forgeObject.y,
-                                          forgeObject.z)
+        local objectId = core.spawnObject(tagClasses.scenery, tagPath, forgeObject.x,
+                                          forgeObject.y, forgeObject.z)
         dprint("objectId: " .. objectId)
 
         local objectIndex = getIndexById(objectId)
@@ -80,7 +81,8 @@ local function eventsReducer(state, action)
         -- Apply color to the object
         if (server_type ~= "sapp" and requestObject.color) then
             local tempObject = blam.object(get_object(objectIndex))
-            features.setObjectColor(constants.colorsNumber[requestObject.color], tempObject)
+            features.setObjectColor(constants.colorsNumber[requestObject.color],
+                                    tempObject)
         end
 
         dprint("objectIndex: " .. objectIndex)
@@ -147,7 +149,8 @@ local function eventsReducer(state, action)
             forgeObject.teamIndex = requestObject.teamIndex
 
             -- Update object rotation
-            core.rotateObject(targetObjectId, forgeObject.yaw, forgeObject.pitch, forgeObject.roll)
+            core.rotateObject(targetObjectId, forgeObject.yaw, forgeObject.pitch,
+                              forgeObject.roll)
 
             -- Update object position
             local tempObject = blam.object(get_object(targetObjectId))
@@ -156,7 +159,8 @@ local function eventsReducer(state, action)
             tempObject.z = forgeObject.z
 
             if (requestObject.color) then
-                features.setObjectColor(constants.colorsNumber[requestObject.color], tempObject)
+                features.setObjectColor(constants.colorsNumber[requestObject.color],
+                                        tempObject)
             end
 
             -- Check and take actions if the object is reflecting a netgame point
@@ -248,9 +252,7 @@ local function eventsReducer(state, action)
                        "does not exist.", "error")
         end
         -- Update the current map information
-        forgeStore:dispatch({
-            type = "UPDATE_MAP_INFO"
-        })
+        forgeStore:dispatch({type = "UPDATE_MAP_INFO"})
 
         return state
     elseif (action.type == constants.requests.setMapAuthor.actionType) then
@@ -271,9 +273,7 @@ local function eventsReducer(state, action)
 
         forgeStore:dispatch({
             type = constants.requests.setMapDescription.actionType,
-            payload = {
-                mapDescription = mapDescription
-            }
+            payload = {mapDescription = mapDescription}
         })
 
         return state
@@ -285,10 +285,7 @@ local function eventsReducer(state, action)
 
         forgeStore:dispatch({
             type = "UPDATE_MAP_INFO",
-            payload = {
-                expectedObjects = expectedObjects,
-                mapName = mapName
-            }
+            payload = {expectedObjects = expectedObjects, mapName = mapName}
         })
 
         -- Function wrapper for timer
@@ -299,9 +296,11 @@ local function eventsReducer(state, action)
 
         return state
     elseif (action.type == constants.requests.flushForge.actionType) then
-        local forgeObjects = state.forgeObjects
-        for objectIndex, forgeObject in pairs(forgeObjects) do
-            delete_object(objectIndex)
+        if (server_type ~= "sapp") then
+            local forgeObjects = state.forgeObjects
+            for objectIndex, forgeObject in pairs(forgeObjects) do
+                delete_object(objectIndex)
+            end
         end
         state.cachedResponses = {}
         state.forgeObjects = {}
@@ -323,9 +322,7 @@ local function eventsReducer(state, action)
             local forgeState = forgeStore:getState()
             if (forgeState and forgeState.mapsMenu.mapsList) then
                 -- Remove all the current vote maps
-                votingStore:dispatch({
-                    type = "FLUSH_MAP_VOTES"
-                })
+                votingStore:dispatch({type = "FLUSH_MAP_VOTES"})
                 -- TODO This needs testing and probably a better implementation
                 local mapGroups = glue.chunks(forgeState.mapsMenu.mapsList, 4)
                 state.mapVotesGroup = state.mapVotesGroup + 1
@@ -335,12 +332,37 @@ local function eventsReducer(state, action)
                     currentGroup = mapGroups[state.mapVotesGroup]
                 end
                 for index, mapName in pairs(currentGroup) do
+                    local availableGametypes = {}
+                    ---@type forgeMap
+                    local mapPath = ("fmaps\\%s.fmap"):format(mapName):gsub(" ", "_")
+                                        :lower()
+                    console_out(mapPath)
+                    local mapData = json.decode(read_file(mapPath))
+                    for _, forgeObject in pairs(mapData.objects) do
+                        local tagPath = forgeObject.tagPath
+                        if (tagPath:find("spawning")) then
+                            if (tagPath:find("ctf")) then
+                                availableGametypes["CTF"] = true
+                            elseif (tagPath:find("slayer") or tagPath:find("generic")) then
+                                availableGametypes["Slayer"] = true
+                                availableGametypes["Team Slayer"] = true
+                            elseif (tagPath:find("oddball")) then
+                                availableGametypes["Oddball"] = true
+                            end
+                        end
+                    end
+                    console_out(inspect(availableGametypes))
+                    local gametypes = glue.keys(availableGametypes)
+                    math.randomseed(os.time())
+                    local randomGametype = gametypes[math.random(1, #gametypes)] or
+                                               "Slayer"
+                    console_out(randomGametype)
                     votingStore:dispatch({
                         type = constants.requests.appendVoteMap.actionType,
                         payload = {
                             map = {
                                 name = mapName,
-                                gametype = "Slayer",
+                                gametype = randomGametype,
                                 mapIndex = 1
                             }
                         }
@@ -363,12 +385,7 @@ local function eventsReducer(state, action)
             local params = action.payload.requestObject
             votingStore:dispatch({
                 type = constants.requests.appendVoteMap.actionType,
-                payload = {
-                    map = {
-                        name = params.name,
-                        gametype = params.gametype
-                    }
-                }
+                payload = {map = {name = params.name, gametype = params.gametype}}
             })
         end
         return state
@@ -409,7 +426,8 @@ local function eventsReducer(state, action)
                 state.playerVotes[action.playerIndex] = params.mapVoted
                 local votingState = votingStore:getState()
                 local mapName = votingState.votingMenu.mapsList[params.mapVoted].name
-                local mapGametype = votingState.votingMenu.mapsList[params.mapVoted].gametype
+                local mapGametype = votingState.votingMenu.mapsList[params.mapVoted]
+                                        .gametype
 
                 grprint(playerName .. " voted for " .. mapName .. " " .. mapGametype)
                 eventsStore:dispatch({
@@ -430,12 +448,14 @@ local function eventsReducer(state, action)
                             mostVotedMapIndex = mapIndex
                         end
                     end
-                    local winnerMap = mapsList[mostVotedMapIndex].name:gsub(" ", "_"):lower()
-                    local winnerGametype = mapsList[mostVotedMapIndex].gametype:gsub(" ", "_")
+                    local winnerMap = mapsList[mostVotedMapIndex].name:gsub(" ", "_")
+                                          :lower()
+                    local winnerGametype = mapsList[mostVotedMapIndex].gametype:gsub(" ",
+                                                                                     "_")
                                                :lower()
                     print("Most voted map is: " .. winnerMap)
                     forgeMapName = winnerMap
-                    execute_command("sv_map " .. map .. " " .. winnerGametype)
+                    execute_script("sv_map " .. map .. " " .. winnerGametype)
                 end
             end
         end

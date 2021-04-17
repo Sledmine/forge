@@ -29,9 +29,7 @@ tagClasses = blam.tagClasses
 cameraTypes = blam.cameraTypes
 
 -- Forge modules
-local triggers = require "forge.triggers"
-local hook = require "forge.hook"
-local menu = require "forge.menu"
+local interface = require "forge.interface"
 local features = require "forge.features"
 local commands = require "forge.commands"
 local core = require "forge.core"
@@ -117,8 +115,10 @@ function OnMapLoad()
 
     local forgeState = forgeStore:getState()
 
-    local sceneriesTagCollection = blam.tagCollection(constants.tagCollections.forgeObjectsTagId)
-    local forgeObjectsList = features.getForgeObjects(sceneriesTagCollection)
+    -- TODO Migrate this into a feature or something
+    local sceneriesTagCollection = blam.tagCollection(
+                                       constants.tagCollections.forgeObjectsTagId)
+    local forgeObjectsList = core.getForgeObjects(sceneriesTagCollection)
     -- Iterate over all the sceneries available in the sceneries tag collection
     for _, tagId in pairs(forgeObjectsList) do
         local tempTag = blam.getTag(tagId)
@@ -160,9 +160,6 @@ function OnMapLoad()
     -- Set current menu elements to objects list
     forgeState.forgeMenu.elementsList = glue.deepcopy(forgeState.forgeMenu.objectsList)
 
-    local availableForgeObjects = #glue.keys(forgeState.forgeMenu.objectsDatabase)
-    dprint("Forge database has " .. availableForgeObjects .. " objects.")
-
     -- Subscribed function to refresh forge state into the game!
     forgeStore:subscribe(forgeReflector)
 
@@ -178,17 +175,13 @@ function OnMapLoad()
 
     local isForgeMap = core.isForgeMap(map)
     if (isForgeMap) then
-
-        -- //TODO Add folder creation if does not exist
-
-        -- Load all the forge stuff
         core.loadForgeConfiguration()
         core.loadForgeMaps()
 
         -- Start autosave timer
         if (not autoSaveTimer and server_type == "local") then
-            autoSaveTimer =
-                set_timer(configuration.forge.autoSaveTime, "autoSaveForgeMap")
+            local autoSaveTime = configuration.forge.autoSaveTime
+            autoSaveTimer = set_timer(autoSaveTime, "autoSaveForgeMap")
         end
 
         set_callback("tick", "OnTick")
@@ -197,79 +190,75 @@ function OnMapLoad()
         set_callback("command", "OnCommand")
 
     else
-        error("This is not a compatible Forge map!!!")
+        error("Error, This is not a compatible Forge CE map!!!")
     end
 end
 
 function OnPreFrame()
-    playerIsOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
-    if (drawTextBuffer and not playerIsOnMenu) then
+    local isPlayerOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
+    if (drawTextBuffer and not isPlayerOnMenu) then
         draw_text(table.unpack(drawTextBuffer))
     end
-    if (playerIsOnMenu) then
-        -- Get player forge state
+    -- Menu, UI Handling
+    if (isPlayerOnMenu) then
         ---@type playerState
         local playerState = playerStore:getState()
-        -- Menu, UI Handling
-        -- Trigger prefix and how many triggers are being read
-        -- triggers.get("hsc_trigger_example_name", 10)
-        menuPressedButton = triggers.get("maps_menu", 10)
-        mouse = features.getMouseInput()
-        if mouse.scroll ~= 0 then
-            dprint(inspect(mouse))
-        end
+
+        -- Maps Menu
+        local mouse = features.getMouseInput()
+        local pressedButton = interface.triggers("maps_menu", 11)
         if (mouse.scroll > 0) then
-            menuPressedButton = 10
+            pressedButton = 10
         elseif (mouse.scroll < 0) then
-            menuPressedButton = 9
+            pressedButton = 9
         end
-        if (menuPressedButton) then
-            if (menuPressedButton == 9) then
+        if (pressedButton) then
+            dprint(" -> [ Maps Menu ]")
+            if (pressedButton == 9) then
                 -- Dispatch an event to increment current page
                 forgeStore:dispatch({type = "DECREMENT_MAPS_MENU_PAGE"})
-            elseif (menuPressedButton == 10) then
+            elseif (pressedButton == 10) then
                 -- Dispatch an event to decrement current page
                 forgeStore:dispatch({type = "INCREMENT_MAPS_MENU_PAGE"})
+            elseif (pressedButton == 11) then
+                core.saveForgeMap()
             else
                 local elementsList = blam.unicodeStringList(
                                          constants.unicodeStrings.mapsListTagId)
-                local mapName = elementsList.stringList[menuPressedButton]:gsub(" ", "_")
+                local mapName = elementsList.stringList[pressedButton]:gsub(" ", "_")
                 core.loadForgeMap(mapName)
             end
-            dprint("Maps menu:")
-            dprint("Button " .. menuPressedButton .. " was pressed!", "category")
+            dprint("Button " .. pressedButton .. " was pressed!", "category")
         end
 
-        menuPressedButton = triggers.get("forge_menu", 9)
+        -- Forge Objects Menu
         mouse = features.getMouseInput()
-        if mouse.scroll ~= 0 then
-            dprint(inspect(mouse))
-        end
+        pressedButton = interface.triggers("forge_menu", 9)
         if (mouse.scroll > 0) then
-            menuPressedButton = 8
+            pressedButton = 8
         elseif (mouse.scroll < 0) then
-            menuPressedButton = 7
+            pressedButton = 7
         end
-        if (menuPressedButton) then
+        if (pressedButton) then
             dprint(" -> [ Forge Menu ]")
             local forgeState = forgeStore:getState()
-            if (menuPressedButton == 9) then
+            if (pressedButton == 9) then
                 if (forgeState.forgeMenu.desiredElement ~= "root") then
                     forgeStore:dispatch({type = "UPWARD_NAV_FORGE_MENU"})
                 else
                     dprint("Closing Forge menu...")
-                    menu.close(constants.uiWidgetDefinitions.forgeMenu)
+                    interface.close(constants.uiWidgetDefinitions.forgeMenu)
                 end
-            elseif (menuPressedButton == 8) then
+            elseif (pressedButton == 8) then
                 forgeStore:dispatch({type = "INCREMENT_FORGE_MENU_PAGE"})
-            elseif (menuPressedButton == 7) then
+            elseif (pressedButton == 7) then
                 forgeStore:dispatch({type = "DECREMENT_FORGE_MENU_PAGE"})
             else
                 if (playerState.attachedObjectId) then
                     local elementsList = blam.unicodeStringList(
                                              constants.unicodeStrings
                                                  .forgeMenuElementsTagId)
-                    local selectedElement = elementsList.stringList[menuPressedButton]
+                    local selectedElement = elementsList.stringList[pressedButton]
                     if (selectedElement) then
                         local elementsFunctions = features.getObjectMenuFunctions()
                         local buttonFunction = elementsFunctions[selectedElement]
@@ -287,7 +276,7 @@ function OnPreFrame()
                     local elementsList = blam.unicodeStringList(
                                              constants.unicodeStrings
                                                  .forgeMenuElementsTagId)
-                    local selectedSceneryName = elementsList.stringList[menuPressedButton]
+                    local selectedSceneryName = elementsList.stringList[pressedButton]
                     local sceneryPath =
                         forgeState.forgeMenu.objectsDatabase[selectedSceneryName]
                     if (sceneryPath) then
@@ -295,7 +284,7 @@ function OnPreFrame()
                             type = "CREATE_AND_ATTACH_OBJECT",
                             payload = {path = sceneryPath}
                         })
-                        menu.close(constants.uiWidgetDefinitions.forgeMenu)
+                        interface.close(constants.uiWidgetDefinitions.forgeMenu)
                     else
                         forgeStore:dispatch({
                             type = "DOWNWARD_NAV_FORGE_MENU",
@@ -305,26 +294,26 @@ function OnPreFrame()
                 end
             end
             dprint(" -> [ Forge Menu ]")
-            dprint("Button " .. menuPressedButton .. " was pressed!", "category")
+            dprint("Button " .. pressedButton .. " was pressed!", "category")
 
         end
 
-        menuPressedButton = triggers.get("map_vote_menu", 5)
-        if (menuPressedButton) then
+        pressedButton = interface.triggers("map_vote_menu", 5)
+        if (pressedButton) then
             local voteMapRequest = {
                 requestType = constants.requests.sendMapVote.requestType,
-                mapVoted = menuPressedButton
+                mapVoted = pressedButton
             }
             core.sendRequest(core.createRequest(voteMapRequest))
             dprint("Vote Map menu:")
-            dprint("Button " .. menuPressedButton .. " was pressed!", "category")
+            dprint("Button " .. pressedButton .. " was pressed!", "category")
         end
     else
-        -- Get player forge state
         ---@type playerState
         local playerState = playerStore:getState()
-        if (playerState.attachedObjectId) then
-            mouse = features.getMouseInput()
+
+        if (core.isPlayerMonitor() and playerState.attachedObjectId) then
+            local mouse = features.getMouseInput()
             if (mouse.scroll > 0) then
                 playerStore:dispatch({
                     type = "STEP_ROTATION_DEGREE",
@@ -348,33 +337,20 @@ end
 
 -- Where the magick happens, tiling!
 function OnTick()
-
-    -- Get player object
     local player = blam.biped(get_dynamic_player())
 
-    -- Get player forge state
     ---@type playerState
     local playerState = playerStore:getState()
     if (player) then
-        --[[core.getPlayerFragGrenade()
-        -- //TODO Create a better implementation for this
-        local projectile, objectIndex = core.getPlayerAimingSword()
-        if (projectile) then
-            player.xVel = player.xVel + (player.cameraX * 0.2)
-            player.yVel = player.yVel + (player.cameraY * 0.2)
-            if (player.zVel >= 0) then
-                player.zVel = player.zVel + (player.cameraZ * 0.19)
-            else
-                player.zVel = player.zVel + (player.cameraZ * 0.005)
-            end
-            delete_object(objectIndex)
-        end]]
         local oldPosition = playerState.position
         if (oldPosition) then
             player.x = oldPosition.x
             player.y = oldPosition.y
             player.z = oldPosition.z + 0.1
             playerStore:dispatch({type = "RESET_POSITION"})
+        end
+        if (player.isFrozen) then
+            player.isFrozen = false
         end
         if (core.isPlayerMonitor()) then
             -- Provide better movement to monitors
@@ -398,10 +374,10 @@ function OnTick()
                     local forgeObject = forgeObjects[playerAttachedObjectId]
                     if (forgeObject) then
                         -- Update object position
-                        local tempObject = blam.object(get_object(playerAttachedObjectId))
-                        tempObject.x = forgeObject.x
-                        tempObject.y = forgeObject.y
-                        tempObject.z = forgeObject.z
+                        local object = blam.object(get_object(playerAttachedObjectId))
+                        object.x = forgeObject.x
+                        object.y = forgeObject.y
+                        object.z = forgeObject.z
                         core.rotateObject(playerAttachedObjectId, forgeObject.yaw,
                                           forgeObject.pitch, forgeObject.roll)
                         playerStore:dispatch({
@@ -426,8 +402,8 @@ function OnTick()
                 elseif (player.jumpHold) then
                     playerStore:dispatch({type = "DESTROY_OBJECT"})
                 elseif (player.weaponSTH) then
-                    local tempObject = blam.object(get_object(playerAttachedObjectId))
-                    if (not core.isObjectOutOfBounds(tempObject)) then
+                    local object = blam.object(get_object(playerAttachedObjectId))
+                    if (not core.isObjectOutOfBounds(object)) then
                         playerStore:dispatch({type = "DETACH_OBJECT"})
                     end
                 end
@@ -438,18 +414,18 @@ function OnTick()
                 end
 
                 -- Update object position
-                local tempObject = blam.object(get_object(playerAttachedObjectId))
-                if (tempObject) then
-                    tempObject.x = playerState.xOffset
-                    tempObject.y = playerState.yOffset
-                    tempObject.z = playerState.zOffset
+                local object = blam.object(get_object(playerAttachedObjectId))
+                if (object) then
+                    object.x = playerState.xOffset
+                    object.y = playerState.yOffset
+                    object.z = playerState.zOffset
                 end
 
                 -- Unhighlight objects
                 features.unhighlightAll()
 
                 -- Update crosshair
-                if (core.isObjectOutOfBounds(tempObject)) then
+                if (core.isObjectOutOfBounds(object)) then
                     features.setCrosshairState(4)
                 else
                     features.setCrosshairState(3)
@@ -501,8 +477,8 @@ function OnTick()
                                 fromPerspective = true
                             }
                         })
-                        local tempObject = blam.object(get_object(objectIndex))
-                        dprint(tempObject.x .. " " .. tempObject.y .. " " .. tempObject.z)
+                        local object = blam.object(get_object(objectIndex))
+                        dprint(object.x .. " " .. object.y .. " " .. object.z)
                         dprint(projectile.x .. " " .. projectile.y .. " " .. projectile.z)
                     elseif (player.actionKey) then
                         local tagId = blam.object(get_object(objectIndex)).tagId
@@ -547,6 +523,8 @@ function OnTick()
                 player.yVel = player.cameraY * 0.2
                 player.zVel = player.cameraZ * 0.06
             end]]
+            features.regenerateHealth()
+            features.hudUpgrades()
             features.hideReflectionObjects(true)
             features.setCrosshairState(0)
             -- Convert into monitor
@@ -570,10 +548,10 @@ function OnTick()
     end
 
     -- Attach respective hooks for menus
-    hook.attach("maps_menu", menu.stop, constants.uiWidgetDefinitions.mapsList)
-    hook.attach("forge_menu", menu.stop, constants.uiWidgetDefinitions.objectsList)
-    hook.attach("forge_menu_close", menu.stop, constants.uiWidgetDefinitions.forgeMenu)
-    hook.attach("loading_menu_close", menu.stop, constants.uiWidgetDefinitions.loadingMenu)
+    interface.hook("maps_menu_hook", interface.stop, constants.uiWidgetDefinitions.mapsList)
+    interface.hook("forge_menu_hook", interface.stop, constants.uiWidgetDefinitions.objectsList)
+    interface.hook("forge_menu_close_hook", interface.stop, constants.uiWidgetDefinitions.forgeMenu)
+    interface.hook("loading_menu_close_hook", interface.stop, constants.uiWidgetDefinitions.loadingMenu)
 
     -- Update tick count
     textRefreshCount = textRefreshCount + 1
@@ -615,8 +593,9 @@ function OnMapUnload()
     write_file(defaultConfigurationPath .. "\\forge_island.ini", ini.encode(configuration))
 end
 
-OnMapLoad()
-
+if (server_type == "local") then
+    OnMapLoad()
+end
 -- Prepare event callbacks
 set_callback("map load", "OnMapLoad")
 set_callback("unload", "OnMapUnload")

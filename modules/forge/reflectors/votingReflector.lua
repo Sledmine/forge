@@ -5,7 +5,7 @@
 ------------------------------------------------------------------------------
 local glue = require "glue"
 
-local menu = require "forge.menu"
+local interface = require "forge.interface"
 
 local function votingReflector()
     -- Get current forge state

@@ -3,7 +3,7 @@ local inspect = require "inspect"
 local glue = require "glue"
 
 -- Forge modules
-local menu = require "forge.menu"
+local interface = require "forge.interface"
 
 ---@class votingReducer
 local defaultState = {

@@ -3,7 +3,7 @@ local inspect = require "inspect"
 local glue = require "glue"
 
 -- Forge modules
-local menu = require "forge.menu"
+local interface = require "forge.interface"
 
 ---@class forgeState
 local defaultState = {
@@ -12,7 +12,7 @@ local defaultState = {
         currentMapsList = {},
         currentPage = 1,
         sidebar = {
-            height = 0,--constants.maximumSidebarSize,
+            height = 0, -- constants.maximumSidebarSize,
             position = 0,
             slice = 0,
             overflow = 0
@@ -30,10 +30,10 @@ local defaultState = {
         currentBudget = "0",
         currentBarSize = 0
     },
-    loadingMenu = {loadingObjectPath = "", currentBarSize = 422, expectedObjects = 1},
+    loadingMenu = {loadingObjectPath = "", currentBarSize = 422, expectedObjects = 0},
     currentMap = {
         name = "Unsaved",
-        author = "Author: Unknown",
+        author = "Unknown",
         version = "1.0",
         description = "No description given for this map."
     }
@@ -187,7 +187,7 @@ local function forgeReducer(state, action)
         state.currentMap.name = action.payload.mapName
         return state
     elseif (action.type == "SET_MAP_AUTHOR") then
-        state.currentMap.author = "Author: " .. action.payload.mapAuthor
+        state.currentMap.author = action.payload.mapAuthor
         return state
     elseif (action.type == "SET_MAP_DESCRIPTION") then
         state.currentMap.description = action.payload.mapDescription
@@ -198,7 +198,7 @@ local function forgeReducer(state, action)
         if (action.payload.mapDescription == "") then
             state.currentMap.description = "No description given for this map."
         end
-        state.currentMap.author = "Author: " .. action.payload.mapAuthor
+        state.currentMap.author = action.payload.mapAuthor
         return state
     elseif (action.type == "UPDATE_MAP_INFO") then
         if (action.payload) then
@@ -229,23 +229,33 @@ local function forgeReducer(state, action)
                     state.forgeMenu.currentBarSize = glue.floor(newBarSize)
                     state.forgeMenu.currentBudget = tostring(currentObjects)
 
+                    -- Prevent player from falling and desyncing by freezing it
+                    local player = blam.biped(get_dynamic_player())
+                    if (player and server_type == "sapp") then
+                        player.zVel = 0
+                        player.isFrozen = true
+                    end
+
                     -- Set loading map bar data
                     local expectedObjects = state.loadingMenu.expectedObjects
-                    local newBarSize = currentObjects *
-                                           constants.maximumLoadingProgressBarSize /
+                    local newBarSize = currentObjects * constants.maxLoadingBarSize /
                                            expectedObjects
                     state.loadingMenu.currentBarSize = glue.floor(newBarSize)
-                    if (state.loadingMenu.currentBarSize >=
-                        constants.maximumLoadingProgressBarSize) then
+                    if (state.loadingMenu.currentBarSize >= constants.maxLoadingBarSize) then
+                        -- Unfreeze player
+                        local player = blam.biped(get_dynamic_player())
+                        if (player) then
+                            player.isFrozen = false
+                        end
                         if (forgeAnimationTimer) then
                             stop_timer(forgeAnimationTimer)
                             forgeAnimationTimer = nil
                             dprint("Erasing forge animation timer!")
                         end
-                        menu.close(constants.uiWidgetDefinitions.loadingMenu)
+                        interface.close(constants.uiWidgetDefinitions.loadingMenu)
                     end
                 else
-                    menu.close(constants.uiWidgetDefinitions.loadingMenu)
+                    interface.close(constants.uiWidgetDefinitions.loadingMenu)
                 end
             end
         end

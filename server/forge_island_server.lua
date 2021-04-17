@@ -26,6 +26,7 @@ require "chimera-api"
 local inspect = require "inspect"
 local glue = require "glue"
 local redux = require "lua-redux"
+local json = require "json"
 
 -- Specific Halo Custom Edition modules
 blam = require "blam"
@@ -34,6 +35,7 @@ local rcon = require "rcon"
 
 -- Forge modules
 local core = require "forge.core"
+local features = require "forge.features"
 
 -- Reducers importation
 local eventsReducer = require "forge.reducers.eventsReducer"
@@ -41,13 +43,14 @@ local votingReducer = require "forge.reducers.votingReducer"
 local forgeReducer = require "forge.reducers.forgeReducer"
 
 -- Variable used to store the current Forge map in memory
-forgeMapName = "Lockout"
+-- FIXME This should take the first map available on the list
+forgeMapName = "octagon"
 forgeMapFinishedLoading = false
 -- Controls if "Forging" is available or not in the current game
-local bipedSwapping = false
+local forgingEnabled = false
 local mapVotingEnabled = true
 
--- TODO This needs some refactoring, this configuration is useless on server side
+-- TODO This needs some refactoring, this configuration is kinda useless on server side
 -- Forge default configuration
 configuration = {
     forge = {
@@ -89,21 +92,11 @@ end
 --- Print console text to every player in the server
 ---@param message string
 function grprint(message)
-    for i = 1, 16 do
-        if (player_present(i)) then
-            rprint(i, message)
+    for playerIndex = 1, 16 do
+        if (player_present(playerIndex)) then
+            rprint(playerIndex, message)
         end
     end
-end
-
-function getPlayersCount()
-    local count = 0
-    for i = 1, 16 do
-        if (player_present(i)) then
-            count = count + 1
-        end
-    end
-    return count
 end
 
 local playersObjectId = {}
@@ -116,6 +109,7 @@ function OnTick()
     if (forgeMapFinishedLoading) then
         for playerIndex = 1, 16 do
             if (player_present(playerIndex)) then
+                features.regenerateHealth(playerIndex)
                 -- Run player object sync thread
                 local syncThread = playerSyncThread[playerIndex]
                 if (syncThread) then
@@ -125,7 +119,7 @@ function OnTick()
                             core.sendRequest(response, playerIndex)
                         end
                     else
-                        print("Object sync finished for player " .. playerIndex)
+                        console_out("Object sync finished for player " .. playerIndex)
                         playerSyncThread[playerIndex] = nil
                     end
                 end
@@ -133,7 +127,7 @@ function OnTick()
                 if (playerObjectId) then
                     local player = blam.biped(get_object(playerObjectId))
                     if (player) then
-                        if (bipedSwapping) then
+                        if (forgingEnabled) then
                             if (constants.bipeds.monitorTagId) then
                                 if (player.crouchHold and player.tagId ==
                                     constants.bipeds.monitorTagId) then
@@ -163,15 +157,13 @@ function OnTick()
     end
 end
 
+-- Add our commands logic to rcon
 rcon.commandInterceptor = function(playerIndex, message, environment, rconPassword)
-    -- TODO Check rcon environment
-    dprint("Triggering rcon...")
-    -- TODO Check if we have to avoid returning true or false
-    dprint("Incoming rcon message:", "warning")
+    dprint("Incoming rcon command:", "warning")
     dprint(message)
     local request = string.gsub(message, "'", "")
-    local splitData = glue.string.split(request, constants.requestSeparator)
-    local incomingRequest = splitData[1]
+    local data = glue.string.split(request, constants.requestSeparator)
+    local incomingRequest = data[1]
     local actionType
     local currentRequest
     for requestName, request in pairs(constants.requests) do
@@ -180,66 +172,45 @@ rcon.commandInterceptor = function(playerIndex, message, environment, rconPasswo
             actionType = request.actionType
         end
     end
+    -- Parsing rcon request
     if (actionType) then
         return core.processRequest(actionType, request, currentRequest, playerIndex)
-        -- TODO Move this into a server request
     else
-        splitData = glue.string.split(request, " ")
-        for k, v in pairs(splitData) do
-            splitData[k] = v:gsub("\"", "")
+        -- Parsing rcon command
+        data = glue.string.split(request, " ")
+        for i, param in pairs(data) do
+            data[i] = param:gsub("\"", "")
         end
-        local forgeCommand = splitData[1]
-        if (forgeCommand == "#b") then
-            if (bipedSwapping) then
-                dprint("Trying to process a biped swap request...")
-                if (playersObjectId[playerIndex]) then
-                    local playerObjectId = playersObjectId[playerIndex]
-                    dprint("playerObjectId: " .. tostring(playerObjectId))
-                    local player = blam.object(get_object(playerObjectId))
-                    if (player) then
-                        playersTempPosition[playerIndex] = {player.x, player.y, player.z}
-                        if (player.tagId == constants.bipeds.monitorTagId) then
-                            playersBiped[playerIndex] = "spartanTagId"
-                        else
-                            playersBiped[playerIndex] = "monitorTagId"
-                        end
-                        delete_object(playerObjectId)
-                    end
-                end
-            end
-            return false
-        elseif (forgeCommand == "fload") then
-            local mapName = splitData[2]
-            local gameType = splitData[3]
+        local forgeCommand = data[1]
+        if (forgeCommand == "fload") then
+            local mapName = data[2]
+            local gameType = data[3]
             if (mapName) then
-                if (read_file("fmaps\\" .. mapName .. ".fmap", "t")) then
+                if (read_file("fmaps\\" .. mapName .. ".fmap")) then
                     forgeMapName = mapName
                     mapVotingEnabled = false
-                    execute_script("sv_map " .. map .. " " .. gameType)
+                    execute_script("sv_map " .. map .. " " .. gameType or "slayer")
                 else
-                    grprint("Could not read Forge map " .. mapName .. " file!")
+                    rprint(playerIndex, "Could not read Forge map " .. mapName .. " file!")
                 end
             else
                 rprint(playerIndex, "You must specify a forge map name.")
             end
-            return false
         elseif (forgeCommand == "fbip") then
-            local bipedName = splitData[2]
+            local bipedName = data[2]
             if (bipedName) then
-                for i = 1, 16 do
-                    if (player_present(i)) then
-                        playersBiped[i] = bipedName
+                for playerIndex = 1, 16 do
+                    if (player_present(playerIndex)) then
+                        playersBiped[playerIndex] = bipedName
                     end
                 end
                 execute_script("sv_map_reset")
             else
                 rprint(playerIndex, "You must specify a biped name.")
             end
-            return false
         elseif (forgeCommand == "fmon") then
-            bipedSwapping = not bipedSwapping
-            grprint(tostring(bipedSwapping))
-            return false
+            forgingEnabled = not forgingEnabled
+            grprint("Forging Enabled: " .. tostring(forgingEnabled))
         elseif (forgeCommand == "fspawn") then
             -- Get scenario data
             local scenario = blam.scenario(0)
@@ -250,30 +221,27 @@ rcon.commandInterceptor = function(playerIndex, message, environment, rconPasswo
             mapSpawnPoints[1].type = 12
 
             scenario.spawnLocationList = mapSpawnPoints
-            return false
-        elseif (forgeCommand == "fdata") then
+        elseif (forgeCommand == "fcache") then
             local eventsState = eventsStore:getState()
             local cachedResponses = eventsState.cachedResponses
-            print(#glue.keys(cachedResponses))
-            return false
+            console_out(#glue.keys(cachedResponses))
         end
     end
 end
 
-function OnRcon(playerIndex, command, environment, interceptedRcon)
-    return rcon.OnRcon(playerIndex, command, environment, interceptedRcon)
+function OnCommand(playerIndex, command, environment, rconPassword)
+    return rcon.OnCommand(playerIndex, command, environment, rconPassword)
 end
 
 function OnScriptLoad()
     rcon.attach()
-
     register_callback(cb["EVENT_GAME_START"], "OnGameStart")
     register_callback(cb["EVENT_GAME_END"], "OnGameEnd")
-    register_callback(cb["EVENT_COMMAND"], "OnRcon")
+    register_callback(cb["EVENT_COMMAND"], "OnCommand")
 end
 
 function OnGameStart()
-    -- Provide compatibily with Chimera by setting this as a global variable
+    -- Provide compatibily with Chimera by setting "map" as a global variable with current map name
     map = get_var(0, "$map")
     constants = require "forge.constants"
 
@@ -281,26 +249,40 @@ function OnGameStart()
     rcon.submitRcon("forge")
 
     -- Add forge public commands
-    local forgeCommands = {
+    local publicCommands = {
         constants.requests.spawnObject.requestType,
         constants.requests.updateObject.requestType,
         constants.requests.deleteObject.requestType,
         constants.requests.sendMapVote.requestType
     }
-    for _, command in pairs(forgeCommands) do
+    for _, command in pairs(publicCommands) do
         rcon.submitCommand(command)
     end
 
     -- Add forge admin commands
-    local adminForgeCommands = {"fload", "fsave", "fmon", "fbip"}
-    for _, command in pairs(adminForgeCommands) do
+    local adminCommands = {"fload", "fsave", "fmon", "fbip"}
+    for _, command in pairs(adminCommands) do
         rcon.submitAdmimCommand(command)
     end
 
-    -- Store for all the forge and events data
+    -- Stores for all the forge data
     forgeStore = forgeStore or redux.createStore(forgeReducer)
     eventsStore = eventsStore or redux.createStore(eventsReducer)
     votingStore = votingStore or redux.createStore(votingReducer)
+
+    --local restoredEventsState = read_file("eventsState.json")
+    --local restoredForgeState = read_file("forgeState.json")
+    --if (restoredEventsState and restoredForgeState) then
+    --    local restorationEventsState = json.decode(restoredEventsState)
+    --    local restorationForgeState = json.decode(restoredForgeState)
+    --    ---@type forgeState
+    --    local forgeState = forgeStore:getState()
+    --    forgeState = restorationForgeState
+    --    ---@type eventsState
+    --    local eventsState = eventsStore:getState()
+    --    eventsState = restorationEventsState
+    --    forgeMapName = forgeState.currentMap.name:gsub(" ", "_"):lower()
+    --end
 
     -- TODO Check if this is better to do on script load
     core.loadForgeMaps()
@@ -380,14 +362,14 @@ function OnPlayerJoin(playerIndex)
 
     -- There are Forge objects that need to be synced
     if (forgeMapName or objectCount > 0) then
-        print("Sending map info for: " .. playerIndex)
+        console_out("Sending map info for: " .. playerIndex)
 
         -- Create a temporal Forge map object like to force data sync
         local onMemoryForgeMap = {}
         onMemoryForgeMap.objects = countableForgeObjects
         onMemoryForgeMap.name = forgeState.currentMap.name
         onMemoryForgeMap.description = forgeState.currentMap.description
-        onMemoryForgeMap.author = forgeState.currentMap.author:gsub("Author: ", "")
+        onMemoryForgeMap.author = forgeState.currentMap.author
         core.sendMapData(onMemoryForgeMap, playerIndex)
 
         dprint("Creating sync thread for: " .. playerIndex)
@@ -401,13 +383,19 @@ end
 function OnGameEnd()
     -- Events store are already loaded
     if (eventsStore) then
-        -- Clean all forge objects
-        --eventsStore:dispatch({type = constants.requests.flushForge.actionType})
+        -- Clean all forge stuff
+        eventsStore:dispatch({type = constants.requests.flushForge.actionType})
         -- Start vote map screen
         if (mapVotingEnabled) then
             eventsStore:dispatch({type = constants.requests.loadVoteMapScreen.actionType})
         end
     end
+    -- FIXME THIS IS GARBAGE, BUT GARBAGE IS A THING.. AND IT WORKS SO....
+    --write_file("eventsState.json", json.encode(eventsStore:getState()))
+    -----@type forgeState
+    --local dumpedState = forgeStore:getState()
+    --dumpedState.currentMap.name = forgeMapName
+    --write_file("forgeState.json", json.encode(dumpedState))
     playersObjectId = {}
     collectgarbage("collect")
 end
