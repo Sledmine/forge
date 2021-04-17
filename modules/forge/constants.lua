@@ -13,6 +13,7 @@ local constants = {}
 -- Constant core values
 -- constants.myGamesFolder = read_string(0x00647830)
 constants.mouseInputAddress = 0x64C73C
+constants.localPlayerAddress = 0x815918
 
 -- Constant Forge values
 constants.requestSeparator = "&"
@@ -28,7 +29,10 @@ constants.absoluteMapName = map:gsub("_dev", ""):gsub("_beta", "")
 constants.maximumSidebarSize = 249
 constants.minimumSidebarSize = 40
 constants.maximumProgressBarSize = 171
-constants.maximumLoadingProgressBarSize = 422
+constants.maxLoadingBarSize = 422
+
+-- Constant gameplay values
+constants.healthRegenerationAmount = 0.006
 
 constants.hudFontTagId = core.findTag("blender_pro_medium_12", tagClasses.font).id
 local forgeProjectile = core.findTag("forge", tagClasses.projectile)
@@ -174,6 +178,16 @@ constants.unicodeStrings = {
     mapsListTagId = core.findTag("maps_name", tagClasses.unicodeStringList).id,
     pauseGameStringsTagId = core.findTag("titles_and_headers",
                                          tagClasses.unicodeStringList).id
+}
+
+constants.hsc = {
+    -- FIXME Player index 0 is not always local player
+    playSound = [[(begin (sound_impulse_start "%s" (list_get (players) 0) %s))]]
+}
+
+constants.sounds = {
+    landHardPlayerDamagePath = core.findTag("land_hard_plyr_dmg", tagClasses.sound).path,
+    uiForwardPath = core.findTag("forward", tagClasses.sound).path
 }
 
 --[[local swordProjectileTagPath, swordProjectileTagIndex =
