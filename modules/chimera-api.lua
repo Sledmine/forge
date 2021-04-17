@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 -- Chimera API Bindings for SAPP
 -- Sledmine
--- SAPP bindings for Chimera Lua functions also EmmyLua helper
+-- SAPP bindings for Chimera Lua functions, also EmmyLua helper
 ------------------------------------------------------------------------------
 if (api_version) then
     local glue = require "glue"
@@ -16,7 +16,7 @@ if (api_version) then
     --- Function wrapper for file reading from Chimera to SAPP
     ---@param path string
     function read_file(path)
-        return glue.readfile(path)
+        return glue.readfile(path, "t")
     end
 
     -- TODO PENDING FUNCTION!!
@@ -45,17 +45,15 @@ if (api_version) then
         return nil
     end
 
-    -- Create and bind Chimera functions to the ones in SAPP
-
-    --- Return the memory address of a tag given tag id or type and path
-    ---@param tag string | number
-    ---@param path string
+    --- Return the memory address of a tag given tagId or tagClass and tagPath
+    ---@param tagIdOrTagType string | number
+    ---@param tagPath string
     ---@return number
-    function get_tag(tag, path)
-        if (not path) then
-            return lookup_tag(tag)
+    function get_tag(tagIdOrTagType, tagPath)
+        if (not tagPath) then
+            return lookup_tag(tagIdOrTagType)
         else
-            return lookup_tag(tag, path)
+            return lookup_tag(tagIdOrTagType, tagPath)
         end
     end
 
@@ -86,8 +84,17 @@ if (api_version) then
 
     --- Print text into console
     ---@param message string
+    -- TODO Add color printing to this function
     function console_out(message)
         cprint(message)
+    end
+
+    local sapp_get_dynamic_player = get_dynamic_player
+    --- Get object address from a specific player given playerIndex
+    ---@param playerIndex number
+    ---@return number
+    function get_dynamic_player(playerIndex)
+        return sapp_get_dynamic_player(playerIndex)
     end
 
     print("Compatibility with Chimera Lua API has been loaded!")

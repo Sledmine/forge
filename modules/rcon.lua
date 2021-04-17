@@ -5,6 +5,12 @@
 ------------------------------------------------------------------------------
 local rcon = {}
 
+local environments = {
+    console = 0,
+    rcon = 1,
+    chat = 2
+}
+
 -- Accepted rcon passwords
 rcon.safeRcons = {}
 
@@ -69,42 +75,47 @@ end
 -- Public functions and main usage
 
 function rcon.submitRcon(rconValue)
-    print("Adding new accepted rcon: " .. rconValue)
+    cprint("Adding new accepted rcon: " .. rconValue)
     return submit(rcon.safeRcons, rconValue)
 end
 
 function rcon.submitAdmimCommand(commandValue)
-    print("Adding new accepted command: " .. commandValue)
+    cprint("Adding new accepted command: " .. commandValue)
     return submit(rcon.adminCommands, commandValue)
 end
 
 function rcon.submitCommand(commandValue)
-    print("Adding new accepted command: " .. commandValue)
+    cprint("Adding new accepted command: " .. commandValue)
     return submit(rcon.safeCommands, commandValue)
 end
 
-function rcon.OnRcon(playerIndex, command, environment, interceptedRcon)
-    if (environment == 1) then
-        local playerName = get_var(playerIndex, "$name")
-        if (interceptedRcon == rcon.serverRcon) then
+---@param playerIndex number
+---@param command string
+---@param environment number
+---@param rconPassword string
+function rcon.OnCommand(playerIndex, command, environment, rconPassword)
+    if (environment == environments.console or environment == environments.rcon) then
+        if (environment == environments.console) then
+            rconPassword = rcon.serverRcon
+        end
+        local playerName = get_var(playerIndex, "$name") or "Server"
+        if (rconPassword == rcon.serverRcon or environment == environments.console) then
             -- Normal rcon usage, allow command
             if (isAdminCommand(command)) then
-                rcon.commandInterceptor(playerIndex, command, environment, interceptedRcon)
+                rcon.commandInterceptor(playerIndex, command, environment, rconPassword)
+                return true
             end
-            return true
-        elseif (isRconSafe(interceptedRcon)) then
+        elseif (isRconSafe(rconPassword)) then
             -- This is an interceptable rcon command
-            print("Intercepted rcon: " .. interceptedRcon)
+            cprint("Safe rcon: " .. rconPassword)
             if (isCommandSafe(command)) then
                 -- Rcon command it's an expected command, apply bypass
-                print("Intercepted command: " .. command)
-                print("intercepted command size: " .. #command)
+                cprint("Safe command: " .. command)
                 -- Execute interceptor
-                rcon.commandInterceptor(playerIndex, command, environment, interceptedRcon)
+                rcon.commandInterceptor(playerIndex, command, environment, rconPassword)
             else
-                print("Intercepted command: " .. command .. " is not in the bypasseable commands.")
-                print(playerName .. " is sending illegal commands trough rcon, watch out!!!")
-                say_all(playerName .. " is sending illegal commands trough rcon, watch out!!!")
+                cprint("Command: " .. command .. " is not in the safe commands list.")
+                say_all(playerName .. " was sending commands trough safe rcon, watch out!!!")
                 execute_command("sv_kick " .. playerIndex)
             end
             return false
@@ -112,7 +123,6 @@ function rcon.OnRcon(playerIndex, command, environment, interceptedRcon)
             say_all(playerName .. " was kicked by sending wrong rcon password.")
             execute_command("sv_kick " .. playerIndex)
         end
-        return false
     end
 end
 
@@ -128,12 +138,12 @@ function rcon.attach()
             -- Read current rcon in the server
             rcon.serverRcon = read_string(rcon.passwordAddress)
             if (rcon.serverRcon) then
-                print("Server rcon password is: \"" .. rcon.serverRcon .. "\"")
+                cprint("Server rcon password is: \"" .. rcon.serverRcon .. "\"")
             else
-                print("Error, at getting server rcon, please set and enable rcon on the server.")
+                cprint("Error, at getting server rcon, please set and enable rcon on the server.")
             end
         else
-            print("Error, at obtaining rcon patches, please check SAPP version.")
+            cprint("Error, at obtaining rcon patches, please check SAPP version.")
         end
     end
 end
@@ -142,7 +152,7 @@ function rcon.detach()
     if (rcon.failMessageAddress) then
         -- Restore "rcon command failure" message
         safe_write(true)
-        write_byte(rcon.failMessageAddres, 0x72)
+        write_byte(rcon.failMessageAddress, 0x72)
         safe_write(false)
     end
 end
