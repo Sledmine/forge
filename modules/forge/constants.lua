@@ -181,7 +181,6 @@ constants.unicodeStrings = {
 }
 
 constants.hsc = {
-    -- FIXME Player index 0 is not always local player
     playSound = [[(begin (sound_impulse_start "%s" (list_get (players) %s) %s))]]
 }
 
