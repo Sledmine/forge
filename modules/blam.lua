@@ -3,7 +3,7 @@
 -- Sledmine, JerryBrick
 -- Improves memory handle and provides standard functions for scripting
 ------------------------------------------------------------------------------
-local blam = {_VERSION = "1.2.0-beta"}
+local blam = {_VERSION = "1.2.0"}
 
 ------------------------------------------------------------------------------
 -- Useful functions for internal usage
@@ -485,11 +485,11 @@ end
 -- //TODO Refactor this tu support full unicode char size
 --- Return the string of a unicode string given address
 ---@param address number
----@param forced boolean
+---@param rawRead boolean
 ---@return string
-function blam.readUnicodeString(address, forced)
+function blam.readUnicodeString(address, rawRead)
     local stringAddress
-    if (forced) then
+    if (rawRead) then
         stringAddress = address
     else
         stringAddress = read_dword(address)
@@ -526,12 +526,20 @@ function blam.writeUnicodeString(address, newString, forced)
     end
 end
 
-local function readUnicodeString(address, propertyData)
+local function readPointerUnicodeString(address, propertyData)
     return blam.readUnicodeString(address)
 end
 
-local function writeUnicodeString(address, propertyData, propertyValue)
+local function readUnicodeString(address, propertyData)
+    return blam.readUnicodeString(address, true)
+end
+
+local function writePointerUnicodeString(address, propertyData, propertyValue)
     return blam.writeUnicodeString(address, propertyValue)
+end
+
+local function writeUnicodeString(address, propertyData, propertyValue)
+    return blam.writeUnicodeString(address, propertyValue, true)
 end
 
 local function readList(address, propertyData)
@@ -622,6 +630,8 @@ typesOperations = {
     float = {read = readFloat, write = writeFloat},
     char = {read = readChar, write = writeChar},
     string = {read = readString, write = writeString},
+    -- TODO This is not ok, a pointer type with subtyping should be implemented
+    pustring = {read = readPointerUnicodeString, write = writePointerUnicodeString},
     ustring = {read = readUnicodeString, write = writeUnicodeString},
     list = {read = readList, write = writeList},
     table = {read = readTable, write = writeTable}
@@ -753,9 +763,7 @@ end
 ---@field animation number Current animation index
 ---@field animationFrame number Current animation frame
 ---@field isNotDamageable boolean Make the object undamageable
----@field weaponObjectId number Current weapon objectId of this object
 ---@field vehicleObjectId number Current vehicle objectId of this object
----@field vehicleSeatIndex number Current vehicle seat index of this object
 ---@field regionPermutation1 number
 ---@field regionPermutation2 number
 ---@field regionPermutation3 number
@@ -776,6 +784,8 @@ local objectStructure = {
     dynamicShading = {type = "bit", offset = 0x10, bitLevel = 14},
     isNotCastingShadow = {type = "bit", offset = 0x10, bitLevel = 18},
     isFrozen = {type = "bit", offset = 0x10, bitLevel = 20},
+    -- FIXME Deprecated property, should be erased at a major release later
+    frozen = {type = "bit", offset = 0x10, bitLevel = 20},
     isOutSideMap = {type = "bit", offset = 0x10, bitLevel = 21},
     isCollideable = {type = "bit", offset = 0x10, bitLevel = 24},
     model = {type = "dword", offset = 0x34},
@@ -812,9 +822,7 @@ local objectStructure = {
     animation = {type = "word", offset = 0xD0},
     animationFrame = {type = "word", offset = 0xD2},
     isNotDamageable = {type = "bit", offset = 0x106, bitLevel = 11},
-    weaponObjectId = {type = "dword", offset = 0118},
     vehicleObjectId = {type = "dword", offset = 0x11C},
-    vehicleSeatIndex = {type = "dword", offset = 0x120},
     regionPermutation1 = {type = "byte", offset = 0x180},
     regionPermutation2 = {type = "byte", offset = 0x181},
     regionPermutation3 = {type = "byte", offset = 0x182},
@@ -850,8 +858,9 @@ local objectStructure = {
 ---@field invisibleScale number Opacity amount of biped invisiblity
 ---@field primaryNades number Primary grenades count
 ---@field secondaryNades number Secondary grenades count
----@field landing number Biped landing state, 0 when landing, stays on 0 when landing hard, blam.isNull otherwise
+---@field landing number Biped landing state, 0 when landing, stays on 0 when landing hard, null otherwise
 ---@field bumpedObjectId number Object ID that the biped is bumping, vehicles, bipeds, etc, keeps the previous value if not bumping a new object
+---@field vehicleSeatIndex number Current vehicle seat index of this biped
 
 -- Biped structure (extends object structure)
 local bipedStructure = extendStructure(objectStructure, {
@@ -880,7 +889,8 @@ local bipedStructure = extendStructure(objectStructure, {
     primaryNades = {type = "byte", offset = 0x31E},
     secondaryNades = {type = "byte", offset = 0x31F},
     landing = {type = "byte", offset = 0x508},
-    bumpedObjectId = {type = "dword", offset = 0x4FC}
+    bumpedObjectId = {type = "dword", offset = 0x4FC},
+    vehicleSeatIndex = {type = "word", offset = 0x2F0}
 })
 
 -- Tag data header structure
@@ -928,7 +938,7 @@ local tagCollectionStructure = {
 -- UnicodeStringList structure
 local unicodeStringListStructure = {
     count = {type = "byte", offset = 0x0},
-    stringList = {type = "list", offset = 0x4, elementsType = "ustring", jump = 0x14}
+    stringList = {type = "list", offset = 0x4, elementsType = "pustring", jump = 0x14}
 }
 
 ---@class bitmap
@@ -1308,28 +1318,28 @@ local modelAnimationsStructure = {
 -- Weapon structure
 local weaponTagStructure = {model = {type = "dword", offset = 0x34}}
 
----@class modelMarkers
----@field name string
----@field nodeIndex number
+--@class modelMarkers
+--@field name string
+--@field nodeIndex number
 -- TODO Add rotation fields, check Guerilla tag
----@field x number
----@field y number
----@field z number
+--@field x number
+--@field y number
+--@field z number
 
 ---@class modelRegion
 ---@field permutationCount number
----@field markersList modelMarkers[]
+--@field markersList modelMarkers[]
 
 ---@class modelNode
 ---@field x number
 ---@field y number
 ---@field z number
 
----@class gbxModelTag
+---@class gbxModel
 ---@field nodeCount number Number of nodes
 ---@field nodeList modelNode[] List of the model nodes
 ---@field regionCount number Number of regions
----@field regionList table List of regions
+---@field regionList modelRegion[] List of regions
 
 -- Model structure
 local modelStructure = {
@@ -1351,7 +1361,7 @@ local modelStructure = {
         jump = 76,
         rows = {
             permutationCount = {type = "dword", offset = 0x40},
-            permutationsList = {
+            --[[permutationsList = {
                 type = "table",
                 offset = 0x16C,
                 jump = 0x0,
@@ -1367,7 +1377,7 @@ local modelStructure = {
                         }
                     }
                 }
-            }
+            }]]
         }
     }
 }
@@ -1395,6 +1405,29 @@ local projectileStructure = extendStructure(objectStructure, {
     yaw = {type = "float", offset = 0x268},
     roll = {type = "float", offset = 0x26C}
 })
+
+---@class player
+---@field id number Get playerId of this player
+---@field host number Check if player is host, 0 when host, null when not
+---@field name string Name of this player
+---@field team number Team color of this player, 0 when red, 1 when on blue team
+---@field objectId number Return the objectId associated to this player
+---@field color number Color of the player, only works on "Free for All" gametypes
+---@field index number Local index of this player (0-15
+---@field speed number Current speed of this player
+---@field ping number Ping amount from server of this player in milliseconds
+
+local playerStructure = {
+    id = {type = "word", offset = 0x0},
+    host = {type = "word", offset = 0x2},
+    name = {type = "ustring", forced = true, offset = 0x4},
+    team = {type = "byte", offset = 0x20},
+    objectId = {type = "dword", offset = 0x34},
+    color = {type = "word", offset = 0x60},
+    index = {type = "byte", offset = 0x67},
+    speed = {type = "float", offset = 0x6C},
+    ping = {type = "dword", offset = 0xDC}
+}
 
 ------------------------------------------------------------------------------
 -- Object classes
@@ -1479,7 +1512,7 @@ local function weaponTagClassNew(address)
     return createObject(address, weaponTagStructure)
 end
 
----@return gbxModelTag
+---@return gbxModel
 local function modelClassNew(address)
     return createObject(address, modelStructure)
 end
@@ -1514,7 +1547,7 @@ blam.tagDataHeader = createObject(addressList.tagDataHeader, tagDataHeaderStruct
 blam.dumpObject = dumpObject
 blam.consoleOutput = consoleOutput
 
----Get if a value equals a null value for game
+--- Get if a value equals a null value for game
 ---@return boolean
 function blam.isNull(value)
     if (value == 0xFF or value == 0xFFFF or value == 0xFFFFFFFF or value == nil) then
@@ -1522,8 +1555,6 @@ function blam.isNull(value)
     end
     return false
 end
-
-blam.isNull()
 
 --- Get the current game camera type
 ---@return number
@@ -1615,7 +1646,7 @@ end
 
 --- Create a blamObject given address
 ---@param address number
----@return player
+---@return blamObject
 function blam.object(address)
     if (isValid(address)) then
         return objectClassNew(address)
@@ -1762,7 +1793,7 @@ end
 
 --- Create a Model Animation object from a tag path or id
 ---@param tag string | number
----@return gbxModelTag
+---@return gbxModel
 function blam.model(tag)
     if (isValid(tag)) then
         local modelTag = blam.getTag(tag, tagClasses.model)
