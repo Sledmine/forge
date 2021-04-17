@@ -87,6 +87,10 @@
 (script static void set_maps_menu_trigger_10
     (set maps_menu_trigger_10 true)
 )
+(script static void set_maps_menu_trigger_11
+    (set maps_menu_trigger_11 true)
+)
+
 
 ;; Forge Menu
 (script static void set_forge_menu_trigger_1
@@ -232,6 +236,26 @@
         )
         (if (volume_test_object "vehicle_respawn_scan" "v32")
             (object_create_anew "v32")
+        )
+    )
+)
+
+(script static void "sound_test"
+    (begin
+        (sound_impulse_start
+            "[shm]\halo_4\sound\sfx\impulse\footsteps\mc\land_hard_plyr_dmg"
+            (list_get (players) 0)
+            1.0
+        )
+        (sound_impulse_start
+            "sound\sfx\ui\forward"
+            (list_get (players) 0)
+            1.0
+        )
+        (sound_impulse_start
+            "sound\sfx\ui\forward2"
+            (list_get (players) 0)
+            1.0
         )
     )
 )

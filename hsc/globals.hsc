@@ -21,6 +21,7 @@
 (global boolean maps_menu_trigger_8 false)
 (global boolean maps_menu_trigger_9 false)
 (global boolean maps_menu_trigger_10 false)
+(global boolean maps_menu_trigger_11 false)
 
 ;; Forge Menu
 (global boolean forge_menu_trigger_1 false)
