@@ -331,27 +331,41 @@ end
 
 function core.resetSpawnPoints()
     local scenario = blam.scenario(0)
+    local netgameFlagsTypes = blam.netgameFlagTypes
 
     local mapSpawnCount = scenario.spawnLocationCount
     local vehicleLocationCount = scenario.vehicleLocationCount
-
+    local netgameFlagsCount = scenario.netgameFlagsCount
     dprint("Found " .. mapSpawnCount .. " stock player starting points!")
     dprint("Found " .. vehicleLocationCount .. " stock vehicle location points!")
+    dprint("Found " .. netgameFlagsCount .. " stock netgame flag points!")
+    -- Reset any spawn point
     local mapSpawnPoints = scenario.spawnLocationList
-    -- Reset any spawn point, except the first one
     for i = 1, mapSpawnCount do
         -- Disable them by setting type to 0
         mapSpawnPoints[i].type = 0
     end
+
     local vehicleLocationList = scenario.vehicleLocationList
     for i = 2, vehicleLocationCount do
         -- Disable spawn and try to erase object from the map
         vehicleLocationList[i].type = 65535
+        -- TODO There should be a way to get object name from memory
         execute_script("object_destroy v" .. vehicleLocationList[i].nameIndex)
+    end
+
+    -- Reset any teleporter point, skipping first 3 points
+    -- those are reserved for Red and Blue CTF flags, the third one is for the 
+    -- oddball spawn point
+    local netgameFlagsList = scenario.netgameFlagsList
+    for i = 4, netgameFlagsCount do 
+        -- Disabling spawn point by setting to an unused type "vegas - bank"
+        netgameFlagsList[i].type = netgameFlagsTypes.vegasBank
     end
 
     scenario.spawnLocationList = mapSpawnPoints
     scenario.vehicleLocationList = vehicleLocationList
+    scenario.netgameFlagsList = netgameFlagsList
 end
 
 function core.flushForge()
