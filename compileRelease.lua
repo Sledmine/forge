@@ -25,7 +25,7 @@ end
 -- Generate bitmap version from code
 
 local versionBitmapCmd =
-    [[cd "%s[shm]\halo_4\ui\hud\bitmaps" & convert version_number_template.png +compress -fill "#7cb2def5" -size 512x128 -font "conduit_itc_medium.otf" -pointsize 98 -gravity center -draw "text 0,0 '%s'" version_number.tif]]
+    [[cd "%s[shm]\halo_4\ui\hud\bitmaps" & convert version_number_template.png +compress -fill "#aaaaaa" -size 512x128 -font "conduit_itc_medium.otf" -pointsize 98 -gravity center -draw "text 0,0 '%s'" version_number.tif]]
 
 print("Generating bitmap version from Forge code...")
 local result = os.execute(versionBitmapCmd:format(projectDataPath, forgeVersion:upper()))
@@ -39,7 +39,7 @@ end
 -- Compile bitmap version
 
 local versionBitmapCompileCmd =
-    [[cd "%s" & harvest bitmaps "[shm]\halo_4\ui\hud\bitmaps"]]
+    [[cd "%s" & harvest bitmap "[shm]\halo_4\ui\hud\bitmaps\version_number"]]
 
 print("Compiling bitmap version...")
 local result = os.execute(versionBitmapCompileCmd:format(projectPath))
