@@ -146,7 +146,8 @@ constants.weaponHudInterfaces = {
 -- Bitmap Tags ID
 constants.bitmaps = {
     forgingIconFrame0TagId = core.findTag("forge_loading_progress0", tagClasses.bitmap).id,
-    forgeIconFrame1TagId = core.findTag("forge_loading_progress1", tagClasses.bitmap).id
+    forgeIconFrame1TagId = core.findTag("forge_loading_progress1", tagClasses.bitmap).id,
+    unitHudBackgroundTagId = core.findTag("combined\\visor", tagClasses.bitmap).id
 }
 
 -- UI widget definitions

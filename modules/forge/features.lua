@@ -450,10 +450,12 @@ function features.hideReflectionObjects(hide)
     end
 end
 
+-- Attempt to play a sound given tag path
 function features.playSound(tagPath, gain)
     local player = blam.player(get_player())
     if (player) then
-        local playSoundCommand = constants.hsc.playSound:format(tagPath, player.index, gain)
+        local playSoundCommand = constants.hsc.playSound:format(tagPath, player.index,
+                                                                gain or 1.0)
         execute_script(playSoundCommand)
     end
 end
@@ -466,7 +468,7 @@ local lastGrenadeType = nil
 --- Apply some special effects to the HUD like sounds, blips, etc
 function features.hudUpgrades()
     local player = blam.biped(get_dynamic_player())
-    -- Player must exist and it should not be on a vehicle
+    -- Player must exist
     if (player) then
         local isPlayerOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
         if (not isPlayerOnMenu) then
@@ -479,7 +481,7 @@ function features.hudUpgrades()
                 if (lastGrenadeType ~= currentGrenadeType) then
                     lastGrenadeType = currentGrenadeType
                     if (lastGrenadeType == 1) then
-                        features.playSound(constants.sounds.uiForwardPath.."2", 1)
+                        features.playSound(constants.sounds.uiForwardPath .. "2", 1)
                     else
                         features.playSound(constants.sounds.uiForwardPath, 1)
                     end
@@ -505,7 +507,21 @@ function features.hudUpgrades()
                 end
                 healthDepletedRecently = false
             end
+            -- Get hud background bitmap
+            local visorBitmap = blam.bitmap(constants.bitmaps.unitHudBackgroundTagId)
+            if (visorBitmap) then
+                -- Player is not in a vehicle
+                if (blam.isNull(player.vehicleObjectId)) then
+                    -- Unhide hud background bitmap when not in vehicles
+                    visorBitmap.type = 0
+                else
+                    -- Hide hud background bitmap when on vehicles
+                    -- Set to interface bitmap type
+                    visorBitmap.type = 4
+                end
+            end
         end
+        -- Player is not in a vehicle
         if (blam.isNull(player.vehicleObjectId)) then
             -- Landing hard
             if (player.landing == 1) then
