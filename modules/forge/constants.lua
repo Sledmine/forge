@@ -178,7 +178,8 @@ constants.unicodeStrings = {
     paginationTagId = core.findTag("pagination", tagClasses.unicodeStringList).id,
     mapsListTagId = core.findTag("maps_name", tagClasses.unicodeStringList).id,
     pauseGameStringsTagId = core.findTag("titles_and_headers",
-                                         tagClasses.unicodeStringList).id
+                                         tagClasses.unicodeStringList).id,
+    forgeControlsTagId = core.findTag("forge_controls", tagClasses.unicodeStringList).id
 }
 
 constants.hsc = {
@@ -239,11 +240,7 @@ constants.colorsNumber = {
 -- Name to search in some tags that are ignored at hidding objects as spartan
 constants.hideObjectsExceptions = {"stand", "teleporters"}
 
-constants.teleportersChannels = {
-    alpha = 0,
-    bravo = 1,
-    charly = 2
-}
+constants.teleportersChannels = {alpha = 0, bravo = 1, charly = 2}
 
 dprint(string.format("Constants gathered, elapsed time: %.6f\n", os.clock() - time))
 

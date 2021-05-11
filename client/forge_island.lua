@@ -353,6 +353,20 @@ function OnTick()
             player.isFrozen = false
         end
         if (core.isPlayerMonitor()) then
+            local controlsStrings = blam.unicodeStringList(
+                                        constants.unicodeStrings.forgeControlsTagId)
+            if (controlsStrings) then
+                local newStrings = controlsStrings.stringList
+                -- E key
+                newStrings[1] = "Change rotation angle"
+                -- Q key
+                newStrings[2] = "Open Forge objects menu"
+                -- F key
+                newStrings[3] = "Swap Push N Pull mode"
+                -- Control key
+                newStrings[4] = "Get back into spartan mode"
+                controlsStrings.stringList = newStrings
+            end
             -- Provide better movement to monitors
             if (not player.ignoreCollision) then
                 player.ignoreCollision = true
@@ -523,6 +537,20 @@ function OnTick()
                 player.yVel = player.cameraY * 0.2
                 player.zVel = player.cameraZ * 0.06
             end]]
+            local controlsStrings = blam.unicodeStringList(
+                                        constants.unicodeStrings.forgeControlsTagId)
+            if (controlsStrings) then
+                local newStrings = controlsStrings.stringList
+                -- E key
+                newStrings[1] = "No Forge action"
+                -- Q key
+                newStrings[2] = "Get into monitor mode"
+                -- F key
+                newStrings[3] = "No Forge action"
+                -- Control key
+                newStrings[4] = "No Forge action"
+                controlsStrings.stringList = newStrings
+            end
             features.regenerateHealth()
             features.hudUpgrades()
             features.hideReflectionObjects(true)
@@ -548,10 +576,14 @@ function OnTick()
     end
 
     -- Attach respective hooks for menus
-    interface.hook("maps_menu_hook", interface.stop, constants.uiWidgetDefinitions.mapsList)
-    interface.hook("forge_menu_hook", interface.stop, constants.uiWidgetDefinitions.objectsList)
-    interface.hook("forge_menu_close_hook", interface.stop, constants.uiWidgetDefinitions.forgeMenu)
-    interface.hook("loading_menu_close_hook", interface.stop, constants.uiWidgetDefinitions.loadingMenu)
+    interface.hook("maps_menu_hook", interface.stop,
+                   constants.uiWidgetDefinitions.mapsList)
+    interface.hook("forge_menu_hook", interface.stop,
+                   constants.uiWidgetDefinitions.objectsList)
+    interface.hook("forge_menu_close_hook", interface.stop,
+                   constants.uiWidgetDefinitions.forgeMenu)
+    interface.hook("loading_menu_close_hook", interface.stop,
+                   constants.uiWidgetDefinitions.loadingMenu)
 
     -- Update tick count
     textRefreshCount = textRefreshCount + 1
