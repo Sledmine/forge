@@ -2,12 +2,21 @@
 
 # 1.0.0-beta-4
 ## Code changes:
-- General optmization for object spawn requests.
-- Fixed a problem with Forge maps at saving garbage properties.
-- Moved `fspawn` command to normal commands instead of debug commands.
-- Fixed oddball game mode spawning.
-- Added feature to hide Forge spawn objects when in spartan mode.
-- Added support for teleporters and object colors
+- General code optimizations
+- Fixed bug with fmaps storing garbage properties
+- Moved `fspawn` command to normal commands instead of debug commands
+- Fixed oddball netgame flag spawning
+- Added feature to hide Forge spawning objects when in spartan mode
+- Added support for teleporters
+- Added support for objects with colors
+- Added fmap name and current incoming object path to loading screen
+- Added health regeneration for client and server side
+- Fixed bug at saving configuration files due to a non existing folder
+- Added HUD upgrades, sounds for different grenade types, hard landing sound
+compatibility with aLTis hud sway, blur effect on low health
+- Improved server fmaps automatic mapcycle, fmaps are now scanned to determine
+available gametypes supported for that map
+- Added Forge controls on pause menu, change when on monitor or spartan
 
 # 1.0.0-beta-3
 ## Code changes:
