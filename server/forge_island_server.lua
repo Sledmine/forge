@@ -62,7 +62,7 @@ configuration = {
     }
 }
 -- Default debug mode state, set to false at release time to improve performance
-configuration.forge.debugMode = false
+configuration.forge.debugMode = true
 -- Buffer to store all the debug printing
 debugBuffer = ""
 
@@ -134,7 +134,7 @@ function OnTick()
                                     dprint("playerObjectId: " .. tostring(playerObjectId))
                                     dprint("Trying to process a biped swap request...")
                                     -- FIXME Biped name should be parsed to remove tagId pattern
-                                    playersBiped[playerIndex] = "spartan" .. "TagId"
+                                    playersBiped[playerIndex] = "spartan"
                                     playersTempPosition[playerIndex] =
                                         {player.x, player.y, player.z}
                                     delete_object(playerObjectId)
@@ -143,7 +143,7 @@ function OnTick()
                                     dprint("playerObjectId: " .. tostring(playerObjectId))
                                     dprint("Trying to process a biped swap request...")
                                     -- FIXME Biped name should be parsed to remove tagId pattern
-                                    playersBiped[playerIndex] = "monitor" .. "TagId"
+                                    playersBiped[playerIndex] = "monitor"
                                     playersTempPosition[playerIndex] =
                                         {player.x, player.y, player.z}
                                     delete_object(playerObjectId)
@@ -158,7 +158,7 @@ function OnTick()
 end
 
 -- Add our commands logic to rcon
-rcon.commandInterceptor = function(playerIndex, message, environment, rconPassword)
+function rcon.commandInterceptor(playerIndex, message, environment, rconPassword)
     dprint("Incoming rcon command:", "warning")
     dprint(message)
     local request = string.gsub(message, "'", "")
@@ -196,11 +196,12 @@ rcon.commandInterceptor = function(playerIndex, message, environment, rconPasswo
             else
                 rprint(playerIndex, "You must specify a forge map name.")
             end
-        elseif (forgeCommand == "fbip") then
+        elseif (forgeCommand == "fbiped") then
             local bipedName = data[2]
             if (bipedName) then
                 for playerIndex = 1, 16 do
                     if (player_present(playerIndex)) then
+                        -- FIXME Tag id string should be added here
                         playersBiped[playerIndex] = bipedName
                     end
                 end
@@ -208,9 +209,13 @@ rcon.commandInterceptor = function(playerIndex, message, environment, rconPasswo
             else
                 rprint(playerIndex, "You must specify a biped name.")
             end
-        elseif (forgeCommand == "fmon") then
+        elseif (forgeCommand == "fforge") then
             forgingEnabled = not forgingEnabled
-            grprint("Forging Enabled: " .. tostring(forgingEnabled))
+            if (forgingEnabled) then
+                grprint("Admin ENABLED :D Forge mode!")
+            else
+                grprint("Admin DISABLED Forge mode!")
+            end
         elseif (forgeCommand == "fspawn") then
             -- Get scenario data
             local scenario = blam.scenario(0)
@@ -229,9 +234,11 @@ rcon.commandInterceptor = function(playerIndex, message, environment, rconPasswo
     end
 end
 
-function OnCommand(playerIndex, command, environment, rconPassword)
+--[[function OnCommand(playerIndex, command, environment, rconPassword)
     return rcon.OnCommand(playerIndex, command, environment, rconPassword)
-end
+end]]
+
+OnCommand = rcon.OnCommand
 
 function OnScriptLoad()
     rcon.attach()
@@ -260,7 +267,7 @@ function OnGameStart()
     end
 
     -- Add forge admin commands
-    local adminCommands = {"fload", "fsave", "fmon", "fbip"}
+    local adminCommands = {"fload", "fsave", "fforge", "fbiped"}
     for _, command in pairs(adminCommands) do
         rcon.submitAdmimCommand(command)
     end
@@ -311,6 +318,7 @@ function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
                 local requestedBiped = playersBiped[playerIndex]
                 -- There is a requested biped by a player
                 if (requestedBiped) then
+                    requestedBiped = requestedBiped  .. "TagId"
                     local requestedBipedTagPath = constants.bipeds[requestedBiped]
                     local bipedTag = blam.getTag(requestedBipedTagPath, tagClasses.biped)
                     if (bipedTag and bipedTag.id) then

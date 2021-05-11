@@ -3,13 +3,15 @@
 -- Sledmine
 -- SAPP commands interceptor
 ------------------------------------------------------------------------------
-local rcon = {}
+local rcon = {_VERSION = "1.0.1"}
 
 local environments = {
     console = 0,
     rcon = 1,
     chat = 2
 }
+
+rcon.environments = environments
 
 -- Accepted rcon passwords
 rcon.safeRcons = {}
