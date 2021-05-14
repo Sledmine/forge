@@ -70,13 +70,14 @@ loadingFrame = 0
 
 --- Function to send debug messages to console output
 ---@param message string
----@param color '"string"' | '"category"' | '"warning"' | '"error"' | '"success"'
+---@param color string
 function dprint(message, color)
     if (configuration.forge.debugMode) then
+        local message = message
         if (type(message) ~= "string") then
             message = inspect(message)
         end
-        debugBuffer = debugBuffer .. message .. "\n"
+        debugBuffer = (debugBuffer or "") .. message .. "\n"
         if (color == "category") then
             console_out(message, 0.31, 0.631, 0.976)
         elseif (color == "warning") then

@@ -65,9 +65,10 @@ configuration = {
 configuration.forge.debugMode = false
 --- Function to send debug messages to console output
 ---@param message string
----@param color string | category | warning | error | success
+---@param color string
 function dprint(message, color)
     if (configuration.forge.debugMode) then
+        local message = message
         if (type(message) ~= "string") then
             message = inspect(message)
         end
