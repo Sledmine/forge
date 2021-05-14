@@ -268,6 +268,7 @@ local function forgeReducer(state, action)
         end
         return state
     end
+    return state
 end
 
 return forgeReducer

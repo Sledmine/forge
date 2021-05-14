@@ -464,7 +464,7 @@ function core.loadForgeMap(mapName)
                     spawnRequest.tagId = objectTag.id
                     spawnRequest.color = forgeObject.color or 1
                     spawnRequest.teamIndex = forgeObject.teamIndex or 0
-                    local dispatchObject = eventsStore:dispatch(
+                    eventsStore:dispatch(
                                                {
                             type = constants.requests.spawnObject.actionType,
                             payload = {requestObject = spawnRequest}
@@ -615,24 +615,27 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
     -- Prevent objects from phantom spawning!
     local objectId = spawn_object(type, tagPath, x, y, z)
     if (objectId) then
-        local tempObject = blam.object(get_object(objectId))
+        local object = blam.object(get_object(objectId))
+        if (not object) then
+            console_out(("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
+        end
         -- Force the object to render shadow
         if (configuration.forge.objectsCastShadow) then
-            tempObject.isNotCastingShadow = false
+            object.isNotCastingShadow = false
         end
         -- FIXME Object inside bsp detection is not working in SAPP, use minimumZSpawnPoint instead!
         if (server_type == "sapp") then
             -- SAPP for some reason can not detect if an object was spawned inside the map
             -- So we need to create an instance of the object and add the flag to it
             if (z < constants.minimumZSpawnPoint) then
-                tempObject = blam.dumpObject(tempObject)
-                tempObject.isOutSideMap = true
+                object = blam.dumpObject(object)
+                object.isOutSideMap = true
             end
             if (not noLog) then
-                dprint("Object is outside map: " .. tostring(tempObject.isOutSideMap))
+                dprint("Object is outside map: " .. tostring(object.isOutSideMap))
             end
         end
-        if (tempObject.isOutSideMap) then
+        if (object.isOutSideMap) then
             if (not noLog) then
                 dprint("-> Object: " .. objectId .. " is INSIDE map!!!", "warning")
             end
@@ -1207,6 +1210,14 @@ function core.getForgeObjects(tagCollection)
         end
     end
     return objects
+end
+
+function core.secondsToTicks(seconds)
+    return 30 * seconds
+end
+
+function core.ticksToSeconds(ticks)
+    return glue.round(ticks / 30)
 end
 
 return core

@@ -72,11 +72,11 @@ loadingFrame = 0
 ---@param message string
 ---@param color '"string"' | '"category"' | '"warning"' | '"error"' | '"success"'
 function dprint(message, color)
-    if (type(message) ~= "string") then
-        message = inspect(message)
-    end
-    debugBuffer = debugBuffer .. message .. "\n"
     if (configuration.forge.debugMode) then
+        if (type(message) ~= "string") then
+            message = inspect(message)
+        end
+        debugBuffer = debugBuffer .. message .. "\n"
         if (color == "category") then
             console_out(message, 0.31, 0.631, 0.976)
         elseif (color == "warning") then

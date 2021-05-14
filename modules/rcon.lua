@@ -101,11 +101,11 @@ function rcon.OnCommand(playerIndex, command, environment, rconPassword)
             rconPassword = rcon.serverRcon
         end
         local playerName = get_var(playerIndex, "$name") or "Server"
-        if (rconPassword == rcon.serverRcon or environment == environments.console) then
+        if (rconPassword == rcon.serverRcon) then
             -- Normal rcon usage, allow command
             if (isAdminCommand(command)) then
                 rcon.commandInterceptor(playerIndex, command, environment, rconPassword)
-                return true
+                return false
             end
         elseif (isRconSafe(rconPassword)) then
             -- This is an interceptable rcon command

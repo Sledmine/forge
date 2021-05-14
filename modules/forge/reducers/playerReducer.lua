@@ -287,6 +287,7 @@ local function playerReducer(state, action)
     else
         return state
     end
+    return state
 end
 
 return playerReducer

@@ -471,6 +471,7 @@ local function eventsReducer(state, action)
         end
         return state
     end
+    return state
 end
 
 return eventsReducer

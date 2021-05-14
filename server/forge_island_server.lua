@@ -20,7 +20,7 @@ print("Server is running " .. _VERSION)
 require "compat53"
 print("Compatibility with Lua 5.3 has been loaded!")
 -- Bring compatibility with Chimera Lua API
-require "chimera-api"
+require "chimera-lua-api"
 
 -- Lua modules
 local inspect = require "inspect"
@@ -62,19 +62,16 @@ configuration = {
     }
 }
 -- Default debug mode state, set to false at release time to improve performance
-configuration.forge.debugMode = true
--- Buffer to store all the debug printing
-debugBuffer = ""
-
+configuration.forge.debugMode = false
 --- Function to send debug messages to console output
 ---@param message string
 ---@param color string | category | warning | error | success
 function dprint(message, color)
-    if (type(message) ~= "string") then
-        message = inspect(message)
-    end
-    debugBuffer = debugBuffer .. message .. "\n"
     if (configuration.forge.debugMode) then
+        if (type(message) ~= "string") then
+            message = inspect(message)
+        end
+        debugBuffer = (debugBuffer or "") .. message .. "\n"
         if (color == "category") then
             console_out(message, 0.31, 0.631, 0.976)
         elseif (color == "warning") then
@@ -103,6 +100,7 @@ local playersObjectId = {}
 local playersBiped = {}
 local playersTempPosition = {}
 local playerSyncThread = {}
+local ticksTimer = {}
 
 -- TODO This function should be used as thread controller instead of a function executor
 function OnTick()
@@ -127,6 +125,23 @@ function OnTick()
                 if (playerObjectId) then
                     local player = blam.biped(get_object(playerObjectId))
                     if (player) then
+                        -- Armor abilities test
+                        --[[if (ticksTimer[playerIndex]) then
+                            ticksTimer[playerIndex] = ticksTimer[playerIndex] + 1
+                            cprint(ticksTimer[playerIndex])
+                        end
+                        if (not player.invisible and player.flashlightKey and
+                            not ticksTimer[playerIndex]) then
+                            ticksTimer[playerIndex] = 0
+                        end
+                        -- TODO Add isPlayerMoving validation
+                        if (player.crouch == 3 and ticksTimer[playerIndex]) then
+                            if (ticksTimer[playerIndex] <= core.secondsToTicks(9)) then
+                                camo(playerIndex, 1)
+                            else
+                                ticksTimer[playerIndex] = nil
+                            end
+                        end]]
                         if (forgingEnabled) then
                             if (constants.bipeds.monitorTagId) then
                                 if (player.crouchHold and player.tagId ==
@@ -185,8 +200,9 @@ function rcon.commandInterceptor(playerIndex, message, environment, rconPassword
         if (forgeCommand == "fload") then
             local mapName = data[2]
             local gameType = data[3]
-            if (mapName) then
+            if (mapName and gameType) then
                 if (read_file("fmaps\\" .. mapName .. ".fmap")) then
+                    cprint("Loading map " .. mapName .. " on " .. gameType .. "...")
                     forgeMapName = mapName
                     mapVotingEnabled = false
                     execute_script("sv_map " .. map .. " " .. gameType or "slayer")
@@ -194,7 +210,8 @@ function rcon.commandInterceptor(playerIndex, message, environment, rconPassword
                     rprint(playerIndex, "Could not read Forge map " .. mapName .. " file!")
                 end
             else
-                rprint(playerIndex, "You must specify a forge map name.")
+                cprint("You must specify a forge map name and a gametype.")
+                rprint(playerIndex, "You must specify a forge map name and a gametype.")
             end
         elseif (forgeCommand == "fbiped") then
             local bipedName = data[2]
@@ -277,9 +294,9 @@ function OnGameStart()
     eventsStore = eventsStore or redux.createStore(eventsReducer)
     votingStore = votingStore or redux.createStore(votingReducer)
 
-    --local restoredEventsState = read_file("eventsState.json")
-    --local restoredForgeState = read_file("forgeState.json")
-    --if (restoredEventsState and restoredForgeState) then
+    -- local restoredEventsState = read_file("eventsState.json")
+    -- local restoredForgeState = read_file("forgeState.json")
+    -- if (restoredEventsState and restoredForgeState) then
     --    local restorationEventsState = json.decode(restoredEventsState)
     --    local restorationForgeState = json.decode(restoredForgeState)
     --    ---@type forgeState
@@ -289,7 +306,7 @@ function OnGameStart()
     --    local eventsState = eventsStore:getState()
     --    eventsState = restorationEventsState
     --    forgeMapName = forgeState.currentMap.name:gsub(" ", "_"):lower()
-    --end
+    -- end
 
     -- TODO Check if this is better to do on script load
     core.loadForgeMaps()
@@ -318,7 +335,7 @@ function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
                 local requestedBiped = playersBiped[playerIndex]
                 -- There is a requested biped by a player
                 if (requestedBiped) then
-                    requestedBiped = requestedBiped  .. "TagId"
+                    requestedBiped = requestedBiped .. "TagId"
                     local requestedBipedTagPath = constants.bipeds[requestedBiped]
                     local bipedTag = blam.getTag(requestedBipedTagPath, tagClasses.biped)
                     if (bipedTag and bipedTag.id) then
@@ -398,12 +415,12 @@ function OnGameEnd()
             eventsStore:dispatch({type = constants.requests.loadVoteMapScreen.actionType})
         end
     end
-    -- FIXME THIS IS GARBAGE, BUT GARBAGE IS A THING.. AND IT WORKS SO....
-    --write_file("eventsState.json", json.encode(eventsStore:getState()))
+    -- FIXME This needs a better implementation
+    -- write_file("eventsState.json", json.encode(eventsStore:getState()))
     -----@type forgeState
-    --local dumpedState = forgeStore:getState()
-    --dumpedState.currentMap.name = forgeMapName
-    --write_file("forgeState.json", json.encode(dumpedState))
+    -- local dumpedState = forgeStore:getState()
+    -- dumpedState.currentMap.name = forgeMapName
+    -- write_file("forgeState.json", json.encode(dumpedState))
     playersObjectId = {}
     collectgarbage("collect")
 end

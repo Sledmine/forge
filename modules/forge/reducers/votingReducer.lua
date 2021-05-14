@@ -64,6 +64,7 @@ local function votingReducer(state, action)
         end
         return state
     end
+    return state
 end
 
 return votingReducer

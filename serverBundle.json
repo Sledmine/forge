@@ -10,7 +10,7 @@
         "inspect",
         "json",
         "lua-redux",
-        "chimera-api",
+        "chimera-lua-api",
         "maethrillian",
         "blam",
         "lua-ini",

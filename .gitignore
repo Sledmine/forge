@@ -44,6 +44,7 @@ luac.out
 
 # IntelliJ IDEA
 .idea
-
 # Distribution builds
-dist/
+# Do not upload client script code as it should be handle by Mercury to avoid code mismatching
+# Server side script code should be indeed uploaded in order to manage auto deployment
+dist/forge_island.lua

@@ -11,8 +11,8 @@ local features = require "forge.features"
 
 local function forgeCommands(command)
     if (command == "fdebug") then
+        debugBuffer = nil
         configuration.forge.debugMode = not configuration.forge.debugMode
-        configuration.forge.debugMode = configuration.forge.debugMode
         console_out("Debug mode: " .. tostring(configuration.forge.debugMode))
         return false
     else
@@ -200,7 +200,7 @@ local function forgeCommands(command)
                 write_file("events_dump.lua", inspect(eventsStore:getState()))
                 write_file("voting_dump.lua", inspect(votingStore:getState()))
                 write_file("constants.lua", inspect(constants))
-                write_file("debug_dump.txt", debugBuffer)
+                write_file("debug_dump.txt", debugBuffer or "No debug messages to print.")
                 return false
             elseif (forgeCommand == "fixmaps") then
                 --[[local mapsFiles = list_directory(defaultMapsPath)
