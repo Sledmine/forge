@@ -1,29 +1,25 @@
 ------------------------------------------------------------------------------
--- Task entity test
--- Author: Sledmine
--- Tests for task entity
+-- Chimera Lua API Bindings Test
+-- Sledmine
+-- Series of tests for the bindings from Chimera functions to SAPP functions
 ------------------------------------------------------------------------------
 local lu = require "luaunit"
 local glue = require "glue"
 
-require "cbindings"
+require "chimera-lua-api"
 
-testCBindings = {}
+testChimeraLuaApi = {}
 
-function testCBindings:setUp()
-   self.expectedFiles = {
-       "example.map",
-       "imafolder",
-       "test1.txt",
-   }
+function testChimeraLuaApi:setUp()
+    self.expectedFiles = {"example.map", "imafolder", "test1.txt"}
 end
 
--- Test correct entity constructor
-function testCBindings:testListDirectory()
+function testChimeraLuaApi:testListDirectory()
     local files = list_directory("server\\tests\\files")
     lu.assertEquals(files, self.expectedFiles)
 end
 
+-- TODO Add more tests
 
 local function runTests()
     local runner = lu.LuaUnit.new()
