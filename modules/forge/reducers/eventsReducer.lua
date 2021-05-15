@@ -336,7 +336,6 @@ local function eventsReducer(state, action)
                     ---@type forgeMap
                     local mapPath = ("fmaps\\%s.fmap"):format(mapName):gsub(" ", "_")
                                         :lower()
-                    console_out(mapPath)
                     local mapData = json.decode(read_file(mapPath))
                     for _, forgeObject in pairs(mapData.objects) do
                         local tagPath = forgeObject.tagPath
@@ -348,21 +347,23 @@ local function eventsReducer(state, action)
                                 availableGametypes["Team Slayer"] = true
                             elseif (tagPath:find("oddball")) then
                                 availableGametypes["Oddball"] = true
+                                availableGametypes["Juggernautº"] = true
                             end
                         end
                     end
-                    console_out(inspect(availableGametypes))
+                    console_out("Map Path: " .. mapPath)
                     local gametypes = glue.keys(availableGametypes)
+                    console_out(inspect(gametypes))
                     math.randomseed(os.time())
-                    local randomGametype = gametypes[math.random(1, #gametypes)] or
-                                               "Slayer"
-                    console_out(randomGametype)
+                    local randomGametype = gametypes[math.random(1, #gametypes)]
+                    local finalGametype = randomGametype or "Slayer"
+                    console_out("Final Gametype: " .. finalGametype)
                     votingStore:dispatch({
                         type = constants.requests.appendVoteMap.actionType,
                         payload = {
                             map = {
                                 name = mapName,
-                                gametype = randomGametype,
+                                gametype = finalGametype,
                                 mapIndex = 1
                             }
                         }
@@ -425,9 +426,9 @@ local function eventsReducer(state, action)
                 local params = action.payload.requestObject
                 state.playerVotes[action.playerIndex] = params.mapVoted
                 local votingState = votingStore:getState()
-                local mapName = votingState.votingMenu.mapsList[params.mapVoted].name
-                local mapGametype = votingState.votingMenu.mapsList[params.mapVoted]
-                                        .gametype
+                local votedMap = votingState.votingMenu.mapsList[params.mapVoted]
+                local mapName = votedMap.name
+                local mapGametype = votedMap.gametype
 
                 grprint(playerName .. " voted for " .. mapName .. " " .. mapGametype)
                 eventsStore:dispatch({
@@ -448,12 +449,10 @@ local function eventsReducer(state, action)
                             mostVotedMapIndex = mapIndex
                         end
                     end
-                    local winnerMap = mapsList[mostVotedMapIndex].name:gsub(" ", "_")
-                                          :lower()
-                    local winnerGametype = mapsList[mostVotedMapIndex].gametype:gsub(" ",
-                                                                                     "_")
-                                               :lower()
-                    print("Most voted map is: " .. winnerMap)
+                    local mostVotedMap = mapsList[mostVotedMapIndex]
+                    local winnerMap = core.toSnakeCase(mostVotedMap.name)
+                    local winnerGametype = core.toSnakeCase(mostVotedMap.gametype)
+                    cprint("Most voted map is: " .. winnerMap)
                     forgeMapName = winnerMap
                     execute_script("sv_map " .. map .. " " .. winnerGametype)
                 end
@@ -465,9 +464,9 @@ local function eventsReducer(state, action)
         return state
     else
         if (action.type == "@@lua-redux/INIT") then
-            dprint("Default state has been created!")
+            dprint("Default events store state has been created!")
         else
-            dprint("ERROR!!! The dispatched event does not exist.", "error")
+            dprint("Error, dispatched event does not exist.", "error")
         end
         return state
     end

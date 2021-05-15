@@ -75,24 +75,38 @@ function features.swapBiped()
         player.health = 1
         player.shield = 1
 
-        -- Needs kinda refactoring, probably splitting this into LuaBlam
-        local globalsTagAddress = get_tag(tagClasses.globals, "globals\\globals")
-        local globalsTagData = read_dword(globalsTagAddress + 0x14)
-        local globalsTagMultiplayerBipedTagIdAddress = globalsTagData + 0x9BC + 0xC
-        for objectNumber, objectIndex in pairs(blam.getObjects()) do
-            local tempObject = blam.object(get_object(objectIndex))
-            if (tempObject) then
-                if (tempObject.tagId == constants.bipeds.spartanTagId) then
-                    write_dword(globalsTagMultiplayerBipedTagIdAddress,
-                                constants.bipeds.monitorTagId)
-                    delete_object(objectIndex)
-                elseif (tempObject.tagId == constants.bipeds.monitorTagId) then
-                    write_dword(globalsTagMultiplayerBipedTagIdAddress,
-                                constants.bipeds.spartanTagId)
-                    delete_object(objectIndex)
+        local monitorTagId = constants.bipeds.monitorTagId
+        local spartanTagId
+        for bipedPropertyName, bipedTagId in pairs(constants.bipeds) do
+            if (not bipedPropertyName:find("monitor")) then
+                spartanTagId = bipedTagId
+                break
+            end
+        end
+        local globals = blam.globalsTag()
+        if (globals) then
+            for objectNumber, objectIndex in pairs(blam.getObjects()) do
+                local object = blam.object(get_object(objectIndex))
+                if (object) then
+                    if (object.address == get_dynamic_player()) then
+                        if (object.tagId == monitorTagId) then
+                            local newMultiplayerInformation = globals.multiplayerInformation
+                            newMultiplayerInformation[1].unit = spartanTagId
+                            -- Update globals tag data to force respawn as new biped
+                            globals.multiplayerInformation = newMultiplayerInformation
+                            
+                        else
+                            local newMultiplayerInformation = globals.multiplayerInformation
+                            newMultiplayerInformation[1].unit = monitorTagId
+                            -- Update globals tag data to force respawn as new biped
+                            globals.multiplayerInformation = newMultiplayerInformation
+                        end
+                        delete_object(objectIndex)
+                    end
                 end
             end
         end
+        
         -- else
         -- dprint("Requesting monitor biped...")
         -- TODO Replace this with a send request function

@@ -3,7 +3,7 @@
 -- Sledmine, JerryBrick
 -- Improves memory handle and provides standard functions for scripting
 ------------------------------------------------------------------------------
-local blam = {_VERSION = "1.2.0"}
+local blam = {_VERSION = "1.3.0-beta"}
 
 ------------------------------------------------------------------------------
 -- Useful functions for internal usage
@@ -1429,93 +1429,21 @@ local playerStructure = {
     ping = {type = "dword", offset = 0xDC}
 }
 
-------------------------------------------------------------------------------
--- Object classes
-------------------------------------------------------------------------------
+---@class multiplayerInformation
+---@field flag number Tag ID of the flag object used for multiplayer games
+---@field unit number Tag ID of the unit object used for multiplayer games
 
----@return player
-local function playerClassNew(address)
-    return createObject(address, playerStructure)
-end
+---@class globalsTag
+---@field multiplayerInformation multiplayerInformation[]
 
----@return blamObject
-local function objectClassNew(address)
-    return createObject(address, objectStructure)
-end
+local globalsTagStructure = {
+    -- WARNING Separeted properties for easier accesibility, structure is an array of properties
+    multiplayerInformation = {type = "table", jump = 0x0, offset = 0x168, rows = {
+        flag = {type = "dword", offset = 0xC},
+        unit = {type = "dword", offset = 0x1C}
+    }}
+}
 
----@return biped
-local function bipedClassNew(address)
-    return createObject(address, bipedStructure)
-end
-
----@return projectile
-local function projectileClassNew(address)
-    return createObject(address, projectileStructure)
-end
-
----@return tag
-local function tagClassNew(address)
-    return createObject(address, tagHeaderStructure)
-end
-
----@return tagCollection
-local function tagCollectionNew(address)
-    return createObject(address, tagCollectionStructure)
-end
-
----@return unicodeStringList
-local function unicodeStringListClassNew(address)
-    return createObject(address, unicodeStringListStructure)
-end
-
----@return bitmap
-local function bitmapClassNew(address)
-    return createObject(address, bitmapStructure)
-end
-
----@return uiWidgetDefinition
-local function uiWidgetDefinitionClassNew(address)
-    return createObject(address, uiWidgetDefinitionStructure)
-end
-
----@return uiWidgetCollection
-local function uiWidgetCollectionClassNew(address)
-    return createObject(address, uiWidgetCollectionStructure)
-end
-
-local function weaponHudInterfaceClassNew(address)
-    return createObject(address, weaponHudInterfaceStructure)
-end
-
----@return scenario
-local function scenarioClassNew(address)
-    return createObject(address, scenarioStructure)
-end
-
----@return scenery
-local function sceneryClassNew(address)
-    return createObject(address, sceneryStructure)
-end
-
----@return collisionGeometry
-local function collisionGeometryClassNew(address)
-    return createObject(address, collisionGeometryStructure)
-end
-
----@return modelAnimations
-local function modelAnimationsClassNew(address)
-    return createObject(address, modelAnimationsStructure)
-end
-
----@return weaponTag
-local function weaponTagClassNew(address)
-    return createObject(address, weaponTagStructure)
-end
-
----@return gbxModel
-local function modelClassNew(address)
-    return createObject(address, modelStructure)
-end
 ------------------------------------------------------------------------------
 -- LuaBlam globals
 ------------------------------------------------------------------------------
@@ -1583,7 +1511,7 @@ end
 function blam.tag(address)
     if (address and address ~= 0) then
         -- Generate a new tag object from class
-        local tag = tagClassNew(address)
+        local tag = createObject(address, tagHeaderStructure)
 
         -- Get all the tag info
         local tagInfo = dumpObject(tag)
@@ -1639,7 +1567,7 @@ end
 --- Create a player object given player entry table address
 function blam.player(address)
     if (isValid(address)) then
-        return playerClassNew(address)
+        return createObject(address, playerStructure)
     end
     return nil
 end
@@ -1649,7 +1577,7 @@ end
 ---@return blamObject
 function blam.object(address)
     if (isValid(address)) then
-        return objectClassNew(address)
+        return createObject(address, objectStructure)
     end
     return nil
 end
@@ -1659,7 +1587,7 @@ end
 ---@return projectile
 function blam.projectile(address)
     if (isValid(address)) then
-        return projectileClassNew(address)
+        return createObject(address, projectileStructure)
     end
     return nil
 end
@@ -1669,7 +1597,7 @@ end
 ---@return biped
 function blam.biped(address)
     if (isValid(address)) then
-        return bipedClassNew(address)
+        return createObject(address, bipedStructure)
     end
     return nil
 end
@@ -1680,7 +1608,7 @@ end
 function blam.unicodeStringList(tag)
     if (isValid(tag)) then
         local unicodeStringListTag = blam.getTag(tag, tagClasses.unicodeStringList)
-        return unicodeStringListClassNew(unicodeStringListTag.data)
+        return createObject(unicodeStringListTag.data, unicodeStringListStructure)
     end
     return nil
 end
@@ -1691,7 +1619,7 @@ end
 function blam.bitmap(tag)
     if (isValid(tag)) then
         local bitmapTag = blam.getTag(tag, tagClasses.bitmap)
-        return bitmapClassNew(bitmapTag.data)
+        return createObject(bitmapTag.data, bitmapStructure)
     end
 end
 
@@ -1701,7 +1629,7 @@ end
 function blam.uiWidgetDefinition(tag)
     if (isValid(tag)) then
         local uiWidgetDefinitionTag = blam.getTag(tag, tagClasses.uiWidgetDefinition)
-        return uiWidgetDefinitionClassNew(uiWidgetDefinitionTag.data)
+        return createObject(uiWidgetDefinitionTag.data, uiWidgetDefinitionStructure)
     end
     return nil
 end
@@ -1712,7 +1640,7 @@ end
 function blam.uiWidgetCollection(tag)
     if (isValid(tag)) then
         local uiWidgetCollectionTag = blam.getTag(tag, tagClasses.uiWidgetCollection)
-        return uiWidgetCollectionClassNew(uiWidgetCollectionTag.data)
+        return createObject(uiWidgetCollectionTag.data, uiWidgetCollectionStructure)
     end
     return nil
 end
@@ -1723,7 +1651,7 @@ end
 function blam.tagCollection(tag)
     if (isValid(tag)) then
         local tagCollectionTag = blam.getTag(tag, tagClasses.tagCollection)
-        return tagCollectionNew(tagCollectionTag.data)
+        return createObject(tagCollectionTag.data, tagCollectionStructure)
     end
     return nil
 end
@@ -1734,7 +1662,7 @@ end
 function blam.weaponHudInterface(tag)
     if (isValid(tag)) then
         local weaponHudInterfaceTag = blam.getTag(tag, tagClasses.weaponHudInterface)
-        return weaponHudInterfaceClassNew(weaponHudInterfaceTag.data)
+        return createObject(weaponHudInterfaceTag.data, weaponHudInterfaceStructure)
     end
     return nil
 end
@@ -1743,8 +1671,12 @@ end
 ---@param tag string | number
 ---@return scenario
 function blam.scenario(tag)
-    local scenarioTag = blam.getTag(tag or 0, tagClasses.scenario)
-    return scenarioClassNew(scenarioTag.data)
+    local tag = tag or 0
+    if (isValid(tag)) then
+        local scenarioTag = blam.getTag(tag, tagClasses.scenario)
+        return createObject(scenarioTag.data, scenarioStructure)
+    end
+    return nil
 end
 
 --- Create a Scenery object from a tag path or id
@@ -1753,7 +1685,7 @@ end
 function blam.scenery(tag)
     if (isValid(tag)) then
         local sceneryTag = blam.getTag(tag, tagClasses.scenery)
-        return sceneryClassNew(sceneryTag.data)
+        return createObject(sceneryTag.data, sceneryStructure)
     end
     return nil
 end
@@ -1764,7 +1696,7 @@ end
 function blam.collisionGeometry(tag)
     if (isValid(tag)) then
         local collisionGeometryTag = blam.getTag(tag, tagClasses.collisionGeometry)
-        return collisionGeometryClassNew(collisionGeometryTag.data)
+        return createObject(collisionGeometryTag.data, collisionGeometryStructure)
     end
     return nil
 end
@@ -1775,7 +1707,7 @@ end
 function blam.modelAnimations(tag)
     if (isValid(tag)) then
         local modelAnimationsTag = blam.getTag(tag, tagClasses.modelAnimations)
-        return modelAnimationsClassNew(modelAnimationsTag.data)
+        return createObject(modelAnimationsTag.data, modelAnimationsStructure)
     end
     return nil
 end
@@ -1786,7 +1718,7 @@ end
 function blam.weaponTag(tag)
     if (isValid(tag)) then
         local weaponTag = blam.getTag(tag, tagClasses.weapon)
-        return weaponTagClassNew(weaponTag)
+        return createObject(weaponTag.data, weaponTagStructure)
     end
     return nil
 end
@@ -1797,7 +1729,19 @@ end
 function blam.model(tag)
     if (isValid(tag)) then
         local modelTag = blam.getTag(tag, tagClasses.model)
-        return modelClassNew(modelTag.data)
+        return createObject(modelTag.data, modelStructure)
+    end
+    return nil
+end
+
+--- Create a Globals tag table from a tag path or id
+---@param tag string | number
+---@return globalsTag
+function blam.globalsTag(tag)
+    local tag = tag or "globals\\globals"
+    if (isValid(tag)) then
+        local globalsTag = blam.getTag(tag, tagClasses.globals)
+        return createObject(globalsTag.data, globalsTagStructure)
     end
     return nil
 end

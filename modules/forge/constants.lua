@@ -3,8 +3,10 @@
 -- Sledmine
 -- Constant values for different purposes
 --[[ The idea behind this module is to gather all the data that does not change
- across runtime, so we can optimize getting data just once at map load time ]] ------------------------------------------------------------------------------
+ across runtime, so we can optimize getting data just once at map load time
+ ]] ---------------------------------------------------------------------------
 local core = require "forge.core"
+local glue = require "glue"
 
 local time = os.clock()
 
@@ -133,10 +135,14 @@ constants.tagCollections = {
 }
 
 -- Biped Tags ID
-constants.bipeds = {
-    monitorTagId = core.findTag("monitor", tagClasses.biped).id,
-    spartanTagId = core.findTag("multibipeds", tagClasses.biped).id
-}
+constants.bipeds = {}
+for tagNumber, tag in pairs(core.findTagsList("characters", tagClasses.biped)) do
+    if (tag) then
+        local pathSplit = glue.string.split(tag.path, "\\")
+        local tagName = core.toCamelCase(pathSplit[#pathSplit]:gsub("_mp", ""))
+        constants.bipeds[tagName .. "TagId"] = tag.id
+    end
+end
 
 -- Weapon HUD Interface Tags ID
 constants.weaponHudInterfaces = {

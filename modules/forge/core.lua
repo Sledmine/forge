@@ -45,11 +45,24 @@ function core.loadForgeConfiguration(path)
     end
 end
 
---- Normalize any map name to a specific lower snake name
+--- Normalize any map name from snake case to a map name with sentence case
 ---@field mapName string
-function core.normalizeMapName(mapName)
+function core.toSentenceCase(mapName)
     return string.gsub(" " .. mapName:gsub(".fmap", ""):gsub("_", " "),
     "%W%l", string.upper):sub(2)
+end
+
+--- Normalize any string to a lower snake case
+---@field name string
+function core.toSnakeCase(name)
+    return name:gsub(" ", "_"):lower()
+end
+
+--- Normalize any string to camel case
+---@field mapName string
+function core.toCamelCase(name)
+    return string.gsub("" .. name:gsub("_", " "),
+    "%W%l", string.upper):sub(1):gsub(" ", "")
 end
 
 --- Load previous Forge maps
@@ -70,7 +83,7 @@ function core.loadForgeMaps(path)
             -- Only load files with extension .fmap
             if (fileExtension == "fmap") then
                 -- Normalize map name
-                local mapName = core.normalizeMapName(file)
+                local mapName = core.toSentenceCase(file)
                 glue.append(mapsList, mapName)
             end
         end
@@ -358,7 +371,7 @@ function core.resetSpawnPoints()
     -- those are reserved for Red and Blue CTF flags, the third one is for the 
     -- oddball spawn point
     local netgameFlagsList = scenario.netgameFlagsList
-    for i = 4, netgameFlagsCount do 
+    for i = 4, netgameFlagsCount do
         -- Disabling spawn point by setting to an unused type "vegas - bank"
         netgameFlagsList[i].type = netgameFlagsTypes.vegasBank
     end
@@ -464,11 +477,10 @@ function core.loadForgeMap(mapName)
                     spawnRequest.tagId = objectTag.id
                     spawnRequest.color = forgeObject.color or 1
                     spawnRequest.teamIndex = forgeObject.teamIndex or 0
-                    eventsStore:dispatch(
-                                               {
-                            type = constants.requests.spawnObject.actionType,
-                            payload = {requestObject = spawnRequest}
-                        })
+                    eventsStore:dispatch({
+                        type = constants.requests.spawnObject.actionType,
+                        payload = {requestObject = spawnRequest}
+                    })
                 else
                     dprint("Warning, object with path \"" .. spawnRequest.tagPath ..
                                "\" can not be spawned...", "warning")
@@ -558,7 +570,6 @@ function core.saveForgeMap()
     ---@field teamIndex  number
     ---@field color number
 
-
     ---@class forgeMap
     ---@field description string
     ---@field author string
@@ -617,7 +628,8 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
     if (objectId) then
         local object = blam.object(get_object(objectId))
         if (not object) then
-            console_out(("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
+            console_out(
+                ("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
         end
         -- Force the object to render shadow
         if (configuration.forge.objectsCastShadow) then
@@ -833,7 +845,7 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
                 break
             elseif (mapNetgameFlagsPoints[flagIndex].type == netgameFlagsTypes.vegasBank and
                 (flagType == netgameFlagsTypes.teleportTo or flagType ==
-                netgameFlagsTypes.teleportFrom)) then
+                    netgameFlagsTypes.teleportFrom)) then
                 dprint("Creating teleport replacing index: " .. flagIndex, "warning")
                 dprint("With team index: " .. forgeObject.teamIndex, "warning")
                 -- Replace spawn point values
@@ -865,9 +877,11 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
             mapNetgameFlagsPoints[forgeObject.reflectionId].z = forgeObject.z
             mapNetgameFlagsPoints[forgeObject.reflectionId].rotation =
                 rad(forgeObject.yaw)
-            if (flagType == netgameFlagsTypes.teleportFrom or flagType == netgameFlagsTypes.teleportTo) then
+            if (flagType == netgameFlagsTypes.teleportFrom or flagType ==
+                netgameFlagsTypes.teleportTo) then
                 dprint("Update teamIndex: " .. forgeObject.teamIndex)
-                mapNetgameFlagsPoints[forgeObject.reflectionId].teamIndex = forgeObject.teamIndex
+                mapNetgameFlagsPoints[forgeObject.reflectionId].teamIndex =
+                    forgeObject.teamIndex
             end
             -- Debug spawn index
             dprint("Updating flag replacing index: " .. forgeObject.reflectionId,
@@ -1084,6 +1098,31 @@ function core.findTag(partialName, searchTagType)
     return nil
 end
 
+--- Find the path, index and id of a list of tags given partial name and tag type
+---@param partialName string
+---@param searchTagType string
+---@return tag[] tag
+function core.findTagsList(partialName, searchTagType)
+    local tagsList
+    for tagIndex = 0, blam.tagDataHeader.count - 1 do
+        local tag = blam.getTag(tagIndex)
+        if (tag and tag.path:find(partialName) and tag.class == searchTagType) then
+            if (not tagsList) then
+                tagsList = {}
+            end
+            glue.append(tagsList, {
+                id = tag.id,
+                path = tag.path,
+                index = tag.index,
+                class = tag.class,
+                indexed = tag.indexed,
+                data = tag.data
+            })
+        end
+    end
+    return tagsList
+end
+
 --- Find tag data given index number
 ---@param tagIndex number
 function core.findTagByIndex(tagIndex)
@@ -1155,8 +1194,7 @@ function core.getForgeObjectFromPlayerAim()
                         delete_object(projectileObjectIndex)
                         -- Create a new one
                         createProjectileSelector()
-                        return selectedObjIndex, forgeObject,
-                        dumpedProjectile or nil
+                        return selectedObjIndex, forgeObject, dumpedProjectile or nil
                     end
                 end
                 delete_object(projectileObjectIndex)
@@ -1165,7 +1203,7 @@ function core.getForgeObjectFromPlayerAim()
         elseif (forgeObjects[projectileObjectIndex]) then
             if (core.playerIsAimingAt(projectileObjectIndex, 0.03, 0)) then
                 return projectileObjectIndex, forgeObjects[projectileObjectIndex],
-                dumpedProjectile or nil
+                       dumpedProjectile or nil
             end
         end
     end
