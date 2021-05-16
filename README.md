@@ -19,32 +19,18 @@ projects with a professional built.
 # Features
 
 **Multiple Biped Support**
-
 There is a simple built in system to associate players with a specific biped, used to swap between spartan and monitor, other bipeds can be added to this system to achieve different armors, biped based gametypes, etc.
 
-**Object Selection**
-
-Objects are highligted when a monitor is looking at them, object selection is calculated via projectile interception and for objects withouth collision it calculates if the player is looking at the main frame of the object.
-
-**Dynamic Forge Objects Addition**
-
+**Dynamic Objects Addition**
 Every Forge object is basically a scenery, so every scenery in a specific tag collection is taken as a Forge object and stored in a scenery database to be used in game.
 
-**Dynamic Forge Menu**
-
+**Dynamic Objects Menu**
 Every scenery stored in the scenery database is automatically converted into an option for the Forge objects menu by splitting the tag path of the object into categories to achieve dynamic menu options.
 
 **Others**
-
 - Create, update and delete for any Forge object in online or local mode
 - Forged maps file support, save and load Forge maps
 - Spawn reflection system, Forge objects can reflect data to the game spawn system
-
-## In progress
-- Automatic constant tag detection, there are some base tags and constant values needed by Forge to work, this must be done dynamically in client and server side. **(ALMOST DONE)**
-
-## To do
-- Forge permission system, deny Forge requests to the server for specific players.
 
 ## Help needed with
 We are giving our best effort to make this project as complete and useful as possible, but there is some stuff out of our knowledge where you can probably give us a hand to concentrate in other
@@ -72,7 +58,6 @@ This project is based in some type of REST architecture, meaning that data persi
 Forge reimplements some concepts from modern app libraries like the store from [redux-js](https://redux.js.org) using [lua-redux](https://github.com/piperswe/lua-redux), giving security, performance and operability to the project.
 
 # Highlights
-
 - Provides a store for all the Forge objects created on the server meaning the store is reusable, when a player joins mid game all the objects in the store can be pushed to the new player and sync everything created by other players on the server, also this process is an async process that can push tons of objects to different players without having to block the server main thread
 - Any forged map is stored in a versionless .fmap meaning that forged maps will work in almost any Forge map version, objects that are not anymore in the Forge map will be ignored
 - Forge works in local mode **(Playing the map via LAN mode option, this does not work in a real LAN game)**, the script will act as a server and client at the same time allowing you to play in the same way as if you were connected to a real server
@@ -80,9 +65,6 @@ Forge reimplements some concepts from modern app libraries like the store from [
 - Rcon messages come with full range compression to send specific values like floats that are hard to send via string message, for example coordinates and rotation values for every object are too important to keep them exactly in the same way they were sent, the compression used in Forge ensures the maximum and the minimum exact value at the moment of decompression using `string.pack` and `string.unpack` from **Lua 5.3** (SAPP uses **Lua 5.1**, but some compatibility with **Lua 5.3** can be achived by implemeting a compatibility library, bringing `string.unpack` and `string.pack` as a backport)
 
 # Building Forge
-
-Forge tagset is not available to the public yet, somehow it will be available here later.
-
 To bundle the lua code you need to be sure to have all the required dependencies installed on the project.
 Currently all the required dependencies are stored in this repository so there is no need to gather external dependencies by now, then you can use [Mercury](https://github.com/Sledmine/Mercury) to bundle the project using the next command line on the project folder:
 
@@ -101,9 +83,12 @@ Server bundled script requires the **compat53/** folder from this repository pla
 If for some reason you can't use [Mercury](https://github.com/Sledmine/Mercury) to bundle the
 project, you can use [luacc](https://github.com/mihacooper/luacc), this is the bundle implementation used in [Mercury](https://github.com/Sledmine/Mercury) for modular lua projects.
 
+Forge tagset is not available to the public yet, it will be available here later somewhere.
+
 Also as now the project is using [Invader](https://github.com/SnowyMouse/invader) as part of the
 building tools due to extended file limits size, some modifications for SAPP are needed in order
-to bring support for these invader expanded maps. Some more nfo about this later.
+to bring support for these invader expanded maps. Some more info about this
+will be added later in the future.
 
 # Long way to Forge
 
