@@ -2332,6 +2332,7 @@ end,
 if (variableThatObviouslyDoesNotExist) then
     -- All the functions at the top of the module are for EmmyLua autocompletion purposes!
     -- They do not have a real implementation and are not supossed to be imported
+
     --- Attempt to spawn an object given tag id and coordinates or tag type and class plus coordinates
     ---@param tagId number Optional tag id of the object to spawn
     ---@param tagType string Type of the tag to spawn
@@ -2635,7 +2636,7 @@ end,
 -- Sledmine, JerryBrick
 -- Improves memory handle and provides standard functions for scripting
 ------------------------------------------------------------------------------
-local blam = {_VERSION = "1.2.0"}
+local blam = {_VERSION = "1.3.0-beta"}
 
 ------------------------------------------------------------------------------
 -- Useful functions for internal usage
@@ -3950,17 +3951,17 @@ local modelAnimationsStructure = {
 -- Weapon structure
 local weaponTagStructure = {model = {type = "dword", offset = 0x34}}
 
---@class modelMarkers
---@field name string
---@field nodeIndex number
+-- @class modelMarkers
+-- @field name string
+-- @field nodeIndex number
 -- TODO Add rotation fields, check Guerilla tag
---@field x number
---@field y number
---@field z number
+-- @field x number
+-- @field y number
+-- @field z number
 
 ---@class modelRegion
 ---@field permutationCount number
---@field markersList modelMarkers[]
+-- @field markersList modelMarkers[]
 
 ---@class modelNode
 ---@field x number
@@ -3992,7 +3993,7 @@ local modelStructure = {
         offset = 0xC8,
         jump = 76,
         rows = {
-            permutationCount = {type = "dword", offset = 0x40},
+            permutationCount = {type = "dword", offset = 0x40}
             --[[permutationsList = {
                 type = "table",
                 offset = 0x16C,
@@ -4061,93 +4062,26 @@ local playerStructure = {
     ping = {type = "dword", offset = 0xDC}
 }
 
-------------------------------------------------------------------------------
--- Object classes
-------------------------------------------------------------------------------
+---@class multiplayerInformation
+---@field flag number Tag ID of the flag object used for multiplayer games
+---@field unit number Tag ID of the unit object used for multiplayer games
 
----@return player
-local function playerClassNew(address)
-    return createObject(address, playerStructure)
-end
+---@class globalsTag
+---@field multiplayerInformation multiplayerInformation[]
 
----@return blamObject
-local function objectClassNew(address)
-    return createObject(address, objectStructure)
-end
+local globalsTagStructure = {
+    -- WARNING Separeted properties for easier accesibility, structure is an array of properties
+    multiplayerInformation = {
+        type = "table",
+        jump = 0x0,
+        offset = 0x168,
+        rows = {
+            flag = {type = "dword", offset = 0xC},
+            unit = {type = "dword", offset = 0x1C}
+        }
+    }
+}
 
----@return biped
-local function bipedClassNew(address)
-    return createObject(address, bipedStructure)
-end
-
----@return projectile
-local function projectileClassNew(address)
-    return createObject(address, projectileStructure)
-end
-
----@return tag
-local function tagClassNew(address)
-    return createObject(address, tagHeaderStructure)
-end
-
----@return tagCollection
-local function tagCollectionNew(address)
-    return createObject(address, tagCollectionStructure)
-end
-
----@return unicodeStringList
-local function unicodeStringListClassNew(address)
-    return createObject(address, unicodeStringListStructure)
-end
-
----@return bitmap
-local function bitmapClassNew(address)
-    return createObject(address, bitmapStructure)
-end
-
----@return uiWidgetDefinition
-local function uiWidgetDefinitionClassNew(address)
-    return createObject(address, uiWidgetDefinitionStructure)
-end
-
----@return uiWidgetCollection
-local function uiWidgetCollectionClassNew(address)
-    return createObject(address, uiWidgetCollectionStructure)
-end
-
-local function weaponHudInterfaceClassNew(address)
-    return createObject(address, weaponHudInterfaceStructure)
-end
-
----@return scenario
-local function scenarioClassNew(address)
-    return createObject(address, scenarioStructure)
-end
-
----@return scenery
-local function sceneryClassNew(address)
-    return createObject(address, sceneryStructure)
-end
-
----@return collisionGeometry
-local function collisionGeometryClassNew(address)
-    return createObject(address, collisionGeometryStructure)
-end
-
----@return modelAnimations
-local function modelAnimationsClassNew(address)
-    return createObject(address, modelAnimationsStructure)
-end
-
----@return weaponTag
-local function weaponTagClassNew(address)
-    return createObject(address, weaponTagStructure)
-end
-
----@return gbxModel
-local function modelClassNew(address)
-    return createObject(address, modelStructure)
-end
 ------------------------------------------------------------------------------
 -- LuaBlam globals
 ------------------------------------------------------------------------------
@@ -4215,7 +4149,7 @@ end
 function blam.tag(address)
     if (address and address ~= 0) then
         -- Generate a new tag object from class
-        local tag = tagClassNew(address)
+        local tag = createObject(address, tagHeaderStructure)
 
         -- Get all the tag info
         local tagInfo = dumpObject(tag)
@@ -4271,7 +4205,7 @@ end
 --- Create a player object given player entry table address
 function blam.player(address)
     if (isValid(address)) then
-        return playerClassNew(address)
+        return createObject(address, playerStructure)
     end
     return nil
 end
@@ -4281,7 +4215,7 @@ end
 ---@return blamObject
 function blam.object(address)
     if (isValid(address)) then
-        return objectClassNew(address)
+        return createObject(address, objectStructure)
     end
     return nil
 end
@@ -4291,7 +4225,7 @@ end
 ---@return projectile
 function blam.projectile(address)
     if (isValid(address)) then
-        return projectileClassNew(address)
+        return createObject(address, projectileStructure)
     end
     return nil
 end
@@ -4301,7 +4235,7 @@ end
 ---@return biped
 function blam.biped(address)
     if (isValid(address)) then
-        return bipedClassNew(address)
+        return createObject(address, bipedStructure)
     end
     return nil
 end
@@ -4312,7 +4246,7 @@ end
 function blam.unicodeStringList(tag)
     if (isValid(tag)) then
         local unicodeStringListTag = blam.getTag(tag, tagClasses.unicodeStringList)
-        return unicodeStringListClassNew(unicodeStringListTag.data)
+        return createObject(unicodeStringListTag.data, unicodeStringListStructure)
     end
     return nil
 end
@@ -4323,7 +4257,7 @@ end
 function blam.bitmap(tag)
     if (isValid(tag)) then
         local bitmapTag = blam.getTag(tag, tagClasses.bitmap)
-        return bitmapClassNew(bitmapTag.data)
+        return createObject(bitmapTag.data, bitmapStructure)
     end
 end
 
@@ -4333,7 +4267,7 @@ end
 function blam.uiWidgetDefinition(tag)
     if (isValid(tag)) then
         local uiWidgetDefinitionTag = blam.getTag(tag, tagClasses.uiWidgetDefinition)
-        return uiWidgetDefinitionClassNew(uiWidgetDefinitionTag.data)
+        return createObject(uiWidgetDefinitionTag.data, uiWidgetDefinitionStructure)
     end
     return nil
 end
@@ -4344,7 +4278,7 @@ end
 function blam.uiWidgetCollection(tag)
     if (isValid(tag)) then
         local uiWidgetCollectionTag = blam.getTag(tag, tagClasses.uiWidgetCollection)
-        return uiWidgetCollectionClassNew(uiWidgetCollectionTag.data)
+        return createObject(uiWidgetCollectionTag.data, uiWidgetCollectionStructure)
     end
     return nil
 end
@@ -4355,7 +4289,7 @@ end
 function blam.tagCollection(tag)
     if (isValid(tag)) then
         local tagCollectionTag = blam.getTag(tag, tagClasses.tagCollection)
-        return tagCollectionNew(tagCollectionTag.data)
+        return createObject(tagCollectionTag.data, tagCollectionStructure)
     end
     return nil
 end
@@ -4366,7 +4300,7 @@ end
 function blam.weaponHudInterface(tag)
     if (isValid(tag)) then
         local weaponHudInterfaceTag = blam.getTag(tag, tagClasses.weaponHudInterface)
-        return weaponHudInterfaceClassNew(weaponHudInterfaceTag.data)
+        return createObject(weaponHudInterfaceTag.data, weaponHudInterfaceStructure)
     end
     return nil
 end
@@ -4376,7 +4310,7 @@ end
 ---@return scenario
 function blam.scenario(tag)
     local scenarioTag = blam.getTag(tag or 0, tagClasses.scenario)
-    return scenarioClassNew(scenarioTag.data)
+    return createObject(scenarioTag.data, scenarioStructure)
 end
 
 --- Create a Scenery object from a tag path or id
@@ -4385,7 +4319,7 @@ end
 function blam.scenery(tag)
     if (isValid(tag)) then
         local sceneryTag = blam.getTag(tag, tagClasses.scenery)
-        return sceneryClassNew(sceneryTag.data)
+        return createObject(sceneryTag.data, sceneryStructure)
     end
     return nil
 end
@@ -4396,7 +4330,7 @@ end
 function blam.collisionGeometry(tag)
     if (isValid(tag)) then
         local collisionGeometryTag = blam.getTag(tag, tagClasses.collisionGeometry)
-        return collisionGeometryClassNew(collisionGeometryTag.data)
+        return createObject(collisionGeometryTag.data, collisionGeometryStructure)
     end
     return nil
 end
@@ -4407,7 +4341,7 @@ end
 function blam.modelAnimations(tag)
     if (isValid(tag)) then
         local modelAnimationsTag = blam.getTag(tag, tagClasses.modelAnimations)
-        return modelAnimationsClassNew(modelAnimationsTag.data)
+        return createObject(modelAnimationsTag.data, modelAnimationsStructure)
     end
     return nil
 end
@@ -4418,7 +4352,7 @@ end
 function blam.weaponTag(tag)
     if (isValid(tag)) then
         local weaponTag = blam.getTag(tag, tagClasses.weapon)
-        return weaponTagClassNew(weaponTag)
+        return createObject(weaponTag.data, weaponTagStructure)
     end
     return nil
 end
@@ -4429,7 +4363,19 @@ end
 function blam.model(tag)
     if (isValid(tag)) then
         local modelTag = blam.getTag(tag, tagClasses.model)
-        return modelClassNew(modelTag.data)
+        return createObject(modelTag.data, modelStructure)
+    end
+    return nil
+end
+
+--- Create a Globals tag table from a tag path or id
+---@param tag string | number
+---@return globalsTag
+function blam.globalsTag(tag)
+    local tag = tag or "globals\\globals"
+    if (isValid(tag)) then
+        local globalsTag = blam.getTag(tag, tagClasses.globals)
+        return createObject(globalsTag.data, globalsTagStructure)
     end
     return nil
 end
@@ -4784,9 +4730,9 @@ local features = require "forge.features"
 
 local function forgeCommands(command)
     if (command == "fdebug") then
-        configuration.forge.debugMode = not configuration.forge.debugMode
-        configuration.forge.debugMode = configuration.forge.debugMode
-        console_out("Debug mode: " .. tostring(configuration.forge.debugMode))
+        debugBuffer = nil
+        config.forge.debugMode = not config.forge.debugMode
+        console_out("Debug mode: " .. tostring(config.forge.debugMode))
         return false
     else
         -- Split all the data in the command input
@@ -4845,16 +4791,16 @@ local function forgeCommands(command)
             core.saveForgeMap()
             return false
         elseif (forgeCommand == "fsnap") then
-            configuration.forge.snapMode = not configuration.forge.snapMode
-            console_out("Snap Mode: " .. tostring(configuration.forge.snapMode))
+            config.forge.snapMode = not config.forge.snapMode
+            console_out("Snap Mode: " .. tostring(config.forge.snapMode))
             return false
         elseif (forgeCommand == "fauto") then
-            configuration.forge.autoSave = not configuration.forge.autoSave
-            console_out("Auto Save: " .. tostring(configuration.forge.autoSave))
+            config.forge.autoSave = not config.forge.autoSave
+            console_out("Auto Save: " .. tostring(config.forge.autoSave))
             return false
         elseif (forgeCommand == "fcast") then
-            configuration.forge.objectsCastShadow = not configuration.forge.objectsCastShadow
-            console_out("Objects Cast Shadow: " .. tostring(configuration.forge.objectsCastShadow))
+            config.forge.objectsCastShadow = not config.forge.objectsCastShadow
+            console_out("Objects Cast Shadow: " .. tostring(config.forge.objectsCastShadow))
             return false
         elseif (forgeCommand == "fload") then
             local mapName = table.concat(glue.shift(splitCommand, 1, -1), " ")
@@ -4898,7 +4844,7 @@ local function forgeCommands(command)
             scenario.spawnLocationList = mapSpawnPoints
             return false
             -------------- DEBUGGING COMMANDS ONLY ---------------
-        elseif (configuration.forge.debugMode) then
+        elseif (config.forge.debugMode) then
             if (forgeCommand == "fmenu") then
                 --[[votingStore:dispatch({
                     type = "APPEND_MAP_VOTE",
@@ -4909,7 +4855,7 @@ local function forgeCommands(command)
                         }
                     }
                 })]]
-                features.openMenu(constants.uiWidgetDefinitions.loadingMenu.path)
+                features.openMenu(const.uiWidgetDefinitions.loadingMenu.path)
                 return false
             elseif (forgeCommand == "fsize") then
                 dprint(collectgarbage("count") / 1024)
@@ -4937,7 +4883,7 @@ local function forgeCommands(command)
                 return false
             elseif (forgeCommand == "ftest") then
                 -- Run unit testing
-                if (configuration.forge.debugMode) then
+                if (config.forge.debugMode) then
                     local tests = require "forge.tests"
                     tests.run(true)
                     return false
@@ -4972,7 +4918,7 @@ local function forgeCommands(command)
                 write_file("forge_dump.lua", inspect(forgeStore:getState()))
                 write_file("events_dump.lua", inspect(eventsStore:getState()))
                 write_file("voting_dump.lua", inspect(votingStore:getState()))
-                write_file("constants.lua", inspect(constants))
+                write_file("constants.lua", inspect(const))
                 write_file("debug_dump.txt", debugBuffer or "No debug messages to print.")
                 return false
             elseif (forgeCommand == "fixmaps") then
@@ -5031,8 +4977,10 @@ end,
 -- Sledmine
 -- Constant values for different purposes
 --[[ The idea behind this module is to gather all the data that does not change
- across runtime, so we can optimize getting data just once at map load time ]] ------------------------------------------------------------------------------
+ across runtime, so we can optimize getting data just once at map load time
+ ]] ---------------------------------------------------------------------------
 local core = require "forge.core"
+local glue = require "glue"
 
 local time = os.clock()
 
@@ -5161,10 +5109,14 @@ constants.tagCollections = {
 }
 
 -- Biped Tags ID
-constants.bipeds = {
-    monitorTagId = core.findTag("monitor", tagClasses.biped).id,
-    spartanTagId = core.findTag("multibipeds", tagClasses.biped).id
-}
+constants.bipeds = {}
+for tagNumber, tag in pairs(core.findTagsList("characters", tagClasses.biped)) do
+    if (tag) then
+        local pathSplit = glue.string.split(tag.path, "\\")
+        local tagName = core.toCamelCase(pathSplit[#pathSplit]:gsub("_mp", ""))
+        constants.bipeds[tagName .. "TagId"] = tag.id
+    end
+end
 
 -- Weapon HUD Interface Tags ID
 constants.weaponHudInterfaces = {
@@ -5319,7 +5271,7 @@ function core.loadForgeConfiguration(path)
     if (configurationFile) then
         local loadedConfiguration = ini.decode(configurationFile)
         if (loadedConfiguration and #glue.keys(loadedConfiguration) > 0) then
-            configuration = loadedConfiguration
+            config = loadedConfiguration
         else
             console_out(configurationFilePath)
             console_out("Forge ini file has a wrong format or is corrupted!")
@@ -5327,11 +5279,24 @@ function core.loadForgeConfiguration(path)
     end
 end
 
---- Normalize any map name to a specific lower snake name
+--- Normalize any map name from snake case to a map name with sentence case
 ---@field mapName string
-function core.normalizeMapName(mapName)
+function core.toSentenceCase(mapName)
     return string.gsub(" " .. mapName:gsub(".fmap", ""):gsub("_", " "),
     "%W%l", string.upper):sub(2)
+end
+
+--- Normalize any string to a lower snake case
+---@field name string
+function core.toSnakeCase(name)
+    return name:gsub(" ", "_"):lower()
+end
+
+--- Normalize any string to camel case
+---@field mapName string
+function core.toCamelCase(name)
+    return string.gsub("" .. name:gsub("_", " "),
+    "%W%l", string.upper):sub(1):gsub(" ", "")
 end
 
 --- Load previous Forge maps
@@ -5352,7 +5317,7 @@ function core.loadForgeMaps(path)
             -- Only load files with extension .fmap
             if (fileExtension == "fmap") then
                 -- Normalize map name
-                local mapName = core.normalizeMapName(file)
+                local mapName = core.toSentenceCase(file)
                 glue.append(mapsList, mapName)
             end
         end
@@ -5498,7 +5463,7 @@ function core.isPlayerMonitor(playerIndex)
     else
         tempObject = blam.object(get_dynamic_player())
     end
-    if (tempObject and tempObject.tagId == constants.bipeds.monitorTagId) then
+    if (tempObject and tempObject.tagId == const.bipeds.monitorTagId) then
         return true
     end
     return false
@@ -5541,23 +5506,23 @@ function core.createRequest(requestTable)
         -- Create an object instance to avoid wrong reference asignment
         local requestType = instanceObject.requestType
         if (requestType) then
-            if (requestType == constants.requests.spawnObject.requestType) then
+            if (requestType == const.requests.spawnObject.requestType) then
                 if (server_type == "sapp") then
                     instanceObject.remoteId = requestTable.remoteId
                 end
-            elseif (requestType == constants.requests.updateObject.requestType) then
+            elseif (requestType == const.requests.updateObject.requestType) then
                 if (server_type ~= "sapp") then
                     -- Desired object id is our remote id
                     -- instanceObject.objectId = requestTable.remoteId
                 end
-            elseif (requestType == constants.requests.deleteObject.requestType) then
+            elseif (requestType == const.requests.deleteObject.requestType) then
                 if (server_type ~= "sapp") then
                     -- Desired object id is our remote id
                     instanceObject.objectId = requestTable.remoteId
                 end
             end
             local requestFormat
-            for requestIndex, request in pairs(constants.requests) do
+            for requestIndex, request in pairs(const.requests) do
                 if (requestType == request.requestType) then
                     requestFormat = request.requestFormat
                 end
@@ -5566,7 +5531,7 @@ function core.createRequest(requestTable)
             --[[print(inspect(requestFormat))
             print(inspect(requestTable))]]
             request = maeth.tableToRequest(encodedTable, requestFormat,
-                                           constants.requestSeparator)
+                                           const.requestSeparator)
             -- TODO Add size validation for requests
             dprint("Request size: " .. #request)
         else
@@ -5584,7 +5549,7 @@ function core.processRequest(actionType, request, currentRequest, playerIndex)
     dprint("Incoming request: " .. request)
     dprint("Parsing incoming " .. actionType .. " ...", "warning")
     local requestTable = maeth.requestToTable(request, currentRequest.requestFormat,
-                                              constants.requestSeparator)
+                                              const.requestSeparator)
     if (requestTable) then
         dprint("Done.", "success")
         dprint(inspect(requestTable))
@@ -5612,7 +5577,7 @@ function core.processRequest(actionType, request, currentRequest, playerIndex)
 end
 
 function core.resetSpawnPoints()
-    local scenario = blam.scenario(0)
+    local scenario = blam.scenario()
     local netgameFlagsTypes = blam.netgameFlagTypes
 
     local mapSpawnCount = scenario.spawnLocationCount
@@ -5640,7 +5605,7 @@ function core.resetSpawnPoints()
     -- those are reserved for Red and Blue CTF flags, the third one is for the 
     -- oddball spawn point
     local netgameFlagsList = scenario.netgameFlagsList
-    for i = 4, netgameFlagsCount do 
+    for i = 4, netgameFlagsCount do
         -- Disabling spawn point by setting to an unused type "vegas - bank"
         netgameFlagsList[i].type = netgameFlagsTypes.vegasBank
     end
@@ -5669,20 +5634,20 @@ function core.sendMapData(forgeMap, playerIndex)
         local mapDataResponse = {}
         local response
         -- Send main map data
-        mapDataResponse.requestType = constants.requests.loadMapScreen.requestType
+        mapDataResponse.requestType = const.requests.loadMapScreen.requestType
         mapDataResponse.objectCount = #forgeMap.objects
         mapDataResponse.mapName = forgeMap.name
         response = core.createRequest(mapDataResponse)
         core.sendRequest(response, playerIndex)
         -- Send map author
         mapDataResponse = {}
-        mapDataResponse.requestType = constants.requests.setMapAuthor.requestType
+        mapDataResponse.requestType = const.requests.setMapAuthor.requestType
         mapDataResponse.mapAuthor = forgeMap.author
         response = core.createRequest(mapDataResponse)
         core.sendRequest(response, playerIndex)
         -- Send map description
         mapDataResponse = {}
-        mapDataResponse.requestType = constants.requests.setMapDescription.requestType
+        mapDataResponse.requestType = const.requests.setMapDescription.requestType
         mapDataResponse.mapDescription = forgeMap.description
         response = core.createRequest(mapDataResponse)
         core.sendRequest(response, playerIndex)
@@ -5741,16 +5706,15 @@ function core.loadForgeMap(mapName)
                 local spawnRequest = forgeObject
                 local objectTag = blam.getTag(spawnRequest.tagPath, tagClasses.scenery)
                 if (objectTag and objectTag.id) then
-                    spawnRequest.requestType = constants.requests.spawnObject.requestType
+                    spawnRequest.requestType = const.requests.spawnObject.requestType
                     spawnRequest.tagPath = nil
                     spawnRequest.tagId = objectTag.id
                     spawnRequest.color = forgeObject.color or 1
                     spawnRequest.teamIndex = forgeObject.teamIndex or 0
-                    eventsStore:dispatch(
-                                               {
-                            type = constants.requests.spawnObject.actionType,
-                            payload = {requestObject = spawnRequest}
-                        })
+                    eventsStore:dispatch({
+                        type = const.requests.spawnObject.actionType,
+                        payload = {requestObject = spawnRequest}
+                    })
                 else
                     dprint("Warning, object with path \"" .. spawnRequest.tagPath ..
                                "\" can not be spawned...", "warning")
@@ -5840,7 +5804,6 @@ function core.saveForgeMap()
     ---@field teamIndex  number
     ---@field color number
 
-
     ---@class forgeMap
     ---@field description string
     ---@field author string
@@ -5899,17 +5862,18 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
     if (objectId) then
         local object = blam.object(get_object(objectId))
         if (not object) then
-            console_out(("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
+            console_out(
+                ("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
         end
         -- Force the object to render shadow
-        if (configuration.forge.objectsCastShadow) then
+        if (config.forge.objectsCastShadow) then
             object.isNotCastingShadow = false
         end
         -- FIXME Object inside bsp detection is not working in SAPP, use minimumZSpawnPoint instead!
         if (server_type == "sapp") then
             -- SAPP for some reason can not detect if an object was spawned inside the map
             -- So we need to create an instance of the object and add the flag to it
-            if (z < constants.minimumZSpawnPoint) then
+            if (z < const.minimumZSpawnPoint) then
                 object = blam.dumpObject(object)
                 object.isOutSideMap = true
             end
@@ -5926,7 +5890,7 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
             delete_object(objectId)
 
             -- Create new object but now in a safe place
-            objectId = spawn_object(type, tagPath, x, y, constants.minimumZSpawnPoint)
+            objectId = spawn_object(type, tagPath, x, y, const.minimumZSpawnPoint)
 
             if (objectId) then
                 -- Update new object position to match the original
@@ -5936,7 +5900,7 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
                 tempObject.z = z
 
                 -- Forces the object to render shadow
-                if (configuration.forge.objectsCastShadow) then
+                if (config.forge.objectsCastShadow) then
                     local tempObject = blam.object(get_object(objectId))
                     tempObject.isNotCastingShadow = false
                 end
@@ -6115,7 +6079,7 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
                 break
             elseif (mapNetgameFlagsPoints[flagIndex].type == netgameFlagsTypes.vegasBank and
                 (flagType == netgameFlagsTypes.teleportTo or flagType ==
-                netgameFlagsTypes.teleportFrom)) then
+                    netgameFlagsTypes.teleportFrom)) then
                 dprint("Creating teleport replacing index: " .. flagIndex, "warning")
                 dprint("With team index: " .. forgeObject.teamIndex, "warning")
                 -- Replace spawn point values
@@ -6147,9 +6111,11 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
             mapNetgameFlagsPoints[forgeObject.reflectionId].z = forgeObject.z
             mapNetgameFlagsPoints[forgeObject.reflectionId].rotation =
                 rad(forgeObject.yaw)
-            if (flagType == netgameFlagsTypes.teleportFrom or flagType == netgameFlagsTypes.teleportTo) then
+            if (flagType == netgameFlagsTypes.teleportFrom or flagType ==
+                netgameFlagsTypes.teleportTo) then
                 dprint("Update teamIndex: " .. forgeObject.teamIndex)
-                mapNetgameFlagsPoints[forgeObject.reflectionId].teamIndex = forgeObject.teamIndex
+                mapNetgameFlagsPoints[forgeObject.reflectionId].teamIndex =
+                    forgeObject.teamIndex
             end
             -- Debug spawn index
             dprint("Updating flag replacing index: " .. forgeObject.reflectionId,
@@ -6366,6 +6332,31 @@ function core.findTag(partialName, searchTagType)
     return nil
 end
 
+--- Find the path, index and id of a list of tags given partial name and tag type
+---@param partialName string
+---@param searchTagType string
+---@return tag[] tag
+function core.findTagsList(partialName, searchTagType)
+    local tagsList
+    for tagIndex = 0, blam.tagDataHeader.count - 1 do
+        local tag = blam.getTag(tagIndex)
+        if (tag and tag.path:find(partialName) and tag.class == searchTagType) then
+            if (not tagsList) then
+                tagsList = {}
+            end
+            glue.append(tagsList, {
+                id = tag.id,
+                path = tag.path,
+                index = tag.index,
+                class = tag.class,
+                indexed = tag.indexed,
+                data = tag.data
+            })
+        end
+    end
+    return tagsList
+end
+
 --- Find tag data given index number
 ---@param tagIndex number
 function core.findTagByIndex(tagIndex)
@@ -6393,22 +6384,22 @@ local function createProjectileSelector()
     local player = blam.biped(get_dynamic_player())
     if (player) then
         local selector = {
-            x = player.x + player.xVel + player.cameraX * constants.forgeSelectorOffset,
-            y = player.y + player.yVel + player.cameraY * constants.forgeSelectorOffset,
-            z = player.z + player.zVel + player.cameraZ * constants.forgeSelectorOffset
+            x = player.x + player.xVel + player.cameraX * const.forgeSelectorOffset,
+            y = player.y + player.yVel + player.cameraY * const.forgeSelectorOffset,
+            z = player.z + player.zVel + player.cameraZ * const.forgeSelectorOffset
         }
         local projectileId = core.spawnObject(tagClasses.projectile,
-                                              constants.forgeProjectilePath, selector.x,
+                                              const.forgeProjectilePath, selector.x,
                                               selector.y, selector.z, true)
         if (projectileId) then
             local projectile = blam.projectile(get_object(projectileId))
             if (projectile) then
-                projectile.xVel = player.cameraX * constants.forgeSelectorVelocity
-                projectile.yVel = player.cameraY * constants.forgeSelectorVelocity
-                projectile.zVel = player.cameraZ * constants.forgeSelectorVelocity
-                projectile.yaw = player.cameraX * constants.forgeSelectorVelocity
-                projectile.pitch = player.cameraY * constants.forgeSelectorVelocity
-                projectile.roll = player.cameraZ * constants.forgeSelectorVelocity
+                projectile.xVel = player.cameraX * const.forgeSelectorVelocity
+                projectile.yVel = player.cameraY * const.forgeSelectorVelocity
+                projectile.zVel = player.cameraZ * const.forgeSelectorVelocity
+                projectile.yaw = player.cameraX * const.forgeSelectorVelocity
+                projectile.pitch = player.cameraY * const.forgeSelectorVelocity
+                projectile.roll = player.cameraZ * const.forgeSelectorVelocity
             end
         end
     end
@@ -6425,7 +6416,7 @@ function core.getForgeObjectFromPlayerAim()
         local selectedObjIndex
         if (projectile and projectile.type == objectClasses.projectile) then
             local projectileTag = blam.getTag(projectile.tagId)
-            if (projectileTag and projectileTag.index == constants.forgeProjectileTagIndex) then
+            if (projectileTag and projectileTag.index == const.forgeProjectileTagIndex) then
                 if (projectile.attachedToObjectId) then
                     local selectedObject = blam.object(
                                                get_object(projectile.attachedToObjectId))
@@ -6437,8 +6428,7 @@ function core.getForgeObjectFromPlayerAim()
                         delete_object(projectileObjectIndex)
                         -- Create a new one
                         createProjectileSelector()
-                        return selectedObjIndex, forgeObject,
-                        dumpedProjectile or nil
+                        return selectedObjIndex, forgeObject, dumpedProjectile or nil
                     end
                 end
                 delete_object(projectileObjectIndex)
@@ -6447,7 +6437,7 @@ function core.getForgeObjectFromPlayerAim()
         elseif (forgeObjects[projectileObjectIndex]) then
             if (core.playerIsAimingAt(projectileObjectIndex, 0.03, 0)) then
                 return projectileObjectIndex, forgeObjects[projectileObjectIndex],
-                dumpedProjectile or nil
+                       dumpedProjectile or nil
             end
         end
     end
@@ -6461,7 +6451,7 @@ end
 function core.isObjectOutOfBounds(object)
     if (object) then
         local projectileId = spawn_object(tagClasses.projectile,
-                                          constants.forgeProjectilePath, object.x,
+                                          const.forgeProjectilePath, object.x,
                                           object.y, object.z)
         if (projectileId) then
             local blamObject = blam.object(get_object(projectileId))
@@ -6526,7 +6516,7 @@ local features = {}
 ---@param state number
 function features.setCrosshairState(state)
     local forgeDefaultInterface = blam.weaponHudInterface(
-                                      constants.weaponHudInterfaces.forgeCrosshairTagId)
+                                      const.weaponHudInterfaces.forgeCrosshairTagId)
     if (forgeDefaultInterface) then
         local newCrosshairs = forgeDefaultInterface.crosshairs
         if (state and state < 5) then
@@ -6587,24 +6577,38 @@ function features.swapBiped()
         player.health = 1
         player.shield = 1
 
-        -- Needs kinda refactoring, probably splitting this into LuaBlam
-        local globalsTagAddress = get_tag(tagClasses.globals, "globals\\globals")
-        local globalsTagData = read_dword(globalsTagAddress + 0x14)
-        local globalsTagMultiplayerBipedTagIdAddress = globalsTagData + 0x9BC + 0xC
-        for objectNumber, objectIndex in pairs(blam.getObjects()) do
-            local tempObject = blam.object(get_object(objectIndex))
-            if (tempObject) then
-                if (tempObject.tagId == constants.bipeds.spartanTagId) then
-                    write_dword(globalsTagMultiplayerBipedTagIdAddress,
-                                constants.bipeds.monitorTagId)
-                    delete_object(objectIndex)
-                elseif (tempObject.tagId == constants.bipeds.monitorTagId) then
-                    write_dword(globalsTagMultiplayerBipedTagIdAddress,
-                                constants.bipeds.spartanTagId)
-                    delete_object(objectIndex)
+        local monitorTagId = const.bipeds.monitorTagId
+        local spartanTagId
+        for bipedPropertyName, bipedTagId in pairs(const.bipeds) do
+            if (not bipedPropertyName:find("monitor")) then
+                spartanTagId = bipedTagId
+                break
+            end
+        end
+        local globals = blam.globalsTag()
+        if (globals) then
+            for objectNumber, objectIndex in pairs(blam.getObjects()) do
+                local object = blam.object(get_object(objectIndex))
+                if (object) then
+                    if (object.address == get_dynamic_player()) then
+                        if (object.tagId == monitorTagId) then
+                            local newMultiplayerInformation = globals.multiplayerInformation
+                            newMultiplayerInformation[1].unit = spartanTagId
+                            -- Update globals tag data to force respawn as new biped
+                            globals.multiplayerInformation = newMultiplayerInformation
+                            
+                        else
+                            local newMultiplayerInformation = globals.multiplayerInformation
+                            newMultiplayerInformation[1].unit = monitorTagId
+                            -- Update globals tag data to force respawn as new biped
+                            globals.multiplayerInformation = newMultiplayerInformation
+                        end
+                        delete_object(objectIndex)
+                    end
                 end
             end
         end
+        
         -- else
         -- dprint("Requesting monitor biped...")
         -- TODO Replace this with a send request function
@@ -6637,7 +6641,7 @@ function features.printHUD(message, optional, forcedTickCount)
             290,
             640,
             480,
-            constants.hudFontTagId,
+            const.hudFontTagId,
             "center",
             table.unpack(color)
         }
@@ -6648,7 +6652,7 @@ function features.printHUD(message, optional, forcedTickCount)
             285,
             640,
             480,
-            constants.hudFontTagId,
+            const.hudFontTagId,
             "center",
             table.unpack(color)
         }
@@ -6656,17 +6660,17 @@ function features.printHUD(message, optional, forcedTickCount)
 end
 
 function features.animateForgeLoading()
-    local bitmapFrameTagId = constants.bitmaps.forgingIconFrame0TagId
+    local bitmapFrameTagId = const.bitmaps.forgingIconFrame0TagId
     if (loadingFrame == 0) then
-        bitmapFrameTagId = constants.bitmaps.forgeIconFrame1TagId
+        bitmapFrameTagId = const.bitmaps.forgeIconFrame1TagId
         loadingFrame = 1
     else
-        bitmapFrameTagId = constants.bitmaps.forgingIconFrame0TagId
+        bitmapFrameTagId = const.bitmaps.forgingIconFrame0TagId
         loadingFrame = 0
     end
 
     -- Animate Forge loading image
-    local uiWidget = blam.uiWidgetDefinition(constants.uiWidgetDefinitions
+    local uiWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions
                                                  .loadingAnimation.id)
     uiWidget.backgroundBitmap = bitmapFrameTagId
     return true
@@ -6676,7 +6680,7 @@ end
 ---@return mouseInput
 function features.getMouseInput()
     ---@class mouseInput
-    local mouseInput = {scroll = tonumber(read_char(constants.mouseInputAddress + 8))}
+    local mouseInput = {scroll = tonumber(read_char(const.mouseInputAddress + 8))}
     return mouseInput
 end
 
@@ -6728,7 +6732,7 @@ function features.openForgeObjectPropertiesMenu()
         type = "UPDATE_FORGE_ELEMENTS_LIST",
         payload = {forgeMenu = forgeState.forgeMenu}
     })
-    features.openMenu(constants.uiWidgetDefinitions.forgeMenu.path)
+    features.openMenu(const.uiWidgetDefinitions.forgeMenu.path)
 end
 
 function features.getObjectMenuFunctions()
@@ -6757,168 +6761,168 @@ function features.getObjectMenuFunctions()
             playerStore:dispatch({type = "ROTATE_OBJECT"})
         end,
         ["snap mode"] = function()
-            configuration.forge.snapMode = not configuration.forge.snapMode
+            config.forge.snapMode = not config.forge.snapMode
         end,
         ["alpha"] = function()
             playerStore:dispatch({
                 type = "SET_OBJECT_CHANNEL",
-                payload = {channel = constants.teleportersChannels.alpha}
+                payload = {channel = const.teleportersChannels.alpha}
             })
         end,
         ["bravo"] = function()
             playerStore:dispatch({
                 type = "SET_OBJECT_CHANNEL",
-                payload = {channel = constants.teleportersChannels.bravo}
+                payload = {channel = const.teleportersChannels.bravo}
             })
         end,
         ["charly"] = function()
             playerStore:dispatch({
                 type = "SET_OBJECT_CHANNEL",
-                payload = {channel = constants.teleportersChannels.charly}
+                payload = {channel = const.teleportersChannels.charly}
             })
         end,
         ["white (default)"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.white, tempObject)
+            features.setObjectColor(const.colors.white, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.white
+                payload = const.colors.white
             })
         end,
         ["black"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.black, tempObject)
+            features.setObjectColor(const.colors.black, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.black
+                payload = const.colors.black
             })
         end,
         ["red"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.red, tempObject)
+            features.setObjectColor(const.colors.red, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.red
+                payload = const.colors.red
             })
         end,
         ["blue"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.blue, tempObject)
+            features.setObjectColor(const.colors.blue, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.blue
+                payload = const.colors.blue
             })
         end,
         ["gray"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.gray, tempObject)
+            features.setObjectColor(const.colors.gray, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.gray
+                payload = const.colors.gray
             })
         end,
         ["yellow"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.yellow, tempObject)
+            features.setObjectColor(const.colors.yellow, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.yellow
+                payload = const.colors.yellow
             })
         end,
         ["green"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.green, tempObject)
+            features.setObjectColor(const.colors.green, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.green
+                payload = const.colors.green
             })
         end,
         ["pink"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.pink, tempObject)
+            features.setObjectColor(const.colors.pink, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.pink
+                payload = const.colors.pink
             })
         end,
         ["purple"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.purple, tempObject)
+            features.setObjectColor(const.colors.purple, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.purple
+                payload = const.colors.purple
             })
         end,
         ["cyan"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.cyan, tempObject)
+            features.setObjectColor(const.colors.cyan, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.cyan
+                payload = const.colors.cyan
             })
         end,
         ["cobalt"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.cobalt, tempObject)
+            features.setObjectColor(const.colors.cobalt, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.cobalt
+                payload = const.colors.cobalt
             })
         end,
         ["orange"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.orange, tempObject)
+            features.setObjectColor(const.colors.orange, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.orange
+                payload = const.colors.orange
             })
         end,
         ["teal"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.teal, tempObject)
+            features.setObjectColor(const.colors.teal, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.teal
+                payload = const.colors.teal
             })
         end,
         ["sage"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.sage, tempObject)
+            features.setObjectColor(const.colors.sage, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.sage
+                payload = const.colors.sage
             })
         end,
         ["brown"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.brown, tempObject)
+            features.setObjectColor(const.colors.brown, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.brown
+                payload = const.colors.brown
             })
         end,
         ["tan"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.tan, tempObject)
+            features.setObjectColor(const.colors.tan, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.tan
+                payload = const.colors.tan
             })
         end,
         ["maroon"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.maroon, tempObject)
+            features.setObjectColor(const.colors.maroon, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.maroon
+                payload = const.colors.maroon
             })
         end,
         ["salmon"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.salmon, tempObject)
+            features.setObjectColor(const.colors.salmon, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.salmon
+                payload = const.colors.salmon
             })
         end
     }
@@ -6938,7 +6942,7 @@ end
 --- Hide or unhide forge reflection objects for gameplay purposes
 ---@param hide boolean
 function features.hideReflectionObjects(hide)
-    if (not configuration.forge.debugMode) then
+    if (not config.forge.debugMode) then
         ---@type eventsState
         local eventsStore = eventsStore:getState()
         for objectIndex, forgeObject in pairs(eventsStore.forgeObjects) do
@@ -6946,11 +6950,11 @@ function features.hideReflectionObjects(hide)
                 local object = blam.object(get_object(objectIndex))
                 if (object) then
                     local tempTag = blam.getTag(object.tagId)
-                    if (not stringHas(tempTag.path, constants.hideObjectsExceptions)) then
+                    if (not stringHas(tempTag.path, const.hideObjectsExceptions)) then
                         if (hide) then
                             -- Hide objects by setting different properties
                             object.isGhost = true
-                            object.z = constants.minimumZSpawnPoint * 4
+                            object.z = const.minimumZSpawnPoint * 4
                         else
                             object.isGhost = false
                             object.z = forgeObject.z
@@ -6966,7 +6970,7 @@ end
 function features.playSound(tagPath, gain)
     local player = blam.player(get_player())
     if (player) then
-        local playSoundCommand = constants.hsc.playSound:format(tagPath, player.index,
+        local playSoundCommand = const.hsc.playSound:format(tagPath, player.index,
                                                                 gain or 1.0)
         execute_script(playSoundCommand)
     end
@@ -6984,7 +6988,7 @@ function features.hudUpgrades()
     if (player) then
         local isPlayerOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
         if (not isPlayerOnMenu) then
-            local localPlayer = read_dword(constants.localPlayerAddress)
+            local localPlayer = read_dword(const.localPlayerAddress)
             local currentGrenadeType = read_word(localPlayer + 202)
             if (not blam.isNull(currentGrenadeType)) then
                 if (not lastGrenadeType) then
@@ -6993,9 +6997,9 @@ function features.hudUpgrades()
                 if (lastGrenadeType ~= currentGrenadeType) then
                     lastGrenadeType = currentGrenadeType
                     if (lastGrenadeType == 1) then
-                        features.playSound(constants.sounds.uiForwardPath .. "2", 1)
+                        features.playSound(const.sounds.uiForwardPath .. "2", 1)
                     else
-                        features.playSound(constants.sounds.uiForwardPath, 1)
+                        features.playSound(const.sounds.uiForwardPath, 1)
                     end
                 end
             end
@@ -7020,7 +7024,7 @@ function features.hudUpgrades()
                 healthDepletedRecently = false
             end
             -- Get hud background bitmap
-            local visorBitmap = blam.bitmap(constants.bitmaps.unitHudBackgroundTagId)
+            local visorBitmap = blam.bitmap(const.bitmaps.unitHudBackgroundTagId)
             if (visorBitmap) then
                 -- Player is not in a vehicle
                 if (blam.isNull(player.vehicleObjectId)) then
@@ -7040,7 +7044,7 @@ function features.hudUpgrades()
                 if (not landedRecently) then
                     landedRecently = true
                     -- Play sound using hsc scripts
-                    features.playSound(constants.sounds.landHardPlayerDamagePath, 0.8)
+                    features.playSound(const.sounds.landHardPlayerDamagePath, 0.8)
                 end
             else
                 landedRecently = false
@@ -7065,7 +7069,7 @@ function features.regenerateHealth(playerIndex)
                 end
             end
             if (player.health < 1 and player.shield >= 1) then
-                local newPlayerHealth = player.health + constants.healthRegenerationAmount
+                local newPlayerHealth = player.health + const.healthRegenerationAmount
                 if (newPlayerHealth > 1) then
                     player.health = 1
                 else
@@ -7261,7 +7265,7 @@ local function forgeReducer(state, action)
     if (not state) then
         -- Create default state if it does not exist
         state = glue.deepcopy(defaultState)
-        state.mapsMenu.sidebar.height = constants.maximumSidebarSize
+        state.mapsMenu.sidebar.height = const.maximumSidebarSize
     end
     if (action.type) then
         dprint("[Forge Reducer]:")
@@ -7278,15 +7282,15 @@ local function forgeReducer(state, action)
         state.mapsMenu.currentMapsList = glue.chunks(state.mapsMenu.mapsList, 8)
         local totalPages = #state.mapsMenu.currentMapsList
         if (totalPages > 1) then
-            local sidebarHeight = glue.floor(constants.maximumSidebarSize / totalPages)
-            if (sidebarHeight < constants.minimumSidebarSize) then
-                sidebarHeight = constants.minimumSidebarSize
+            local sidebarHeight = glue.floor(const.maximumSidebarSize / totalPages)
+            if (sidebarHeight < const.minimumSidebarSize) then
+                sidebarHeight = const.minimumSidebarSize
             end
-            local spaceLeft = constants.maximumSidebarSize - sidebarHeight
+            local spaceLeft = const.maximumSidebarSize - sidebarHeight
             state.mapsMenu.sidebar.slice = glue.round(spaceLeft / (totalPages - 1))
             local fullSize = sidebarHeight +
                                  (state.mapsMenu.sidebar.slice * (totalPages - 1))
-            state.mapsMenu.sidebar.overflow = fullSize - constants.maximumSidebarSize
+            state.mapsMenu.sidebar.overflow = fullSize - const.maximumSidebarSize
             state.mapsMenu.sidebar.height = sidebarHeight -
                                                 state.mapsMenu.sidebar.overflow
         end
@@ -7417,6 +7421,16 @@ local function forgeReducer(state, action)
         end
         state.currentMap.author = action.payload.mapAuthor
         return state
+    elseif (action.type == "UPDATE_BUDGET") then
+        -- FIXME This should be separated from this reducer in order to prevent menu blinking
+        -- Set current budget bar data
+        local objectState = eventsStore:getState().forgeObjects
+        local currentObjects = #glue.keys(objectState)
+        local newBarSize = currentObjects * const.maximumProgressBarSize /
+                               const.maximumObjectsBudget
+        state.forgeMenu.currentBarSize = glue.floor(newBarSize)
+        state.forgeMenu.currentBudget = tostring(currentObjects)
+        return state
     elseif (action.type == "UPDATE_MAP_INFO") then
         if (action.payload) then
             local expectedObjects = action.payload.expectedObjects
@@ -7438,27 +7452,20 @@ local function forgeReducer(state, action)
         if (server_type ~= "sapp") then
             if (eventsStore) then
                 if (state.loadingMenu.expectedObjects > 0) then
-                    -- Set current budget bar data
-                    local objectState = eventsStore:getState().forgeObjects
-                    local currentObjects = #glue.keys(objectState)
-                    local newBarSize = currentObjects * constants.maximumProgressBarSize /
-                                           constants.maximumObjectsBudget
-                    state.forgeMenu.currentBarSize = glue.floor(newBarSize)
-                    state.forgeMenu.currentBudget = tostring(currentObjects)
-
                     -- Prevent player from falling and desyncing by freezing it
                     local player = blam.biped(get_dynamic_player())
-                    if (player and server_type == "sapp") then
+                    -- FIXME For some reason player is being able unfreeze after applying this
+                    if (player) then
                         player.zVel = 0
                         player.isFrozen = true
                     end
 
                     -- Set loading map bar data
                     local expectedObjects = state.loadingMenu.expectedObjects
-                    local newBarSize = currentObjects * constants.maxLoadingBarSize /
+                    local newBarSize = currentObjects * const.maxLoadingBarSize /
                                            expectedObjects
                     state.loadingMenu.currentBarSize = glue.floor(newBarSize)
-                    if (state.loadingMenu.currentBarSize >= constants.maxLoadingBarSize) then
+                    if (state.loadingMenu.currentBarSize >= const.maxLoadingBarSize) then
                         -- Unfreeze player
                         local player = blam.biped(get_dynamic_player())
                         if (player) then
@@ -7469,10 +7476,10 @@ local function forgeReducer(state, action)
                             forgeAnimationTimer = nil
                             dprint("Erasing forge animation timer!")
                         end
-                        interface.close(constants.uiWidgetDefinitions.loadingMenu)
+                        interface.close(const.uiWidgetDefinitions.loadingMenu)
                     end
                 else
-                    interface.close(constants.uiWidgetDefinitions.loadingMenu)
+                    interface.close(const.uiWidgetDefinitions.loadingMenu)
                 end
             end
         end
@@ -7542,7 +7549,7 @@ local function eventsReducer(state, action)
         dprint("-> [Events Store]")
         dprint("Action: " .. action.type, "category")
     end
-    if (action.type == constants.requests.spawnObject.actionType) then
+    if (action.type == const.requests.spawnObject.actionType) then
         dprint("SPAWNING object to store...", "warning")
         local requestObject = action.payload.requestObject
 
@@ -7579,7 +7586,7 @@ local function eventsReducer(state, action)
         -- Apply color to the object
         if (server_type ~= "sapp" and requestObject.color) then
             local tempObject = blam.object(get_object(objectIndex))
-            features.setObjectColor(constants.colorsNumber[requestObject.color],
+            features.setObjectColor(const.colorsNumber[requestObject.color],
                                     tempObject)
         end
 
@@ -7626,9 +7633,10 @@ local function eventsReducer(state, action)
             type = "UPDATE_MAP_INFO",
             payload = {loadingObjectPath = tagPath}
         })
+        forgeStore:dispatch({type = "UPDATE_BUDGET"})
 
         return state
-    elseif (action.type == constants.requests.updateObject.actionType) then
+    elseif (action.type == const.requests.updateObject.actionType) then
         local requestObject = action.payload.requestObject
         local targetObjectId = core.getObjectIndexByRemoteId(state.forgeObjects,
                                                              requestObject.objectId)
@@ -7657,7 +7665,7 @@ local function eventsReducer(state, action)
             tempObject.z = forgeObject.z
 
             if (requestObject.color) then
-                features.setObjectColor(constants.colorsNumber[requestObject.color],
+                features.setObjectColor(const.colorsNumber[requestObject.color],
                                         tempObject)
             end
 
@@ -7692,7 +7700,7 @@ local function eventsReducer(state, action)
 
                 -- Create cache for incoming players
                 local instanceObject = glue.update({}, forgeObject)
-                instanceObject.requestType = constants.requests.spawnObject.requestType
+                instanceObject.requestType = const.requests.spawnObject.requestType
                 instanceObject.tagId = blam.object(get_object(targetObjectId)).tagId
                 local response = core.createRequest(instanceObject)
                 state.cachedResponses[targetObjectId] = response
@@ -7702,7 +7710,7 @@ local function eventsReducer(state, action)
                        "does not exist.", "error")
         end
         return state
-    elseif (action.type == constants.requests.deleteObject.actionType) then
+    elseif (action.type == const.requests.deleteObject.actionType) then
         local requestObject = action.payload.requestObject
         local targetObjectId = core.getObjectIndexByRemoteId(state.forgeObjects,
                                                              requestObject.objectId)
@@ -7751,31 +7759,32 @@ local function eventsReducer(state, action)
         end
         -- Update the current map information
         forgeStore:dispatch({type = "UPDATE_MAP_INFO"})
+        forgeStore:dispatch({type = "UPDATE_BUDGET"})
 
         return state
-    elseif (action.type == constants.requests.setMapAuthor.actionType) then
+    elseif (action.type == const.requests.setMapAuthor.actionType) then
         local requestObject = action.payload.requestObject
 
         local mapAuthor = requestObject.mapAuthor
 
         forgeStore:dispatch({
-            type = constants.requests.setMapAuthor.actionType,
+            type = const.requests.setMapAuthor.actionType,
             payload = {mapAuthor = mapAuthor}
         })
 
         return state
-    elseif (action.type == constants.requests.setMapDescription.actionType) then
+    elseif (action.type == const.requests.setMapDescription.actionType) then
         local requestObject = action.payload.requestObject
 
         local mapDescription = requestObject.mapDescription
 
         forgeStore:dispatch({
-            type = constants.requests.setMapDescription.actionType,
+            type = const.requests.setMapDescription.actionType,
             payload = {mapDescription = mapDescription}
         })
 
         return state
-    elseif (action.type == constants.requests.loadMapScreen.actionType) then
+    elseif (action.type == const.requests.loadMapScreen.actionType) then
         local requestObject = action.payload.requestObject
 
         local expectedObjects = requestObject.objectCount
@@ -7785,15 +7794,16 @@ local function eventsReducer(state, action)
             type = "UPDATE_MAP_INFO",
             payload = {expectedObjects = expectedObjects, mapName = mapName}
         })
+        forgeStore:dispatch({type = "UPDATE_BUDGET"})
 
         -- Function wrapper for timer
         forgeAnimation = features.animateForgeLoading
         forgeAnimationTimer = set_timer(250, "forgeAnimation")
 
-        features.openMenu(constants.uiWidgetDefinitions.loadingMenu.path)
+        features.openMenu(const.uiWidgetDefinitions.loadingMenu.path)
 
         return state
-    elseif (action.type == constants.requests.flushForge.actionType) then
+    elseif (action.type == const.requests.flushForge.actionType) then
         if (server_type ~= "sapp") then
             local forgeObjects = state.forgeObjects
             for objectIndex, forgeObject in pairs(forgeObjects) do
@@ -7803,17 +7813,17 @@ local function eventsReducer(state, action)
         state.cachedResponses = {}
         state.forgeObjects = {}
         return state
-    elseif (action.type == constants.requests.loadVoteMapScreen.actionType) then
+    elseif (action.type == const.requests.loadVoteMapScreen.actionType) then
         if (server_type ~= "sapp") then
             function preventClose()
-                features.openMenu(constants.uiWidgetDefinitions.voteMenu.path)
+                features.openMenu(const.uiWidgetDefinitions.voteMenu.path)
                 return false
             end
             set_timer(5000, "preventClose")
         else
             -- Send vote map menu open request
             local loadMapVoteMenuRequest = {
-                requestType = constants.requests.loadVoteMapScreen.requestType
+                requestType = const.requests.loadVoteMapScreen.requestType
             }
             core.sendRequest(core.createRequest(loadMapVoteMenuRequest))
 
@@ -7834,7 +7844,6 @@ local function eventsReducer(state, action)
                     ---@type forgeMap
                     local mapPath = ("fmaps\\%s.fmap"):format(mapName):gsub(" ", "_")
                                         :lower()
-                    console_out(mapPath)
                     local mapData = json.decode(read_file(mapPath))
                     for _, forgeObject in pairs(mapData.objects) do
                         local tagPath = forgeObject.tagPath
@@ -7846,21 +7855,23 @@ local function eventsReducer(state, action)
                                 availableGametypes["Team Slayer"] = true
                             elseif (tagPath:find("oddball")) then
                                 availableGametypes["Oddball"] = true
+                                availableGametypes["Juggernautº"] = true
                             end
                         end
                     end
-                    console_out(inspect(availableGametypes))
+                    console_out("Map Path: " .. mapPath)
                     local gametypes = glue.keys(availableGametypes)
+                    console_out(inspect(gametypes))
                     math.randomseed(os.time())
-                    local randomGametype = gametypes[math.random(1, #gametypes)] or
-                                               "Slayer"
-                    console_out(randomGametype)
+                    local randomGametype = gametypes[math.random(1, #gametypes)]
+                    local finalGametype = randomGametype or "Slayer"
+                    console_out("Final Gametype: " .. finalGametype)
                     votingStore:dispatch({
-                        type = constants.requests.appendVoteMap.actionType,
+                        type = const.requests.appendVoteMap.actionType,
                         payload = {
                             map = {
                                 name = mapName,
-                                gametype = randomGametype,
+                                gametype = finalGametype,
                                 mapIndex = 1
                             }
                         }
@@ -7871,23 +7882,23 @@ local function eventsReducer(state, action)
             local votingState = votingStore:getState()
             for mapIndex, map in pairs(votingState.votingMenu.mapsList) do
                 local voteMapOpenRequest = {
-                    requestType = constants.requests.appendVoteMap.requestType
+                    requestType = const.requests.appendVoteMap.requestType
                 }
                 glue.update(voteMapOpenRequest, map)
                 core.sendRequest(core.createRequest(voteMapOpenRequest))
             end
         end
         return state
-    elseif (action.type == constants.requests.appendVoteMap.actionType) then
+    elseif (action.type == const.requests.appendVoteMap.actionType) then
         if (server_type ~= "sapp") then
             local params = action.payload.requestObject
             votingStore:dispatch({
-                type = constants.requests.appendVoteMap.actionType,
+                type = const.requests.appendVoteMap.actionType,
                 payload = {map = {name = params.name, gametype = params.gametype}}
             })
         end
         return state
-    elseif (action.type == constants.requests.sendTotalMapVotes.actionType) then
+    elseif (action.type == const.requests.sendTotalMapVotes.actionType) then
         if (server_type == "sapp") then
             local mapVotes = {0, 0, 0, 0}
             for playerIndex, mapIndex in pairs(state.playerVotes) do
@@ -7895,7 +7906,7 @@ local function eventsReducer(state, action)
             end
             -- Send vote map menu open request
             local sendTotalMapVotesRequest = {
-                requestType = constants.requests.sendTotalMapVotes.requestType
+                requestType = const.requests.sendTotalMapVotes.requestType
 
             }
             for mapIndex, votes in pairs(mapVotes) do
@@ -7916,20 +7927,20 @@ local function eventsReducer(state, action)
             })
         end
         return state
-    elseif (action.type == constants.requests.sendMapVote.actionType) then
+    elseif (action.type == const.requests.sendMapVote.actionType) then
         if (action.playerIndex and server_type == "sapp") then
             local playerName = get_var(action.playerIndex, "$name")
             if (not state.playerVotes[action.playerIndex]) then
                 local params = action.payload.requestObject
                 state.playerVotes[action.playerIndex] = params.mapVoted
                 local votingState = votingStore:getState()
-                local mapName = votingState.votingMenu.mapsList[params.mapVoted].name
-                local mapGametype = votingState.votingMenu.mapsList[params.mapVoted]
-                                        .gametype
+                local votedMap = votingState.votingMenu.mapsList[params.mapVoted]
+                local mapName = votedMap.name
+                local mapGametype = votedMap.gametype
 
                 grprint(playerName .. " voted for " .. mapName .. " " .. mapGametype)
                 eventsStore:dispatch({
-                    type = constants.requests.sendTotalMapVotes.actionType
+                    type = const.requests.sendTotalMapVotes.actionType
                 })
                 local playerVotes = state.playerVotes
                 if (#playerVotes > 0) then
@@ -7946,26 +7957,24 @@ local function eventsReducer(state, action)
                             mostVotedMapIndex = mapIndex
                         end
                     end
-                    local winnerMap = mapsList[mostVotedMapIndex].name:gsub(" ", "_")
-                                          :lower()
-                    local winnerGametype = mapsList[mostVotedMapIndex].gametype:gsub(" ",
-                                                                                     "_")
-                                               :lower()
-                    print("Most voted map is: " .. winnerMap)
+                    local mostVotedMap = mapsList[mostVotedMapIndex]
+                    local winnerMap = core.toSnakeCase(mostVotedMap.name)
+                    local winnerGametype = core.toSnakeCase(mostVotedMap.gametype)
+                    cprint("Most voted map is: " .. winnerMap)
                     forgeMapName = winnerMap
                     execute_script("sv_map " .. map .. " " .. winnerGametype)
                 end
             end
         end
         return state
-    elseif (action.type == constants.requests.flushVotes.actionType) then
+    elseif (action.type == const.requests.flushVotes.actionType) then
         state.playerVotes = {}
         return state
     else
         if (action.type == "@@lua-redux/INIT") then
-            dprint("Default state has been created!")
+            dprint("Default events store state has been created!")
         else
-            dprint("ERROR!!! The dispatched event does not exist.", "error")
+            dprint("Error, dispatched event does not exist.", "error")
         end
         return state
     end
@@ -8061,7 +8070,7 @@ local function playerReducer(state, action)
             local tempObject = blam.object(get_object(state.attachedObjectId))
             if (tempObject) then
                 local distance = core.calculateDistanceFromObject(player, tempObject)
-                if (configuration.forge.snapMode) then
+                if (config.forge.snapMode) then
                     state.distance = glue.round(distance)
                 else
                     state.distance = distance
@@ -8097,7 +8106,7 @@ local function playerReducer(state, action)
                 if (not forgeObject) then
                     -- Object does not exist, create request table and send request
                     local requestTable = {}
-                    requestTable.requestType = constants.requests.spawnObject.requestType
+                    requestTable.requestType = const.requests.spawnObject.requestType
                     requestTable.tagId = tempObject.tagId
                     requestTable.x = state.xOffset
                     requestTable.y = state.yOffset
@@ -8113,7 +8122,7 @@ local function playerReducer(state, action)
                     local tempObject = blam.object(get_object(state.attachedObjectId))
                     local requestTable = {}
                     requestTable.objectId = forgeObject.remoteId
-                    requestTable.requestType = constants.requests.updateObject.requestType
+                    requestTable.requestType = const.requests.updateObject.requestType
                     requestTable.x = tempObject.x
                     requestTable.y = tempObject.y
                     requestTable.z = tempObject.z
@@ -8143,7 +8152,7 @@ local function playerReducer(state, action)
                 delete_object(state.attachedObjectId)
             else
                 local requestTable = forgeObject
-                requestTable.requestType = constants.requests.deleteObject.requestType
+                requestTable.requestType = const.requests.deleteObject.requestType
                 requestTable.remoteId = forgeObject.remoteId
                 core.sendRequest(core.createRequest(requestTable))
             end
@@ -8162,7 +8171,7 @@ local function playerReducer(state, action)
         local xOffset = player.x - state.attachX + player.cameraX * state.distance
         local yOffset = player.y - state.attachY + player.cameraY * state.distance
         local zOffset = player.z - state.attachZ + player.cameraZ * state.distance
-        if (configuration.forge.snapMode) then
+        if (config.forge.snapMode) then
             state.xOffset = glue.round(xOffset)
             state.yOffset = glue.round(yOffset)
             state.zOffset = glue.round(zOffset)
@@ -8179,7 +8188,7 @@ local function playerReducer(state, action)
             local tempObject = blam.object(get_object(state.attachedObjectId))
             if (tempObject) then
                 local distance = core.calculateDistanceFromObject(player, tempObject)
-                if (configuration.forge.snapMode) then
+                if (config.forge.snapMode) then
                     state.distance = glue.round(distance)
                 else
                     state.distance = distance
@@ -8253,7 +8262,7 @@ local function playerReducer(state, action)
         return state
     elseif (action.type == "SET_OBJECT_COLOR") then
         if (action.payload) then
-            state.color = glue.index(constants.colorsNumber)[action.payload]
+            state.color = glue.index(const.colorsNumber)[action.payload]
         else
             dprint("Warning, attempt set color state value to nil.")
         end
@@ -8325,7 +8334,7 @@ local function votingReducer(state, action)
         dprint("-> [Voting Store]")
         dprint("Action: " .. action.type, "category")
     end
-    if (action.type == constants.requests.appendVoteMap.actionType) then
+    if (action.type == const.requests.appendVoteMap.actionType) then
         if (#state.votingMenu.mapsList < 4) then
             local map = action.payload.map
             glue.append(state.votingMenu.mapsList, map)
@@ -8384,11 +8393,11 @@ local function forgeReflector()
 
     -- Forge Menu
     local forgeMenuElementsStrings = blam.unicodeStringList(
-                                         constants.unicodeStrings.forgeMenuElementsTagId)
+                                         const.unicodeStrings.forgeMenuElementsTagId)
     forgeMenuElementsStrings.stringList = currentElements
-    interface.update(constants.uiWidgetDefinitions.objectsList, #currentElements + 2)
+    interface.update(const.uiWidgetDefinitions.objectsList, #currentElements + 2)
 
-    local pagination = blam.unicodeStringList(constants.unicodeStrings.paginationTagId)
+    local pagination = blam.unicodeStringList(const.unicodeStrings.paginationTagId)
     if (pagination) then
         local paginationStringList = pagination.stringList
         paginationStringList[2] = tostring(currentMenuPage)
@@ -8398,21 +8407,21 @@ local function forgeReflector()
 
     -- Budget count
     -- Update unicode string with current budget value
-    local currentBudget = blam.unicodeStringList(constants.unicodeStrings.budgetCountTagId)
+    local currentBudget = blam.unicodeStringList(const.unicodeStrings.budgetCountTagId)
 
     -- Refresh budget count
     currentBudget.stringList = {
         forgeState.forgeMenu.currentBudget,
-        "/ " .. tostring(constants.maximumObjectsBudget)
+        "/ " .. tostring(const.maximumObjectsBudget)
     }
 
     -- Refresh budget bar status
-    local amountBarWidget = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.amountBar.id)
+    local amountBarWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions.amountBar.id)
     amountBarWidget.width = forgeState.forgeMenu.currentBarSize
 
     -- Refresh loading bar size
     local loadingProgressWidget = blam.uiWidgetDefinition(
-                                      constants.uiWidgetDefinitions.loadingProgress.id)
+                                      const.uiWidgetDefinitions.loadingProgress.id)
     loadingProgressWidget.width = forgeState.loadingMenu.currentBarSize
 
     local currentMapsMenuPage = forgeState.mapsMenu.currentPage
@@ -8427,18 +8436,18 @@ local function forgeReflector()
     -- Refresh available forge maps list
     -- //TODO Merge unicode string updating with menus updating?
 
-    local mapsListStrings = blam.unicodeStringList(constants.unicodeStrings.mapsListTagId)
+    local mapsListStrings = blam.unicodeStringList(const.unicodeStrings.mapsListTagId)
     mapsListStrings.stringList = currentMapsList
     -- Wich ui widget will be updated and how many items it will show
-    interface.update(constants.uiWidgetDefinitions.mapsList, #currentMapsList + 3)
+    interface.update(const.uiWidgetDefinitions.mapsList, #currentMapsList + 3)
 
     -- Refresh fake sidebar in maps menu
-    local sidebarWidget = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.sidebar.id)
+    local sidebarWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions.sidebar.id)
     sidebarWidget.height = forgeState.mapsMenu.sidebar.height
     sidebarWidget.boundsY = forgeState.mapsMenu.sidebar.position
 
     -- Refresh current forge map information
-    local pauseGameStrings = blam.unicodeStringList(constants.unicodeStrings.pauseGameStringsTagId)
+    local pauseGameStrings = blam.unicodeStringList(const.unicodeStrings.pauseGameStringsTagId)
     pauseGameStrings.stringList = {
         -- Skip elements using empty string
         "",
@@ -8504,15 +8513,15 @@ local function votingReflector()
     end
 
     -- Get maps vote menu buttons lists
-    local votingMapsMenuList = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.voteMenuList.id)
+    local votingMapsMenuList = blam.uiWidgetDefinition(const.uiWidgetDefinitions.voteMenuList.id)
     votingMapsMenuList.childWidgetsCount = #glue.keys(currentMapsList)
 
     -- Get maps vote string list
-    local votingMapsStrings = blam.unicodeStringList(constants.unicodeStrings.votingMapsListTagId)
+    local votingMapsStrings = blam.unicodeStringList(const.unicodeStrings.votingMapsListTagId)
     votingMapsStrings.stringList = currentMapsList
 
     -- Get maps vote count string list
-    local votingCountListStrings = blam.unicodeStringList(constants.unicodeStrings.votingCountListTagId)
+    local votingCountListStrings = blam.unicodeStringList(const.unicodeStrings.votingCountListTagId)
     votingCountListStrings.stringList = votesList
 
         -- TODO Add count replacing for child widgets
@@ -8597,7 +8606,7 @@ local mapVotingEnabled = true
 
 -- TODO This needs some refactoring, this configuration is kinda useless on server side
 -- Forge default configuration
-configuration = {
+config = {
     forge = {
         debugMode = false,
         autoSave = false,
@@ -8607,15 +8616,16 @@ configuration = {
     }
 }
 -- Default debug mode state, set to false at release time to improve performance
-configuration.forge.debugMode = false
+config.forge.debugMode = false
 --- Function to send debug messages to console output
 ---@param message string
----@param color string | category | warning | error | success
+---@param color string
 function dprint(message, color)
-    if (type(message) ~= "string") then
-        message = inspect(message)
-    end
-    if (configuration.forge.debugMode) then
+    if (config.forge.debugMode) then
+        local message = message
+        if (type(message) ~= "string") then
+            message = inspect(message)
+        end
         debugBuffer = (debugBuffer or "") .. message .. "\n"
         if (color == "category") then
             console_out(message, 0.31, 0.631, 0.976)
@@ -8670,7 +8680,8 @@ function OnTick()
                 if (playerObjectId) then
                     local player = blam.biped(get_object(playerObjectId))
                     if (player) then
-                        if (ticksTimer[playerIndex]) then
+                        -- Armor abilities test
+                        --[[if (ticksTimer[playerIndex]) then
                             ticksTimer[playerIndex] = ticksTimer[playerIndex] + 1
                             cprint(ticksTimer[playerIndex])
                         end
@@ -8685,11 +8696,11 @@ function OnTick()
                             else
                                 ticksTimer[playerIndex] = nil
                             end
-                        end
+                        end]]
                         if (forgingEnabled) then
-                            if (constants.bipeds.monitorTagId) then
+                            if (const.bipeds.monitorTagId) then
                                 if (player.crouchHold and player.tagId ==
-                                    constants.bipeds.monitorTagId) then
+                                    const.bipeds.monitorTagId) then
                                     dprint("playerObjectId: " .. tostring(playerObjectId))
                                     dprint("Trying to process a biped swap request...")
                                     -- FIXME Biped name should be parsed to remove tagId pattern
@@ -8698,7 +8709,7 @@ function OnTick()
                                         {player.x, player.y, player.z}
                                     delete_object(playerObjectId)
                                 elseif (player.flashlightKey and player.tagId ~=
-                                    constants.bipeds.monitorTagId) then
+                                    const.bipeds.monitorTagId) then
                                     dprint("playerObjectId: " .. tostring(playerObjectId))
                                     dprint("Trying to process a biped swap request...")
                                     -- FIXME Biped name should be parsed to remove tagId pattern
@@ -8721,11 +8732,11 @@ function rcon.commandInterceptor(playerIndex, message, environment, rconPassword
     dprint("Incoming rcon command:", "warning")
     dprint(message)
     local request = string.gsub(message, "'", "")
-    local data = glue.string.split(request, constants.requestSeparator)
+    local data = glue.string.split(request, const.requestSeparator)
     local incomingRequest = data[1]
     local actionType
     local currentRequest
-    for requestName, request in pairs(constants.requests) do
+    for requestName, request in pairs(const.requests) do
         if (incomingRequest and incomingRequest == request.requestType) then
             currentRequest = request
             actionType = request.actionType
@@ -8791,10 +8802,6 @@ function rcon.commandInterceptor(playerIndex, message, environment, rconPassword
             local eventsState = eventsStore:getState()
             local cachedResponses = eventsState.cachedResponses
             console_out(#glue.keys(cachedResponses))
-        --elseif (forgeCommand == "freload") then
-        --    ffi.cdef [[void reload(); void load(); void unload();]]
-        --    local sapp_reloader = ffi.load("sapp_reloader")
-        --    sapp_reloader.reload()
         end
     end
 end
@@ -8815,24 +8822,24 @@ end
 function OnGameStart()
     -- Provide compatibily with Chimera by setting "map" as a global variable with current map name
     map = get_var(0, "$map")
-    constants = require "forge.constants"
+    const = require "forge.constants"
 
     -- Add forge rcon as not dangerous for command interception
     rcon.submitRcon("forge")
 
     -- Add forge public commands
     local publicCommands = {
-        constants.requests.spawnObject.requestType,
-        constants.requests.updateObject.requestType,
-        constants.requests.deleteObject.requestType,
-        constants.requests.sendMapVote.requestType
+        const.requests.spawnObject.requestType,
+        const.requests.updateObject.requestType,
+        const.requests.deleteObject.requestType,
+        const.requests.sendMapVote.requestType
     }
     for _, command in pairs(publicCommands) do
         rcon.submitCommand(command)
     end
 
     -- Add forge admin commands
-    local adminCommands = {"fload", "fsave", "fforge", "fbiped", "freload"}
+    local adminCommands = {"fload", "fsave", "fforge", "fbiped"}
     for _, command in pairs(adminCommands) do
         rcon.submitAdmimCommand(command)
     end
@@ -8864,7 +8871,7 @@ function OnGameStart()
         core.loadForgeMap(forgeMapName)
     end
 
-    eventsStore:dispatch({type = constants.requests.flushVotes.actionType})
+    eventsStore:dispatch({type = const.requests.flushVotes.actionType})
     mapVotingEnabled = true
     register_callback(cb["EVENT_TICK"], "OnTick")
     register_callback(cb["EVENT_JOIN"], "OnPlayerJoin")
@@ -8876,7 +8883,7 @@ end
 function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
     -- Intercept objects that are related to a player
     if (playerIndex) then
-        for index, bipedTagId in pairs(constants.bipeds) do
+        for index, bipedTagId in pairs(const.bipeds) do
             if (tagId == bipedTagId) then
                 -- Track objectId of every player
                 playersObjectId[playerIndex] = objectId
@@ -8884,7 +8891,7 @@ function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
                 -- There is a requested biped by a player
                 if (requestedBiped) then
                     requestedBiped = requestedBiped .. "TagId"
-                    local requestedBipedTagPath = constants.bipeds[requestedBiped]
+                    local requestedBipedTagPath = const.bipeds[requestedBiped]
                     local bipedTag = blam.getTag(requestedBipedTagPath, tagClasses.biped)
                     if (bipedTag and bipedTag.id) then
                         return true, bipedTag.id
@@ -8957,22 +8964,19 @@ function OnGameEnd()
     -- Events store are already loaded
     if (eventsStore) then
         -- Clean all forge stuff
-        eventsStore:dispatch({type = constants.requests.flushForge.actionType})
+        eventsStore:dispatch({type = const.requests.flushForge.actionType})
         -- Start vote map screen
         if (mapVotingEnabled) then
-            eventsStore:dispatch({type = constants.requests.loadVoteMapScreen.actionType})
+            eventsStore:dispatch({type = const.requests.loadVoteMapScreen.actionType})
         end
     end
-    -- FIXME THIS IS GARBAGE, BUT GARBAGE IS A THING.. AND IT WORKS SO....
+    -- FIXME This needs a better implementation
     -- write_file("eventsState.json", json.encode(eventsStore:getState()))
     -----@type forgeState
     -- local dumpedState = forgeStore:getState()
     -- dumpedState.currentMap.name = forgeMapName
     -- write_file("forgeState.json", json.encode(dumpedState))
     playersObjectId = {}
-    --ffi.cdef [[void reload(); void load(); void unload();]]
-    --local sapp_reloader = ffi.load("sapp_reloader")
-    --sapp_reloader.reload()
     collectgarbage("collect")
 end
 

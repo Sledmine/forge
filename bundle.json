@@ -2,7 +2,7 @@
     "name": "Forge Island",
     "target": "lua53",
     "include": [
-        "modules\\"
+        "lua\\"
     ],
     "modules": [
         "glue",
@@ -26,6 +26,6 @@
         "forge.reflectors.votingReflector",
         "forge.version"
     ],
-    "main":"client\\forge_island",
+    "main":"lua\\client\\forge_island",
     "output": "dist\\forge_island.lua"
 }

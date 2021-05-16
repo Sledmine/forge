@@ -52,7 +52,7 @@ local mapVotingEnabled = true
 
 -- TODO This needs some refactoring, this configuration is kinda useless on server side
 -- Forge default configuration
-configuration = {
+config = {
     forge = {
         debugMode = false,
         autoSave = false,
@@ -62,12 +62,12 @@ configuration = {
     }
 }
 -- Default debug mode state, set to false at release time to improve performance
-configuration.forge.debugMode = false
+config.forge.debugMode = false
 --- Function to send debug messages to console output
 ---@param message string
 ---@param color string
 function dprint(message, color)
-    if (configuration.forge.debugMode) then
+    if (config.forge.debugMode) then
         local message = message
         if (type(message) ~= "string") then
             message = inspect(message)
@@ -144,9 +144,9 @@ function OnTick()
                             end
                         end]]
                         if (forgingEnabled) then
-                            if (constants.bipeds.monitorTagId) then
+                            if (const.bipeds.monitorTagId) then
                                 if (player.crouchHold and player.tagId ==
-                                    constants.bipeds.monitorTagId) then
+                                    const.bipeds.monitorTagId) then
                                     dprint("playerObjectId: " .. tostring(playerObjectId))
                                     dprint("Trying to process a biped swap request...")
                                     -- FIXME Biped name should be parsed to remove tagId pattern
@@ -155,7 +155,7 @@ function OnTick()
                                         {player.x, player.y, player.z}
                                     delete_object(playerObjectId)
                                 elseif (player.flashlightKey and player.tagId ~=
-                                    constants.bipeds.monitorTagId) then
+                                    const.bipeds.monitorTagId) then
                                     dprint("playerObjectId: " .. tostring(playerObjectId))
                                     dprint("Trying to process a biped swap request...")
                                     -- FIXME Biped name should be parsed to remove tagId pattern
@@ -178,11 +178,11 @@ function rcon.commandInterceptor(playerIndex, message, environment, rconPassword
     dprint("Incoming rcon command:", "warning")
     dprint(message)
     local request = string.gsub(message, "'", "")
-    local data = glue.string.split(request, constants.requestSeparator)
+    local data = glue.string.split(request, const.requestSeparator)
     local incomingRequest = data[1]
     local actionType
     local currentRequest
-    for requestName, request in pairs(constants.requests) do
+    for requestName, request in pairs(const.requests) do
         if (incomingRequest and incomingRequest == request.requestType) then
             currentRequest = request
             actionType = request.actionType
@@ -268,17 +268,17 @@ end
 function OnGameStart()
     -- Provide compatibily with Chimera by setting "map" as a global variable with current map name
     map = get_var(0, "$map")
-    constants = require "forge.constants"
+    const = require "forge.constants"
 
     -- Add forge rcon as not dangerous for command interception
     rcon.submitRcon("forge")
 
     -- Add forge public commands
     local publicCommands = {
-        constants.requests.spawnObject.requestType,
-        constants.requests.updateObject.requestType,
-        constants.requests.deleteObject.requestType,
-        constants.requests.sendMapVote.requestType
+        const.requests.spawnObject.requestType,
+        const.requests.updateObject.requestType,
+        const.requests.deleteObject.requestType,
+        const.requests.sendMapVote.requestType
     }
     for _, command in pairs(publicCommands) do
         rcon.submitCommand(command)
@@ -317,7 +317,7 @@ function OnGameStart()
         core.loadForgeMap(forgeMapName)
     end
 
-    eventsStore:dispatch({type = constants.requests.flushVotes.actionType})
+    eventsStore:dispatch({type = const.requests.flushVotes.actionType})
     mapVotingEnabled = true
     register_callback(cb["EVENT_TICK"], "OnTick")
     register_callback(cb["EVENT_JOIN"], "OnPlayerJoin")
@@ -329,7 +329,7 @@ end
 function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
     -- Intercept objects that are related to a player
     if (playerIndex) then
-        for index, bipedTagId in pairs(constants.bipeds) do
+        for index, bipedTagId in pairs(const.bipeds) do
             if (tagId == bipedTagId) then
                 -- Track objectId of every player
                 playersObjectId[playerIndex] = objectId
@@ -337,7 +337,7 @@ function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
                 -- There is a requested biped by a player
                 if (requestedBiped) then
                     requestedBiped = requestedBiped .. "TagId"
-                    local requestedBipedTagPath = constants.bipeds[requestedBiped]
+                    local requestedBipedTagPath = const.bipeds[requestedBiped]
                     local bipedTag = blam.getTag(requestedBipedTagPath, tagClasses.biped)
                     if (bipedTag and bipedTag.id) then
                         return true, bipedTag.id
@@ -410,10 +410,10 @@ function OnGameEnd()
     -- Events store are already loaded
     if (eventsStore) then
         -- Clean all forge stuff
-        eventsStore:dispatch({type = constants.requests.flushForge.actionType})
+        eventsStore:dispatch({type = const.requests.flushForge.actionType})
         -- Start vote map screen
         if (mapVotingEnabled) then
-            eventsStore:dispatch({type = constants.requests.loadVoteMapScreen.actionType})
+            eventsStore:dispatch({type = const.requests.loadVoteMapScreen.actionType})
         end
     end
     -- FIXME This needs a better implementation

@@ -43,7 +43,7 @@ local function votingReducer(state, action)
         dprint("-> [Voting Store]")
         dprint("Action: " .. action.type, "category")
     end
-    if (action.type == constants.requests.appendVoteMap.actionType) then
+    if (action.type == const.requests.appendVoteMap.actionType) then
         if (#state.votingMenu.mapsList < 4) then
             local map = action.payload.map
             glue.append(state.votingMenu.mapsList, map)

@@ -1,6 +1,10 @@
 # Changelog
 
-# 1.0.0-beta-4
+# 1.0.0-beta.5
+## Code changes:
+- Fixed memory leaks causing incremental low performance and eventual crashes
+
+# 1.0.0-beta.4
 ## Code changes:
 - General code optimizations
 - Fixed bug with fmaps storing garbage properties
@@ -18,7 +22,7 @@ compatibility with aLTis hud sway, blur effect on low health
 available gametypes supported for that map
 - Added Forge controls on pause menu, change when on monitor or spartan
 
-# 1.0.0-beta-3
+# 1.0.0-beta.3
 ## Code changes:
 - Improved performance and security in general
 - Restored colors for different crosshair states as a monitor
@@ -52,7 +56,7 @@ available gametypes supported for that map
 ## Known issues
 - Forge objects menu options are reset when opening object properties
 
-# 1.0.0-beta-2
+# 1.0.0-beta.2
 
 ## Code changes:
 - Fixed a problem with the animation timer for the loading Forge objects menu
@@ -110,8 +114,7 @@ available gametypes supported for that map
 ## Known issues
 - Forge objects menu options are reset when opening object properties
 
-# 1.0.0-beta-1
-
+# 1.0.0-beta.1
 ## Code changes:
 - Restored category and name text being displayed by looking at Forge objects
 - Added current project version number on pause menu

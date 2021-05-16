@@ -79,7 +79,7 @@ local function playerReducer(state, action)
             local tempObject = blam.object(get_object(state.attachedObjectId))
             if (tempObject) then
                 local distance = core.calculateDistanceFromObject(player, tempObject)
-                if (configuration.forge.snapMode) then
+                if (config.forge.snapMode) then
                     state.distance = glue.round(distance)
                 else
                     state.distance = distance
@@ -115,7 +115,7 @@ local function playerReducer(state, action)
                 if (not forgeObject) then
                     -- Object does not exist, create request table and send request
                     local requestTable = {}
-                    requestTable.requestType = constants.requests.spawnObject.requestType
+                    requestTable.requestType = const.requests.spawnObject.requestType
                     requestTable.tagId = tempObject.tagId
                     requestTable.x = state.xOffset
                     requestTable.y = state.yOffset
@@ -131,7 +131,7 @@ local function playerReducer(state, action)
                     local tempObject = blam.object(get_object(state.attachedObjectId))
                     local requestTable = {}
                     requestTable.objectId = forgeObject.remoteId
-                    requestTable.requestType = constants.requests.updateObject.requestType
+                    requestTable.requestType = const.requests.updateObject.requestType
                     requestTable.x = tempObject.x
                     requestTable.y = tempObject.y
                     requestTable.z = tempObject.z
@@ -161,7 +161,7 @@ local function playerReducer(state, action)
                 delete_object(state.attachedObjectId)
             else
                 local requestTable = forgeObject
-                requestTable.requestType = constants.requests.deleteObject.requestType
+                requestTable.requestType = const.requests.deleteObject.requestType
                 requestTable.remoteId = forgeObject.remoteId
                 core.sendRequest(core.createRequest(requestTable))
             end
@@ -180,7 +180,7 @@ local function playerReducer(state, action)
         local xOffset = player.x - state.attachX + player.cameraX * state.distance
         local yOffset = player.y - state.attachY + player.cameraY * state.distance
         local zOffset = player.z - state.attachZ + player.cameraZ * state.distance
-        if (configuration.forge.snapMode) then
+        if (config.forge.snapMode) then
             state.xOffset = glue.round(xOffset)
             state.yOffset = glue.round(yOffset)
             state.zOffset = glue.round(zOffset)
@@ -197,7 +197,7 @@ local function playerReducer(state, action)
             local tempObject = blam.object(get_object(state.attachedObjectId))
             if (tempObject) then
                 local distance = core.calculateDistanceFromObject(player, tempObject)
-                if (configuration.forge.snapMode) then
+                if (config.forge.snapMode) then
                     state.distance = glue.round(distance)
                 else
                     state.distance = distance
@@ -271,7 +271,7 @@ local function playerReducer(state, action)
         return state
     elseif (action.type == "SET_OBJECT_COLOR") then
         if (action.payload) then
-            state.color = glue.index(constants.colorsNumber)[action.payload]
+            state.color = glue.index(const.colorsNumber)[action.payload]
         else
             dprint("Warning, attempt set color state value to nil.")
         end

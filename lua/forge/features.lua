@@ -14,7 +14,7 @@ local features = {}
 ---@param state number
 function features.setCrosshairState(state)
     local forgeDefaultInterface = blam.weaponHudInterface(
-                                      constants.weaponHudInterfaces.forgeCrosshairTagId)
+                                      const.weaponHudInterfaces.forgeCrosshairTagId)
     if (forgeDefaultInterface) then
         local newCrosshairs = forgeDefaultInterface.crosshairs
         if (state and state < 5) then
@@ -75,9 +75,9 @@ function features.swapBiped()
         player.health = 1
         player.shield = 1
 
-        local monitorTagId = constants.bipeds.monitorTagId
+        local monitorTagId = const.bipeds.monitorTagId
         local spartanTagId
-        for bipedPropertyName, bipedTagId in pairs(constants.bipeds) do
+        for bipedPropertyName, bipedTagId in pairs(const.bipeds) do
             if (not bipedPropertyName:find("monitor")) then
                 spartanTagId = bipedTagId
                 break
@@ -139,7 +139,7 @@ function features.printHUD(message, optional, forcedTickCount)
             290,
             640,
             480,
-            constants.hudFontTagId,
+            const.hudFontTagId,
             "center",
             table.unpack(color)
         }
@@ -150,7 +150,7 @@ function features.printHUD(message, optional, forcedTickCount)
             285,
             640,
             480,
-            constants.hudFontTagId,
+            const.hudFontTagId,
             "center",
             table.unpack(color)
         }
@@ -158,17 +158,17 @@ function features.printHUD(message, optional, forcedTickCount)
 end
 
 function features.animateForgeLoading()
-    local bitmapFrameTagId = constants.bitmaps.forgingIconFrame0TagId
+    local bitmapFrameTagId = const.bitmaps.forgingIconFrame0TagId
     if (loadingFrame == 0) then
-        bitmapFrameTagId = constants.bitmaps.forgeIconFrame1TagId
+        bitmapFrameTagId = const.bitmaps.forgeIconFrame1TagId
         loadingFrame = 1
     else
-        bitmapFrameTagId = constants.bitmaps.forgingIconFrame0TagId
+        bitmapFrameTagId = const.bitmaps.forgingIconFrame0TagId
         loadingFrame = 0
     end
 
     -- Animate Forge loading image
-    local uiWidget = blam.uiWidgetDefinition(constants.uiWidgetDefinitions
+    local uiWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions
                                                  .loadingAnimation.id)
     uiWidget.backgroundBitmap = bitmapFrameTagId
     return true
@@ -178,7 +178,7 @@ end
 ---@return mouseInput
 function features.getMouseInput()
     ---@class mouseInput
-    local mouseInput = {scroll = tonumber(read_char(constants.mouseInputAddress + 8))}
+    local mouseInput = {scroll = tonumber(read_char(const.mouseInputAddress + 8))}
     return mouseInput
 end
 
@@ -230,7 +230,7 @@ function features.openForgeObjectPropertiesMenu()
         type = "UPDATE_FORGE_ELEMENTS_LIST",
         payload = {forgeMenu = forgeState.forgeMenu}
     })
-    features.openMenu(constants.uiWidgetDefinitions.forgeMenu.path)
+    features.openMenu(const.uiWidgetDefinitions.forgeMenu.path)
 end
 
 function features.getObjectMenuFunctions()
@@ -259,168 +259,168 @@ function features.getObjectMenuFunctions()
             playerStore:dispatch({type = "ROTATE_OBJECT"})
         end,
         ["snap mode"] = function()
-            configuration.forge.snapMode = not configuration.forge.snapMode
+            config.forge.snapMode = not config.forge.snapMode
         end,
         ["alpha"] = function()
             playerStore:dispatch({
                 type = "SET_OBJECT_CHANNEL",
-                payload = {channel = constants.teleportersChannels.alpha}
+                payload = {channel = const.teleportersChannels.alpha}
             })
         end,
         ["bravo"] = function()
             playerStore:dispatch({
                 type = "SET_OBJECT_CHANNEL",
-                payload = {channel = constants.teleportersChannels.bravo}
+                payload = {channel = const.teleportersChannels.bravo}
             })
         end,
         ["charly"] = function()
             playerStore:dispatch({
                 type = "SET_OBJECT_CHANNEL",
-                payload = {channel = constants.teleportersChannels.charly}
+                payload = {channel = const.teleportersChannels.charly}
             })
         end,
         ["white (default)"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.white, tempObject)
+            features.setObjectColor(const.colors.white, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.white
+                payload = const.colors.white
             })
         end,
         ["black"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.black, tempObject)
+            features.setObjectColor(const.colors.black, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.black
+                payload = const.colors.black
             })
         end,
         ["red"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.red, tempObject)
+            features.setObjectColor(const.colors.red, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.red
+                payload = const.colors.red
             })
         end,
         ["blue"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.blue, tempObject)
+            features.setObjectColor(const.colors.blue, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.blue
+                payload = const.colors.blue
             })
         end,
         ["gray"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.gray, tempObject)
+            features.setObjectColor(const.colors.gray, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.gray
+                payload = const.colors.gray
             })
         end,
         ["yellow"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.yellow, tempObject)
+            features.setObjectColor(const.colors.yellow, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.yellow
+                payload = const.colors.yellow
             })
         end,
         ["green"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.green, tempObject)
+            features.setObjectColor(const.colors.green, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.green
+                payload = const.colors.green
             })
         end,
         ["pink"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.pink, tempObject)
+            features.setObjectColor(const.colors.pink, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.pink
+                payload = const.colors.pink
             })
         end,
         ["purple"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.purple, tempObject)
+            features.setObjectColor(const.colors.purple, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.purple
+                payload = const.colors.purple
             })
         end,
         ["cyan"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.cyan, tempObject)
+            features.setObjectColor(const.colors.cyan, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.cyan
+                payload = const.colors.cyan
             })
         end,
         ["cobalt"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.cobalt, tempObject)
+            features.setObjectColor(const.colors.cobalt, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.cobalt
+                payload = const.colors.cobalt
             })
         end,
         ["orange"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.orange, tempObject)
+            features.setObjectColor(const.colors.orange, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.orange
+                payload = const.colors.orange
             })
         end,
         ["teal"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.teal, tempObject)
+            features.setObjectColor(const.colors.teal, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.teal
+                payload = const.colors.teal
             })
         end,
         ["sage"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.sage, tempObject)
+            features.setObjectColor(const.colors.sage, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.sage
+                payload = const.colors.sage
             })
         end,
         ["brown"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.brown, tempObject)
+            features.setObjectColor(const.colors.brown, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.brown
+                payload = const.colors.brown
             })
         end,
         ["tan"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.tan, tempObject)
+            features.setObjectColor(const.colors.tan, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.tan
+                payload = const.colors.tan
             })
         end,
         ["maroon"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.maroon, tempObject)
+            features.setObjectColor(const.colors.maroon, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.maroon
+                payload = const.colors.maroon
             })
         end,
         ["salmon"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(constants.colors.salmon, tempObject)
+            features.setObjectColor(const.colors.salmon, tempObject)
             playerStore:dispatch({
                 type = "SET_OBJECT_COLOR",
-                payload = constants.colors.salmon
+                payload = const.colors.salmon
             })
         end
     }
@@ -440,7 +440,7 @@ end
 --- Hide or unhide forge reflection objects for gameplay purposes
 ---@param hide boolean
 function features.hideReflectionObjects(hide)
-    if (not configuration.forge.debugMode) then
+    if (not config.forge.debugMode) then
         ---@type eventsState
         local eventsStore = eventsStore:getState()
         for objectIndex, forgeObject in pairs(eventsStore.forgeObjects) do
@@ -448,11 +448,11 @@ function features.hideReflectionObjects(hide)
                 local object = blam.object(get_object(objectIndex))
                 if (object) then
                     local tempTag = blam.getTag(object.tagId)
-                    if (not stringHas(tempTag.path, constants.hideObjectsExceptions)) then
+                    if (not stringHas(tempTag.path, const.hideObjectsExceptions)) then
                         if (hide) then
                             -- Hide objects by setting different properties
                             object.isGhost = true
-                            object.z = constants.minimumZSpawnPoint * 4
+                            object.z = const.minimumZSpawnPoint * 4
                         else
                             object.isGhost = false
                             object.z = forgeObject.z
@@ -468,7 +468,7 @@ end
 function features.playSound(tagPath, gain)
     local player = blam.player(get_player())
     if (player) then
-        local playSoundCommand = constants.hsc.playSound:format(tagPath, player.index,
+        local playSoundCommand = const.hsc.playSound:format(tagPath, player.index,
                                                                 gain or 1.0)
         execute_script(playSoundCommand)
     end
@@ -486,7 +486,7 @@ function features.hudUpgrades()
     if (player) then
         local isPlayerOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
         if (not isPlayerOnMenu) then
-            local localPlayer = read_dword(constants.localPlayerAddress)
+            local localPlayer = read_dword(const.localPlayerAddress)
             local currentGrenadeType = read_word(localPlayer + 202)
             if (not blam.isNull(currentGrenadeType)) then
                 if (not lastGrenadeType) then
@@ -495,9 +495,9 @@ function features.hudUpgrades()
                 if (lastGrenadeType ~= currentGrenadeType) then
                     lastGrenadeType = currentGrenadeType
                     if (lastGrenadeType == 1) then
-                        features.playSound(constants.sounds.uiForwardPath .. "2", 1)
+                        features.playSound(const.sounds.uiForwardPath .. "2", 1)
                     else
-                        features.playSound(constants.sounds.uiForwardPath, 1)
+                        features.playSound(const.sounds.uiForwardPath, 1)
                     end
                 end
             end
@@ -522,7 +522,7 @@ function features.hudUpgrades()
                 healthDepletedRecently = false
             end
             -- Get hud background bitmap
-            local visorBitmap = blam.bitmap(constants.bitmaps.unitHudBackgroundTagId)
+            local visorBitmap = blam.bitmap(const.bitmaps.unitHudBackgroundTagId)
             if (visorBitmap) then
                 -- Player is not in a vehicle
                 if (blam.isNull(player.vehicleObjectId)) then
@@ -542,7 +542,7 @@ function features.hudUpgrades()
                 if (not landedRecently) then
                     landedRecently = true
                     -- Play sound using hsc scripts
-                    features.playSound(constants.sounds.landHardPlayerDamagePath, 0.8)
+                    features.playSound(const.sounds.landHardPlayerDamagePath, 0.8)
                 end
             else
                 landedRecently = false
@@ -567,7 +567,7 @@ function features.regenerateHealth(playerIndex)
                 end
             end
             if (player.health < 1 and player.shield >= 1) then
-                local newPlayerHealth = player.health + constants.healthRegenerationAmount
+                local newPlayerHealth = player.health + const.healthRegenerationAmount
                 if (newPlayerHealth > 1) then
                     player.health = 1
                 else

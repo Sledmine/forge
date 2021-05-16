@@ -45,9 +45,9 @@ local forgeReflector = require "forge.reflectors.forgeReflector"
 local votingReflector = require "forge.reflectors.votingReflector"
 
 -- Forge default configuration
-configuration = {}
+config = {}
 
-configuration.forge = {
+config.forge = {
     debugMode = false,
     autoSave = false,
     autoSaveTime = 15000,
@@ -72,7 +72,7 @@ loadingFrame = 0
 ---@param message string
 ---@param color string
 function dprint(message, color)
-    if (configuration.forge.debugMode) then
+    if (config.forge.debugMode) then
         local message = message
         if (type(message) ~= "string") then
             message = inspect(message)
@@ -94,7 +94,7 @@ end
 
 --- Function to automatically save a current Forge map
 function autoSaveForgeMap()
-    if (configuration.forge.autoSave and core.isPlayerMonitor()) then
+    if (config.forge.autoSave and core.isPlayerMonitor()) then
         ---@type forgeState
         local forgeState = forgeStore:getState()
         local currentMapName = forgeState.currentMap.name
@@ -106,7 +106,7 @@ end
 
 function OnMapLoad()
     -- Dinamically load constants for the current Forge map
-    constants = require "forge.constants"
+    const = require "forge.constants"
 
     -- Like Redux we have some kind of store baby!! the rest is pure magic..
     playerStore = redux.createStore(playerReducer)
@@ -118,7 +118,7 @@ function OnMapLoad()
 
     -- TODO Migrate this into a feature or something
     local sceneriesTagCollection = blam.tagCollection(
-                                       constants.tagCollections.forgeObjectsTagId)
+                                       const.tagCollections.forgeObjectsTagId)
     local forgeObjectsList = core.getForgeObjects(sceneriesTagCollection)
     -- Iterate over all the sceneries available in the sceneries tag collection
     for _, tagId in pairs(forgeObjectsList) do
@@ -181,7 +181,7 @@ function OnMapLoad()
 
         -- Start autosave timer
         if (not autoSaveTimer and server_type == "local") then
-            local autoSaveTime = configuration.forge.autoSaveTime
+            local autoSaveTime = config.forge.autoSaveTime
             autoSaveTimer = set_timer(autoSaveTime, "autoSaveForgeMap")
         end
 
@@ -225,7 +225,7 @@ function OnPreFrame()
                 core.saveForgeMap()
             else
                 local elementsList = blam.unicodeStringList(
-                                         constants.unicodeStrings.mapsListTagId)
+                                         const.unicodeStrings.mapsListTagId)
                 local mapName = elementsList.stringList[pressedButton]:gsub(" ", "_")
                 core.loadForgeMap(mapName)
             end
@@ -248,7 +248,7 @@ function OnPreFrame()
                     forgeStore:dispatch({type = "UPWARD_NAV_FORGE_MENU"})
                 else
                     dprint("Closing Forge menu...")
-                    interface.close(constants.uiWidgetDefinitions.forgeMenu)
+                    interface.close(const.uiWidgetDefinitions.forgeMenu)
                 end
             elseif (pressedButton == 8) then
                 forgeStore:dispatch({type = "INCREMENT_FORGE_MENU_PAGE"})
@@ -257,7 +257,7 @@ function OnPreFrame()
             else
                 if (playerState.attachedObjectId) then
                     local elementsList = blam.unicodeStringList(
-                                             constants.unicodeStrings
+                                             const.unicodeStrings
                                                  .forgeMenuElementsTagId)
                     local selectedElement = elementsList.stringList[pressedButton]
                     if (selectedElement) then
@@ -275,7 +275,7 @@ function OnPreFrame()
                     end
                 else
                     local elementsList = blam.unicodeStringList(
-                                             constants.unicodeStrings
+                                             const.unicodeStrings
                                                  .forgeMenuElementsTagId)
                     local selectedSceneryName = elementsList.stringList[pressedButton]
                     local sceneryPath =
@@ -285,7 +285,7 @@ function OnPreFrame()
                             type = "CREATE_AND_ATTACH_OBJECT",
                             payload = {path = sceneryPath}
                         })
-                        interface.close(constants.uiWidgetDefinitions.forgeMenu)
+                        interface.close(const.uiWidgetDefinitions.forgeMenu)
                     else
                         forgeStore:dispatch({
                             type = "DOWNWARD_NAV_FORGE_MENU",
@@ -302,7 +302,7 @@ function OnPreFrame()
         pressedButton = interface.triggers("map_vote_menu", 5)
         if (pressedButton) then
             local voteMapRequest = {
-                requestType = constants.requests.sendMapVote.requestType,
+                requestType = const.requests.sendMapVote.requestType,
                 mapVoted = pressedButton
             }
             core.sendRequest(core.createRequest(voteMapRequest))
@@ -355,7 +355,7 @@ function OnTick()
         end
         if (core.isPlayerMonitor()) then
             local controlsStrings = blam.unicodeStringList(
-                                        constants.unicodeStrings.forgeControlsTagId)
+                                        const.unicodeStrings.forgeControlsTagId)
             if (controlsStrings) then
                 local newStrings = controlsStrings.stringList
                 -- E key
@@ -524,7 +524,7 @@ function OnTick()
                         type = "UPDATE_FORGE_ELEMENTS_LIST",
                         payload = {forgeMenu = forgeState.forgeMenu}
                     })
-                    features.openMenu(constants.uiWidgetDefinitions.forgeMenu.path)
+                    features.openMenu(const.uiWidgetDefinitions.forgeMenu.path)
                 elseif (player.crouchHold and server_type == "local") then
                     features.swapBiped()
                     playerStore:dispatch({type = "DETACH_OBJECT"})
@@ -539,7 +539,7 @@ function OnTick()
                 player.zVel = player.cameraZ * 0.06
             end]]
             local controlsStrings = blam.unicodeStringList(
-                                        constants.unicodeStrings.forgeControlsTagId)
+                                        const.unicodeStrings.forgeControlsTagId)
             if (controlsStrings) then
                 local newStrings = controlsStrings.stringList
                 -- E key
@@ -559,12 +559,12 @@ function OnTick()
             -- Convert into monitor
             if (player.flashlightKey and not player.crouchHold) then
                 features.swapBiped()
-            elseif (configuration.forge.debugMode and player.actionKey and
+            elseif (config.forge.debugMode and player.actionKey and
                 player.crouchHold and server_type == "local") then
-                local bipedTag = blam.getTag(constants.bipeds.spartanTagId)
+                local bipedTag = blam.getTag(const.bipeds.spartanTagId)
                 core.spawnObject(tagClasses.biped, bipedTag.path, player.x, player.y,
                                  player.z)
-            elseif (configuration.forge.debugMode and player.flashlightKey and
+            elseif (config.forge.debugMode and player.flashlightKey and
                 player.crouchHold and server_type == "local") then
                 if (currentPermutation < 12) then
                     currentPermutation = currentPermutation + 1
@@ -578,13 +578,13 @@ function OnTick()
 
     -- Attach respective hooks for menus
     interface.hook("maps_menu_hook", interface.stop,
-                   constants.uiWidgetDefinitions.mapsList)
+                   const.uiWidgetDefinitions.mapsList)
     interface.hook("forge_menu_hook", interface.stop,
-                   constants.uiWidgetDefinitions.objectsList)
+                   const.uiWidgetDefinitions.objectsList)
     interface.hook("forge_menu_close_hook", interface.stop,
-                   constants.uiWidgetDefinitions.forgeMenu)
+                   const.uiWidgetDefinitions.forgeMenu)
     interface.hook("loading_menu_close_hook", interface.stop,
-                   constants.uiWidgetDefinitions.loadingMenu)
+                   const.uiWidgetDefinitions.loadingMenu)
 
     -- Update tick count
     textRefreshCount = textRefreshCount + 1
@@ -598,11 +598,11 @@ end
 
 function OnRcon(message)
     local request = string.gsub(message, "'", "")
-    local splitData = glue.string.split(request, constants.requestSeparator)
+    local splitData = glue.string.split(request, const.requestSeparator)
     local incomingRequest = splitData[1]
     local actionType
     local currentRequest
-    for requestName, request in pairs(constants.requests) do
+    for requestName, request in pairs(const.requests) do
         if (incomingRequest and incomingRequest == request.requestType) then
             currentRequest = request
             actionType = request.actionType
@@ -623,7 +623,7 @@ function OnMapUnload()
     core.flushForge()
 
     -- Save configuration
-    write_file(defaultConfigurationPath .. "\\forge_island.ini", ini.encode(configuration))
+    write_file(defaultConfigurationPath .. "\\forge_island.ini", ini.encode(config))
 end
 
 if (server_type == "local") then

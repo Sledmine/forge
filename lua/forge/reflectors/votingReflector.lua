@@ -35,15 +35,15 @@ local function votingReflector()
     end
 
     -- Get maps vote menu buttons lists
-    local votingMapsMenuList = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.voteMenuList.id)
+    local votingMapsMenuList = blam.uiWidgetDefinition(const.uiWidgetDefinitions.voteMenuList.id)
     votingMapsMenuList.childWidgetsCount = #glue.keys(currentMapsList)
 
     -- Get maps vote string list
-    local votingMapsStrings = blam.unicodeStringList(constants.unicodeStrings.votingMapsListTagId)
+    local votingMapsStrings = blam.unicodeStringList(const.unicodeStrings.votingMapsListTagId)
     votingMapsStrings.stringList = currentMapsList
 
     -- Get maps vote count string list
-    local votingCountListStrings = blam.unicodeStringList(constants.unicodeStrings.votingCountListTagId)
+    local votingCountListStrings = blam.unicodeStringList(const.unicodeStrings.votingCountListTagId)
     votingCountListStrings.stringList = votesList
 
         -- TODO Add count replacing for child widgets

@@ -47,7 +47,8 @@ Every scenery stored in the scenery database is automatically converted into an 
 - Forge permission system, deny Forge requests to the server for specific players.
 
 ## Help needed with
-We are giving our best effort to make this project as complete and useful as possible, but there is some stuff out of our knowledge where you can probably give us a hand to concentrate in other key less demanding features.
+We are giving our best effort to make this project as complete and useful as possible, but there is some stuff out of our knowledge where you can probably give us a hand to concentrate in other
+demanding features.
 
 - Object placement features, grid, magnetisim, etc.
 - Object history placement, provide undo, redo operations along time.
@@ -78,28 +79,12 @@ Forge reimplements some concepts from modern app libraries like the store from [
 - Rcon messages are not persistent, except data intercepted from them, meaning that messages are not sent too often, only when they are needed, ensuring performance and less spamming messages blocking Halo Custom Edition thread flow
 - Rcon messages come with full range compression to send specific values like floats that are hard to send via string message, for example coordinates and rotation values for every object are too important to keep them exactly in the same way they were sent, the compression used in Forge ensures the maximum and the minimum exact value at the moment of decompression using `string.pack` and `string.unpack` from **Lua 5.3** (SAPP uses **Lua 5.1**, but some compatibility with **Lua 5.3** can be achived by implemeting a compatibility library, bringing `string.unpack` and `string.pack` as a backport)
 
-## Libraries used in the project
-
-- [glue](https://github.com/Sledmine/glue)
-- [inspect](https://github.com/kikito/inspect.lua)
-- [json](https://github.com/rxi/json.lua)
-- [redux](https://github.com/piperswe/lua-redux)
-- [maethrillian](https://github.com/Sledmine/Maethrillian)
-- [lua-blam](https://github.com/Sledmine/lua-blam)
-- [lua-ini](https://github.com/Sledmine/lua-ini)
-- [lua-color-converter](https://github.com/Sledmine/lua-color-converter)
-- [luaunit](https://github.com/bluebird75/luaunit)
-- [lua-compat-5.3](https://github.com/keplerproject/lua-compat-5.3)
-- [lua-struct](https://github.com/iryont/lua-struct)
-- [rcon-bypass](https://github.com/Sledmine/rcon-bypass)
-
 # Building Forge
 
-To bundle the project you need to be sure to have all the required dependencies installed on the project.
-Currently all the required dependencies are stored in this repository so there is no need to gather
-external dependencies by now.
+Forge tagset is not available to the public yet, somehow it will be available here later.
 
-You can use [Mercury](https://github.com/Sledmine/Mercury) to bundle the project using the next command line on the project folder:
+To bundle the lua code you need to be sure to have all the required dependencies installed on the project.
+Currently all the required dependencies are stored in this repository so there is no need to gather external dependencies by now, then you can use [Mercury](https://github.com/Sledmine/Mercury) to bundle the project using the next command line on the project folder:
 
 **Forge Island - Client:**
 ```cmd
@@ -111,10 +96,14 @@ mercury luabundle
 mercury luabundle server
 ```
 
- The server bundled script requires the **compat53/** folder from this repository placed in the **lua/** folder of a SAPP server to work, this folder can't be bundled with the script.
+Server bundled script requires the **compat53/** folder from this repository placed in the **lua/** folder of a SAPP server to work, this folder can't be bundled with the script.
 
 If for some reason you can't use [Mercury](https://github.com/Sledmine/Mercury) to bundle the
 project, you can use [luacc](https://github.com/mihacooper/luacc), this is the bundle implementation used in [Mercury](https://github.com/Sledmine/Mercury) for modular lua projects.
+
+Also as now the project is using [Invader](https://github.com/SnowyMouse/invader) as part of the
+building tools due to extended file limits size, some modifications for SAPP are needed in order
+to bring support for these invader expanded maps. Some more nfo about this later.
 
 # Long way to Forge
 

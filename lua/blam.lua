@@ -1318,17 +1318,17 @@ local modelAnimationsStructure = {
 -- Weapon structure
 local weaponTagStructure = {model = {type = "dword", offset = 0x34}}
 
---@class modelMarkers
---@field name string
---@field nodeIndex number
+-- @class modelMarkers
+-- @field name string
+-- @field nodeIndex number
 -- TODO Add rotation fields, check Guerilla tag
---@field x number
---@field y number
---@field z number
+-- @field x number
+-- @field y number
+-- @field z number
 
 ---@class modelRegion
 ---@field permutationCount number
---@field markersList modelMarkers[]
+-- @field markersList modelMarkers[]
 
 ---@class modelNode
 ---@field x number
@@ -1360,7 +1360,7 @@ local modelStructure = {
         offset = 0xC8,
         jump = 76,
         rows = {
-            permutationCount = {type = "dword", offset = 0x40},
+            permutationCount = {type = "dword", offset = 0x40}
             --[[permutationsList = {
                 type = "table",
                 offset = 0x16C,
@@ -1438,10 +1438,15 @@ local playerStructure = {
 
 local globalsTagStructure = {
     -- WARNING Separeted properties for easier accesibility, structure is an array of properties
-    multiplayerInformation = {type = "table", jump = 0x0, offset = 0x168, rows = {
-        flag = {type = "dword", offset = 0xC},
-        unit = {type = "dword", offset = 0x1C}
-    }}
+    multiplayerInformation = {
+        type = "table",
+        jump = 0x0,
+        offset = 0x168,
+        rows = {
+            flag = {type = "dword", offset = 0xC},
+            unit = {type = "dword", offset = 0x1C}
+        }
+    }
 }
 
 ------------------------------------------------------------------------------
@@ -1671,12 +1676,8 @@ end
 ---@param tag string | number
 ---@return scenario
 function blam.scenario(tag)
-    local tag = tag or 0
-    if (isValid(tag)) then
-        local scenarioTag = blam.getTag(tag, tagClasses.scenario)
-        return createObject(scenarioTag.data, scenarioStructure)
-    end
-    return nil
+    local scenarioTag = blam.getTag(tag or 0, tagClasses.scenario)
+    return createObject(scenarioTag.data, scenarioStructure)
 end
 
 --- Create a Scenery object from a tag path or id

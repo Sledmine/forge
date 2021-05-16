@@ -44,7 +44,7 @@ local function forgeReducer(state, action)
     if (not state) then
         -- Create default state if it does not exist
         state = glue.deepcopy(defaultState)
-        state.mapsMenu.sidebar.height = constants.maximumSidebarSize
+        state.mapsMenu.sidebar.height = const.maximumSidebarSize
     end
     if (action.type) then
         dprint("[Forge Reducer]:")
@@ -61,15 +61,15 @@ local function forgeReducer(state, action)
         state.mapsMenu.currentMapsList = glue.chunks(state.mapsMenu.mapsList, 8)
         local totalPages = #state.mapsMenu.currentMapsList
         if (totalPages > 1) then
-            local sidebarHeight = glue.floor(constants.maximumSidebarSize / totalPages)
-            if (sidebarHeight < constants.minimumSidebarSize) then
-                sidebarHeight = constants.minimumSidebarSize
+            local sidebarHeight = glue.floor(const.maximumSidebarSize / totalPages)
+            if (sidebarHeight < const.minimumSidebarSize) then
+                sidebarHeight = const.minimumSidebarSize
             end
-            local spaceLeft = constants.maximumSidebarSize - sidebarHeight
+            local spaceLeft = const.maximumSidebarSize - sidebarHeight
             state.mapsMenu.sidebar.slice = glue.round(spaceLeft / (totalPages - 1))
             local fullSize = sidebarHeight +
                                  (state.mapsMenu.sidebar.slice * (totalPages - 1))
-            state.mapsMenu.sidebar.overflow = fullSize - constants.maximumSidebarSize
+            state.mapsMenu.sidebar.overflow = fullSize - const.maximumSidebarSize
             state.mapsMenu.sidebar.height = sidebarHeight -
                                                 state.mapsMenu.sidebar.overflow
         end
@@ -200,6 +200,16 @@ local function forgeReducer(state, action)
         end
         state.currentMap.author = action.payload.mapAuthor
         return state
+    elseif (action.type == "UPDATE_BUDGET") then
+        -- FIXME This should be separated from this reducer in order to prevent menu blinking
+        -- Set current budget bar data
+        local objectState = eventsStore:getState().forgeObjects
+        local currentObjects = #glue.keys(objectState)
+        local newBarSize = currentObjects * const.maximumProgressBarSize /
+                               const.maximumObjectsBudget
+        state.forgeMenu.currentBarSize = glue.floor(newBarSize)
+        state.forgeMenu.currentBudget = tostring(currentObjects)
+        return state
     elseif (action.type == "UPDATE_MAP_INFO") then
         if (action.payload) then
             local expectedObjects = action.payload.expectedObjects
@@ -221,27 +231,20 @@ local function forgeReducer(state, action)
         if (server_type ~= "sapp") then
             if (eventsStore) then
                 if (state.loadingMenu.expectedObjects > 0) then
-                    -- Set current budget bar data
-                    local objectState = eventsStore:getState().forgeObjects
-                    local currentObjects = #glue.keys(objectState)
-                    local newBarSize = currentObjects * constants.maximumProgressBarSize /
-                                           constants.maximumObjectsBudget
-                    state.forgeMenu.currentBarSize = glue.floor(newBarSize)
-                    state.forgeMenu.currentBudget = tostring(currentObjects)
-
                     -- Prevent player from falling and desyncing by freezing it
                     local player = blam.biped(get_dynamic_player())
-                    if (player and server_type == "sapp") then
+                    -- FIXME For some reason player is being able unfreeze after applying this
+                    if (player) then
                         player.zVel = 0
                         player.isFrozen = true
                     end
 
                     -- Set loading map bar data
                     local expectedObjects = state.loadingMenu.expectedObjects
-                    local newBarSize = currentObjects * constants.maxLoadingBarSize /
+                    local newBarSize = currentObjects * const.maxLoadingBarSize /
                                            expectedObjects
                     state.loadingMenu.currentBarSize = glue.floor(newBarSize)
-                    if (state.loadingMenu.currentBarSize >= constants.maxLoadingBarSize) then
+                    if (state.loadingMenu.currentBarSize >= const.maxLoadingBarSize) then
                         -- Unfreeze player
                         local player = blam.biped(get_dynamic_player())
                         if (player) then
@@ -252,10 +255,10 @@ local function forgeReducer(state, action)
                             forgeAnimationTimer = nil
                             dprint("Erasing forge animation timer!")
                         end
-                        interface.close(constants.uiWidgetDefinitions.loadingMenu)
+                        interface.close(const.uiWidgetDefinitions.loadingMenu)
                     end
                 else
-                    interface.close(constants.uiWidgetDefinitions.loadingMenu)
+                    interface.close(const.uiWidgetDefinitions.loadingMenu)
                 end
             end
         end

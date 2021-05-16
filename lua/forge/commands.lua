@@ -12,8 +12,8 @@ local features = require "forge.features"
 local function forgeCommands(command)
     if (command == "fdebug") then
         debugBuffer = nil
-        configuration.forge.debugMode = not configuration.forge.debugMode
-        console_out("Debug mode: " .. tostring(configuration.forge.debugMode))
+        config.forge.debugMode = not config.forge.debugMode
+        console_out("Debug mode: " .. tostring(config.forge.debugMode))
         return false
     else
         -- Split all the data in the command input
@@ -72,16 +72,16 @@ local function forgeCommands(command)
             core.saveForgeMap()
             return false
         elseif (forgeCommand == "fsnap") then
-            configuration.forge.snapMode = not configuration.forge.snapMode
-            console_out("Snap Mode: " .. tostring(configuration.forge.snapMode))
+            config.forge.snapMode = not config.forge.snapMode
+            console_out("Snap Mode: " .. tostring(config.forge.snapMode))
             return false
         elseif (forgeCommand == "fauto") then
-            configuration.forge.autoSave = not configuration.forge.autoSave
-            console_out("Auto Save: " .. tostring(configuration.forge.autoSave))
+            config.forge.autoSave = not config.forge.autoSave
+            console_out("Auto Save: " .. tostring(config.forge.autoSave))
             return false
         elseif (forgeCommand == "fcast") then
-            configuration.forge.objectsCastShadow = not configuration.forge.objectsCastShadow
-            console_out("Objects Cast Shadow: " .. tostring(configuration.forge.objectsCastShadow))
+            config.forge.objectsCastShadow = not config.forge.objectsCastShadow
+            console_out("Objects Cast Shadow: " .. tostring(config.forge.objectsCastShadow))
             return false
         elseif (forgeCommand == "fload") then
             local mapName = table.concat(glue.shift(splitCommand, 1, -1), " ")
@@ -125,7 +125,7 @@ local function forgeCommands(command)
             scenario.spawnLocationList = mapSpawnPoints
             return false
             -------------- DEBUGGING COMMANDS ONLY ---------------
-        elseif (configuration.forge.debugMode) then
+        elseif (config.forge.debugMode) then
             if (forgeCommand == "fmenu") then
                 --[[votingStore:dispatch({
                     type = "APPEND_MAP_VOTE",
@@ -136,7 +136,7 @@ local function forgeCommands(command)
                         }
                     }
                 })]]
-                features.openMenu(constants.uiWidgetDefinitions.loadingMenu.path)
+                features.openMenu(const.uiWidgetDefinitions.loadingMenu.path)
                 return false
             elseif (forgeCommand == "fsize") then
                 dprint(collectgarbage("count") / 1024)
@@ -164,7 +164,7 @@ local function forgeCommands(command)
                 return false
             elseif (forgeCommand == "ftest") then
                 -- Run unit testing
-                if (configuration.forge.debugMode) then
+                if (config.forge.debugMode) then
                     local tests = require "forge.tests"
                     tests.run(true)
                     return false
@@ -199,7 +199,7 @@ local function forgeCommands(command)
                 write_file("forge_dump.lua", inspect(forgeStore:getState()))
                 write_file("events_dump.lua", inspect(eventsStore:getState()))
                 write_file("voting_dump.lua", inspect(votingStore:getState()))
-                write_file("constants.lua", inspect(constants))
+                write_file("constants.lua", inspect(const))
                 write_file("debug_dump.txt", debugBuffer or "No debug messages to print.")
                 return false
             elseif (forgeCommand == "fixmaps") then

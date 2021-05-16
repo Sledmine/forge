@@ -37,7 +37,7 @@ function core.loadForgeConfiguration(path)
     if (configurationFile) then
         local loadedConfiguration = ini.decode(configurationFile)
         if (loadedConfiguration and #glue.keys(loadedConfiguration) > 0) then
-            configuration = loadedConfiguration
+            config = loadedConfiguration
         else
             console_out(configurationFilePath)
             console_out("Forge ini file has a wrong format or is corrupted!")
@@ -229,7 +229,7 @@ function core.isPlayerMonitor(playerIndex)
     else
         tempObject = blam.object(get_dynamic_player())
     end
-    if (tempObject and tempObject.tagId == constants.bipeds.monitorTagId) then
+    if (tempObject and tempObject.tagId == const.bipeds.monitorTagId) then
         return true
     end
     return false
@@ -272,23 +272,23 @@ function core.createRequest(requestTable)
         -- Create an object instance to avoid wrong reference asignment
         local requestType = instanceObject.requestType
         if (requestType) then
-            if (requestType == constants.requests.spawnObject.requestType) then
+            if (requestType == const.requests.spawnObject.requestType) then
                 if (server_type == "sapp") then
                     instanceObject.remoteId = requestTable.remoteId
                 end
-            elseif (requestType == constants.requests.updateObject.requestType) then
+            elseif (requestType == const.requests.updateObject.requestType) then
                 if (server_type ~= "sapp") then
                     -- Desired object id is our remote id
                     -- instanceObject.objectId = requestTable.remoteId
                 end
-            elseif (requestType == constants.requests.deleteObject.requestType) then
+            elseif (requestType == const.requests.deleteObject.requestType) then
                 if (server_type ~= "sapp") then
                     -- Desired object id is our remote id
                     instanceObject.objectId = requestTable.remoteId
                 end
             end
             local requestFormat
-            for requestIndex, request in pairs(constants.requests) do
+            for requestIndex, request in pairs(const.requests) do
                 if (requestType == request.requestType) then
                     requestFormat = request.requestFormat
                 end
@@ -297,7 +297,7 @@ function core.createRequest(requestTable)
             --[[print(inspect(requestFormat))
             print(inspect(requestTable))]]
             request = maeth.tableToRequest(encodedTable, requestFormat,
-                                           constants.requestSeparator)
+                                           const.requestSeparator)
             -- TODO Add size validation for requests
             dprint("Request size: " .. #request)
         else
@@ -315,7 +315,7 @@ function core.processRequest(actionType, request, currentRequest, playerIndex)
     dprint("Incoming request: " .. request)
     dprint("Parsing incoming " .. actionType .. " ...", "warning")
     local requestTable = maeth.requestToTable(request, currentRequest.requestFormat,
-                                              constants.requestSeparator)
+                                              const.requestSeparator)
     if (requestTable) then
         dprint("Done.", "success")
         dprint(inspect(requestTable))
@@ -343,7 +343,7 @@ function core.processRequest(actionType, request, currentRequest, playerIndex)
 end
 
 function core.resetSpawnPoints()
-    local scenario = blam.scenario(0)
+    local scenario = blam.scenario()
     local netgameFlagsTypes = blam.netgameFlagTypes
 
     local mapSpawnCount = scenario.spawnLocationCount
@@ -400,20 +400,20 @@ function core.sendMapData(forgeMap, playerIndex)
         local mapDataResponse = {}
         local response
         -- Send main map data
-        mapDataResponse.requestType = constants.requests.loadMapScreen.requestType
+        mapDataResponse.requestType = const.requests.loadMapScreen.requestType
         mapDataResponse.objectCount = #forgeMap.objects
         mapDataResponse.mapName = forgeMap.name
         response = core.createRequest(mapDataResponse)
         core.sendRequest(response, playerIndex)
         -- Send map author
         mapDataResponse = {}
-        mapDataResponse.requestType = constants.requests.setMapAuthor.requestType
+        mapDataResponse.requestType = const.requests.setMapAuthor.requestType
         mapDataResponse.mapAuthor = forgeMap.author
         response = core.createRequest(mapDataResponse)
         core.sendRequest(response, playerIndex)
         -- Send map description
         mapDataResponse = {}
-        mapDataResponse.requestType = constants.requests.setMapDescription.requestType
+        mapDataResponse.requestType = const.requests.setMapDescription.requestType
         mapDataResponse.mapDescription = forgeMap.description
         response = core.createRequest(mapDataResponse)
         core.sendRequest(response, playerIndex)
@@ -472,13 +472,13 @@ function core.loadForgeMap(mapName)
                 local spawnRequest = forgeObject
                 local objectTag = blam.getTag(spawnRequest.tagPath, tagClasses.scenery)
                 if (objectTag and objectTag.id) then
-                    spawnRequest.requestType = constants.requests.spawnObject.requestType
+                    spawnRequest.requestType = const.requests.spawnObject.requestType
                     spawnRequest.tagPath = nil
                     spawnRequest.tagId = objectTag.id
                     spawnRequest.color = forgeObject.color or 1
                     spawnRequest.teamIndex = forgeObject.teamIndex or 0
                     eventsStore:dispatch({
-                        type = constants.requests.spawnObject.actionType,
+                        type = const.requests.spawnObject.actionType,
                         payload = {requestObject = spawnRequest}
                     })
                 else
@@ -632,14 +632,14 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
                 ("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
         end
         -- Force the object to render shadow
-        if (configuration.forge.objectsCastShadow) then
+        if (config.forge.objectsCastShadow) then
             object.isNotCastingShadow = false
         end
         -- FIXME Object inside bsp detection is not working in SAPP, use minimumZSpawnPoint instead!
         if (server_type == "sapp") then
             -- SAPP for some reason can not detect if an object was spawned inside the map
             -- So we need to create an instance of the object and add the flag to it
-            if (z < constants.minimumZSpawnPoint) then
+            if (z < const.minimumZSpawnPoint) then
                 object = blam.dumpObject(object)
                 object.isOutSideMap = true
             end
@@ -656,7 +656,7 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
             delete_object(objectId)
 
             -- Create new object but now in a safe place
-            objectId = spawn_object(type, tagPath, x, y, constants.minimumZSpawnPoint)
+            objectId = spawn_object(type, tagPath, x, y, const.minimumZSpawnPoint)
 
             if (objectId) then
                 -- Update new object position to match the original
@@ -666,7 +666,7 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
                 tempObject.z = z
 
                 -- Forces the object to render shadow
-                if (configuration.forge.objectsCastShadow) then
+                if (config.forge.objectsCastShadow) then
                     local tempObject = blam.object(get_object(objectId))
                     tempObject.isNotCastingShadow = false
                 end
@@ -1150,22 +1150,22 @@ local function createProjectileSelector()
     local player = blam.biped(get_dynamic_player())
     if (player) then
         local selector = {
-            x = player.x + player.xVel + player.cameraX * constants.forgeSelectorOffset,
-            y = player.y + player.yVel + player.cameraY * constants.forgeSelectorOffset,
-            z = player.z + player.zVel + player.cameraZ * constants.forgeSelectorOffset
+            x = player.x + player.xVel + player.cameraX * const.forgeSelectorOffset,
+            y = player.y + player.yVel + player.cameraY * const.forgeSelectorOffset,
+            z = player.z + player.zVel + player.cameraZ * const.forgeSelectorOffset
         }
         local projectileId = core.spawnObject(tagClasses.projectile,
-                                              constants.forgeProjectilePath, selector.x,
+                                              const.forgeProjectilePath, selector.x,
                                               selector.y, selector.z, true)
         if (projectileId) then
             local projectile = blam.projectile(get_object(projectileId))
             if (projectile) then
-                projectile.xVel = player.cameraX * constants.forgeSelectorVelocity
-                projectile.yVel = player.cameraY * constants.forgeSelectorVelocity
-                projectile.zVel = player.cameraZ * constants.forgeSelectorVelocity
-                projectile.yaw = player.cameraX * constants.forgeSelectorVelocity
-                projectile.pitch = player.cameraY * constants.forgeSelectorVelocity
-                projectile.roll = player.cameraZ * constants.forgeSelectorVelocity
+                projectile.xVel = player.cameraX * const.forgeSelectorVelocity
+                projectile.yVel = player.cameraY * const.forgeSelectorVelocity
+                projectile.zVel = player.cameraZ * const.forgeSelectorVelocity
+                projectile.yaw = player.cameraX * const.forgeSelectorVelocity
+                projectile.pitch = player.cameraY * const.forgeSelectorVelocity
+                projectile.roll = player.cameraZ * const.forgeSelectorVelocity
             end
         end
     end
@@ -1182,7 +1182,7 @@ function core.getForgeObjectFromPlayerAim()
         local selectedObjIndex
         if (projectile and projectile.type == objectClasses.projectile) then
             local projectileTag = blam.getTag(projectile.tagId)
-            if (projectileTag and projectileTag.index == constants.forgeProjectileTagIndex) then
+            if (projectileTag and projectileTag.index == const.forgeProjectileTagIndex) then
                 if (projectile.attachedToObjectId) then
                     local selectedObject = blam.object(
                                                get_object(projectile.attachedToObjectId))
@@ -1217,7 +1217,7 @@ end
 function core.isObjectOutOfBounds(object)
     if (object) then
         local projectileId = spawn_object(tagClasses.projectile,
-                                          constants.forgeProjectilePath, object.x,
+                                          const.forgeProjectilePath, object.x,
                                           object.y, object.z)
         if (projectileId) then
             local blamObject = blam.object(get_object(projectileId))

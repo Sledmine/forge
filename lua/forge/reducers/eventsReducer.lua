@@ -44,7 +44,7 @@ local function eventsReducer(state, action)
         dprint("-> [Events Store]")
         dprint("Action: " .. action.type, "category")
     end
-    if (action.type == constants.requests.spawnObject.actionType) then
+    if (action.type == const.requests.spawnObject.actionType) then
         dprint("SPAWNING object to store...", "warning")
         local requestObject = action.payload.requestObject
 
@@ -81,7 +81,7 @@ local function eventsReducer(state, action)
         -- Apply color to the object
         if (server_type ~= "sapp" and requestObject.color) then
             local tempObject = blam.object(get_object(objectIndex))
-            features.setObjectColor(constants.colorsNumber[requestObject.color],
+            features.setObjectColor(const.colorsNumber[requestObject.color],
                                     tempObject)
         end
 
@@ -128,9 +128,10 @@ local function eventsReducer(state, action)
             type = "UPDATE_MAP_INFO",
             payload = {loadingObjectPath = tagPath}
         })
+        forgeStore:dispatch({type = "UPDATE_BUDGET"})
 
         return state
-    elseif (action.type == constants.requests.updateObject.actionType) then
+    elseif (action.type == const.requests.updateObject.actionType) then
         local requestObject = action.payload.requestObject
         local targetObjectId = core.getObjectIndexByRemoteId(state.forgeObjects,
                                                              requestObject.objectId)
@@ -159,7 +160,7 @@ local function eventsReducer(state, action)
             tempObject.z = forgeObject.z
 
             if (requestObject.color) then
-                features.setObjectColor(constants.colorsNumber[requestObject.color],
+                features.setObjectColor(const.colorsNumber[requestObject.color],
                                         tempObject)
             end
 
@@ -194,7 +195,7 @@ local function eventsReducer(state, action)
 
                 -- Create cache for incoming players
                 local instanceObject = glue.update({}, forgeObject)
-                instanceObject.requestType = constants.requests.spawnObject.requestType
+                instanceObject.requestType = const.requests.spawnObject.requestType
                 instanceObject.tagId = blam.object(get_object(targetObjectId)).tagId
                 local response = core.createRequest(instanceObject)
                 state.cachedResponses[targetObjectId] = response
@@ -204,7 +205,7 @@ local function eventsReducer(state, action)
                        "does not exist.", "error")
         end
         return state
-    elseif (action.type == constants.requests.deleteObject.actionType) then
+    elseif (action.type == const.requests.deleteObject.actionType) then
         local requestObject = action.payload.requestObject
         local targetObjectId = core.getObjectIndexByRemoteId(state.forgeObjects,
                                                              requestObject.objectId)
@@ -253,31 +254,32 @@ local function eventsReducer(state, action)
         end
         -- Update the current map information
         forgeStore:dispatch({type = "UPDATE_MAP_INFO"})
+        forgeStore:dispatch({type = "UPDATE_BUDGET"})
 
         return state
-    elseif (action.type == constants.requests.setMapAuthor.actionType) then
+    elseif (action.type == const.requests.setMapAuthor.actionType) then
         local requestObject = action.payload.requestObject
 
         local mapAuthor = requestObject.mapAuthor
 
         forgeStore:dispatch({
-            type = constants.requests.setMapAuthor.actionType,
+            type = const.requests.setMapAuthor.actionType,
             payload = {mapAuthor = mapAuthor}
         })
 
         return state
-    elseif (action.type == constants.requests.setMapDescription.actionType) then
+    elseif (action.type == const.requests.setMapDescription.actionType) then
         local requestObject = action.payload.requestObject
 
         local mapDescription = requestObject.mapDescription
 
         forgeStore:dispatch({
-            type = constants.requests.setMapDescription.actionType,
+            type = const.requests.setMapDescription.actionType,
             payload = {mapDescription = mapDescription}
         })
 
         return state
-    elseif (action.type == constants.requests.loadMapScreen.actionType) then
+    elseif (action.type == const.requests.loadMapScreen.actionType) then
         local requestObject = action.payload.requestObject
 
         local expectedObjects = requestObject.objectCount
@@ -287,15 +289,16 @@ local function eventsReducer(state, action)
             type = "UPDATE_MAP_INFO",
             payload = {expectedObjects = expectedObjects, mapName = mapName}
         })
+        forgeStore:dispatch({type = "UPDATE_BUDGET"})
 
         -- Function wrapper for timer
         forgeAnimation = features.animateForgeLoading
         forgeAnimationTimer = set_timer(250, "forgeAnimation")
 
-        features.openMenu(constants.uiWidgetDefinitions.loadingMenu.path)
+        features.openMenu(const.uiWidgetDefinitions.loadingMenu.path)
 
         return state
-    elseif (action.type == constants.requests.flushForge.actionType) then
+    elseif (action.type == const.requests.flushForge.actionType) then
         if (server_type ~= "sapp") then
             local forgeObjects = state.forgeObjects
             for objectIndex, forgeObject in pairs(forgeObjects) do
@@ -305,17 +308,17 @@ local function eventsReducer(state, action)
         state.cachedResponses = {}
         state.forgeObjects = {}
         return state
-    elseif (action.type == constants.requests.loadVoteMapScreen.actionType) then
+    elseif (action.type == const.requests.loadVoteMapScreen.actionType) then
         if (server_type ~= "sapp") then
             function preventClose()
-                features.openMenu(constants.uiWidgetDefinitions.voteMenu.path)
+                features.openMenu(const.uiWidgetDefinitions.voteMenu.path)
                 return false
             end
             set_timer(5000, "preventClose")
         else
             -- Send vote map menu open request
             local loadMapVoteMenuRequest = {
-                requestType = constants.requests.loadVoteMapScreen.requestType
+                requestType = const.requests.loadVoteMapScreen.requestType
             }
             core.sendRequest(core.createRequest(loadMapVoteMenuRequest))
 
@@ -359,7 +362,7 @@ local function eventsReducer(state, action)
                     local finalGametype = randomGametype or "Slayer"
                     console_out("Final Gametype: " .. finalGametype)
                     votingStore:dispatch({
-                        type = constants.requests.appendVoteMap.actionType,
+                        type = const.requests.appendVoteMap.actionType,
                         payload = {
                             map = {
                                 name = mapName,
@@ -374,23 +377,23 @@ local function eventsReducer(state, action)
             local votingState = votingStore:getState()
             for mapIndex, map in pairs(votingState.votingMenu.mapsList) do
                 local voteMapOpenRequest = {
-                    requestType = constants.requests.appendVoteMap.requestType
+                    requestType = const.requests.appendVoteMap.requestType
                 }
                 glue.update(voteMapOpenRequest, map)
                 core.sendRequest(core.createRequest(voteMapOpenRequest))
             end
         end
         return state
-    elseif (action.type == constants.requests.appendVoteMap.actionType) then
+    elseif (action.type == const.requests.appendVoteMap.actionType) then
         if (server_type ~= "sapp") then
             local params = action.payload.requestObject
             votingStore:dispatch({
-                type = constants.requests.appendVoteMap.actionType,
+                type = const.requests.appendVoteMap.actionType,
                 payload = {map = {name = params.name, gametype = params.gametype}}
             })
         end
         return state
-    elseif (action.type == constants.requests.sendTotalMapVotes.actionType) then
+    elseif (action.type == const.requests.sendTotalMapVotes.actionType) then
         if (server_type == "sapp") then
             local mapVotes = {0, 0, 0, 0}
             for playerIndex, mapIndex in pairs(state.playerVotes) do
@@ -398,7 +401,7 @@ local function eventsReducer(state, action)
             end
             -- Send vote map menu open request
             local sendTotalMapVotesRequest = {
-                requestType = constants.requests.sendTotalMapVotes.requestType
+                requestType = const.requests.sendTotalMapVotes.requestType
 
             }
             for mapIndex, votes in pairs(mapVotes) do
@@ -419,7 +422,7 @@ local function eventsReducer(state, action)
             })
         end
         return state
-    elseif (action.type == constants.requests.sendMapVote.actionType) then
+    elseif (action.type == const.requests.sendMapVote.actionType) then
         if (action.playerIndex and server_type == "sapp") then
             local playerName = get_var(action.playerIndex, "$name")
             if (not state.playerVotes[action.playerIndex]) then
@@ -432,7 +435,7 @@ local function eventsReducer(state, action)
 
                 grprint(playerName .. " voted for " .. mapName .. " " .. mapGametype)
                 eventsStore:dispatch({
-                    type = constants.requests.sendTotalMapVotes.actionType
+                    type = const.requests.sendTotalMapVotes.actionType
                 })
                 local playerVotes = state.playerVotes
                 if (#playerVotes > 0) then
@@ -459,7 +462,7 @@ local function eventsReducer(state, action)
             end
         end
         return state
-    elseif (action.type == constants.requests.flushVotes.actionType) then
+    elseif (action.type == const.requests.flushVotes.actionType) then
         state.playerVotes = {}
         return state
     else

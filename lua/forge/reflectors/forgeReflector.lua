@@ -25,11 +25,11 @@ local function forgeReflector()
 
     -- Forge Menu
     local forgeMenuElementsStrings = blam.unicodeStringList(
-                                         constants.unicodeStrings.forgeMenuElementsTagId)
+                                         const.unicodeStrings.forgeMenuElementsTagId)
     forgeMenuElementsStrings.stringList = currentElements
-    interface.update(constants.uiWidgetDefinitions.objectsList, #currentElements + 2)
+    interface.update(const.uiWidgetDefinitions.objectsList, #currentElements + 2)
 
-    local pagination = blam.unicodeStringList(constants.unicodeStrings.paginationTagId)
+    local pagination = blam.unicodeStringList(const.unicodeStrings.paginationTagId)
     if (pagination) then
         local paginationStringList = pagination.stringList
         paginationStringList[2] = tostring(currentMenuPage)
@@ -39,21 +39,21 @@ local function forgeReflector()
 
     -- Budget count
     -- Update unicode string with current budget value
-    local currentBudget = blam.unicodeStringList(constants.unicodeStrings.budgetCountTagId)
+    local currentBudget = blam.unicodeStringList(const.unicodeStrings.budgetCountTagId)
 
     -- Refresh budget count
     currentBudget.stringList = {
         forgeState.forgeMenu.currentBudget,
-        "/ " .. tostring(constants.maximumObjectsBudget)
+        "/ " .. tostring(const.maximumObjectsBudget)
     }
 
     -- Refresh budget bar status
-    local amountBarWidget = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.amountBar.id)
+    local amountBarWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions.amountBar.id)
     amountBarWidget.width = forgeState.forgeMenu.currentBarSize
 
     -- Refresh loading bar size
     local loadingProgressWidget = blam.uiWidgetDefinition(
-                                      constants.uiWidgetDefinitions.loadingProgress.id)
+                                      const.uiWidgetDefinitions.loadingProgress.id)
     loadingProgressWidget.width = forgeState.loadingMenu.currentBarSize
 
     local currentMapsMenuPage = forgeState.mapsMenu.currentPage
@@ -68,18 +68,18 @@ local function forgeReflector()
     -- Refresh available forge maps list
     -- //TODO Merge unicode string updating with menus updating?
 
-    local mapsListStrings = blam.unicodeStringList(constants.unicodeStrings.mapsListTagId)
+    local mapsListStrings = blam.unicodeStringList(const.unicodeStrings.mapsListTagId)
     mapsListStrings.stringList = currentMapsList
     -- Wich ui widget will be updated and how many items it will show
-    interface.update(constants.uiWidgetDefinitions.mapsList, #currentMapsList + 3)
+    interface.update(const.uiWidgetDefinitions.mapsList, #currentMapsList + 3)
 
     -- Refresh fake sidebar in maps menu
-    local sidebarWidget = blam.uiWidgetDefinition(constants.uiWidgetDefinitions.sidebar.id)
+    local sidebarWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions.sidebar.id)
     sidebarWidget.height = forgeState.mapsMenu.sidebar.height
     sidebarWidget.boundsY = forgeState.mapsMenu.sidebar.position
 
     -- Refresh current forge map information
-    local pauseGameStrings = blam.unicodeStringList(constants.unicodeStrings.pauseGameStringsTagId)
+    local pauseGameStrings = blam.unicodeStringList(const.unicodeStrings.pauseGameStringsTagId)
     pauseGameStrings.stringList = {
         -- Skip elements using empty string
         "",

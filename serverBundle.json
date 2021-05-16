@@ -2,7 +2,7 @@
     "name": "Forge Island Server",
     "target": "lua53",
     "include": [
-        "modules\\"
+        "lua\\"
     ],
     "modules": [
         "struct",
@@ -29,6 +29,6 @@
         "forge.reflectors.votingReflector",
         "forge.version"
     ],
-    "main":"server\\forge_island_server",
+    "main":"lua\\server\\forge_island_server",
     "output": "dist\\forge_island_server.lua"
 }

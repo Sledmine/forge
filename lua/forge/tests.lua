@@ -127,7 +127,7 @@ end
 function testRequest:testSpawnRequestAsClient()
     local time = os.clock()
     local objectExample = {
-        requestType = constants.requests.spawnObject.requestType,
+        requestType = const.requests.spawnObject.requestType,
         tagId = 1234,
         x = 1.0,
         y = 2.0,
@@ -146,7 +146,7 @@ end
 function testRequest:testEncodeUpdateAsClient()
     local time = os.clock()
     local objectExample = {
-        requestType = constants.requests.updateObject.requestType,
+        requestType = const.requests.updateObject.requestType,
         objectId = 1234,
         x = 1.0,
         y = 2.0,
@@ -163,7 +163,7 @@ function testRequest:testEncodeUpdateAsClient()
 end
 
 function testRequest:testEncodeDeleteAsClient()
-    local objectExample = {requestType =  constants.requests.deleteObject.requestType, remoteId = 1234}
+    local objectExample = {requestType =  const.requests.deleteObject.requestType, remoteId = 1234}
     local request = core.createRequest(objectExample)
     lu.assertEquals(request, self.expectedEncodeDeleteResult)
 end
@@ -217,14 +217,14 @@ end
 function unit.run(output)
     ftestingMode = true
     -- Disable debug printing
-    configuration.forge.debugMode = not configuration.forge.debugMode
+    config.forge.debugMode = not config.forge.debugMode
     local runner = lu.LuaUnit.new()
     if (output) then
         runner:setOutputType("junit", "forge_tests_results")
     end
     runner:runSuite()
     -- Restore debug printing
-    configuration.forge.debugMode = not configuration.forge.debugMode
+    config.forge.debugMode = not config.forge.debugMode
     ftestingMode = false
 end
 
