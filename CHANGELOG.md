@@ -1,6 +1,10 @@
 # Changelog
 
-# 1.0.0-beta-4
+# 1.0.0-beta.5
+## Code changes:
+- Fixed memory leaks causing incremental low performance and eventual crashes
+
+# 1.0.0-beta.4
 ## Code changes:
 - General code optimizations
 - Fixed bug with fmaps storing garbage properties
@@ -18,7 +22,38 @@ compatibility with aLTis hud sway, blur effect on low health
 available gametypes supported for that map
 - Added Forge controls on pause menu, change when on monitor or spartan
 
-# 1.0.0-beta-3
+## Map changes:
+- Use "metal hull" as material in collision_geometry for every single metallic object
+- SFX sounds for sand material
+- SFX sounds for weapon drops
+- Created new "camera track" values for vehicles
+- Added new vehicle models
+- Added overheat meter for Warthog chaingun
+- Ported remaining announcer voices for team-based actions
+- Updated textures for "Crate large", "crate small" and "pallet metal"
+- Restored "grass detail" into rock objects
+- Ported "Station 4 way large cap" into Forge
+- Ported "Central Floor Cap" into Forge
+- Ported "Bridge wall" into Forge
+- Ported "Erosion" objects into Forge
+- Ported "Catwalk LP" into Forge
+- Ported "Catwalk 1" into Forge
+- Ported H4 Flag
+- Modified visor textures to be more accurate to "H1/Legacy" reflections and brightness
+- Updated "Jersey Barrier" and "Jersey Barrier Short" collisions
+- Replaced skull textures for hologram visuals in "Oddball skull spawn"
+- Created new variants for "Forerunner Barrier Triple"
+- New collision for Forerunner Barrier Triple
+- Added "Covenant Barricade" scenery
+- Added SFX sounds for Portable Shield
+- Renamed "Covenant Energy Shield" to "Portable Shield"
+- Updated countdown beep SFX
+- New contrail particles for Rocket Launcher
+- Updated rigging on knees for Strider armor
+- Set new fall damage values
+
+
+# 1.0.0-beta.3
 ## Code changes:
 - Improved performance and security in general
 - Restored colors for different crosshair states as a monitor
@@ -52,7 +87,7 @@ available gametypes supported for that map
 ## Known issues
 - Forge objects menu options are reset when opening object properties
 
-# 1.0.0-beta-2
+# 1.0.0-beta.2
 
 ## Code changes:
 - Fixed a problem with the animation timer for the loading Forge objects menu
@@ -110,8 +145,7 @@ available gametypes supported for that map
 ## Known issues
 - Forge objects menu options are reset when opening object properties
 
-# 1.0.0-beta-1
-
+# 1.0.0-beta.1
 ## Code changes:
 - Restored category and name text being displayed by looking at Forge objects
 - Added current project version number on pause menu
