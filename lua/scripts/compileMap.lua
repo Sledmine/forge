@@ -3,7 +3,7 @@
 -- Sledmine
 -- Script utility to compile the entire Forge Island project
 ------------------------------------------------------------------------------
-local argparse = require "scripts.modules.argparse"
+local argparse = require "lua.scripts.modules.argparse"
 
 -- Create argument parser
 local parser = argparse("compileMap", "Compile map project with different configurations")

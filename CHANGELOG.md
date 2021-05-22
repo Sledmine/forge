@@ -3,6 +3,7 @@
 # 1.0.0-beta.5
 ## Code changes:
 - Fixed memory leaks causing incremental low performance and eventual crashes
+- Add dynamic multibipeds support
 
 # 1.0.0-beta.4
 ## Code changes:
@@ -21,6 +22,37 @@ compatibility with aLTis hud sway, blur effect on low health
 - Improved server fmaps automatic mapcycle, fmaps are now scanned to determine
 available gametypes supported for that map
 - Added Forge controls on pause menu, change when on monitor or spartan
+
+## Map changes:
+- Use "metal hull" as material in collision_geometry for every single metallic object
+- SFX sounds for sand material
+- SFX sounds for weapon drops
+- Created new "camera track" values for vehicles
+- Added new vehicle models
+- Added overheat meter for Warthog chaingun
+- Ported remaining announcer voices for team-based actions
+- Updated textures for "Crate large", "crate small" and "pallet metal"
+- Restored "grass detail" into rock objects
+- Ported "Station 4 way large cap" into Forge
+- Ported "Central Floor Cap" into Forge
+- Ported "Bridge wall" into Forge
+- Ported "Erosion" objects into Forge
+- Ported "Catwalk LP" into Forge
+- Ported "Catwalk 1" into Forge
+- Ported H4 Flag
+- Modified visor textures to be more accurate to "H1/Legacy" reflections and brightness
+- Updated "Jersey Barrier" and "Jersey Barrier Short" collisions
+- Replaced skull textures for hologram visuals in "Oddball skull spawn"
+- Created new variants for "Forerunner Barrier Triple"
+- New collision for Forerunner Barrier Triple
+- Added "Covenant Barricade" scenery
+- Added SFX sounds for Portable Shield
+- Renamed "Covenant Energy Shield" to "Portable Shield"
+- Updated countdown beep SFX
+- New contrail particles for Rocket Launcher
+- Updated rigging on knees for Strider armor
+- Set new fall damage values
+
 
 # 1.0.0-beta.3
 ## Code changes:
