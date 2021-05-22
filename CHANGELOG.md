@@ -1,9 +1,5 @@
 # Changelog
 
-# 1.0.0-beta.5
-## Code changes:
-- Fixed memory leaks causing incremental low performance and eventual crashes
-
 # 1.0.0-beta.4
 ## Code changes:
 - General code optimizations
