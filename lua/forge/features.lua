@@ -54,6 +54,21 @@ function features.unhighlightAll()
     end
 end
 
+function features.unhighlightObject(objectIndex)
+    if (objectIndex) then
+        local object = blam.object(get_object(objectIndex))
+        -- Object exists
+        if (object) then
+            -- It is a scenery
+            -- FIXME We probably do not need this verification
+            local tag = blam.getTag(object.tagId)
+            if (tag and tag.class == tagClasses.scenery) then
+                object.health = 0
+            end
+        end
+    end
+end
+
 ---@param objectId number
 ---@param transparency number | "0.1" | "0.5" | "1"
 function features.highlightObject(objectId, transparency)
@@ -90,13 +105,15 @@ function features.swapBiped()
                 if (object) then
                     if (object.address == get_dynamic_player()) then
                         if (object.tagId == monitorTagId) then
-                            local newMultiplayerInformation = globals.multiplayerInformation
+                            local newMultiplayerInformation =
+                                globals.multiplayerInformation
                             newMultiplayerInformation[1].unit = spartanTagId
                             -- Update globals tag data to force respawn as new biped
                             globals.multiplayerInformation = newMultiplayerInformation
-                            
+
                         else
-                            local newMultiplayerInformation = globals.multiplayerInformation
+                            local newMultiplayerInformation =
+                                globals.multiplayerInformation
                             newMultiplayerInformation[1].unit = monitorTagId
                             -- Update globals tag data to force respawn as new biped
                             globals.multiplayerInformation = newMultiplayerInformation
@@ -106,7 +123,7 @@ function features.swapBiped()
                 end
             end
         end
-        
+
         -- else
         -- dprint("Requesting monitor biped...")
         -- TODO Replace this with a send request function
@@ -157,6 +174,26 @@ function features.printHUD(message, optional, forcedTickCount)
     end
 end
 
+--- Print formatted text into HUD message output
+---@param message string
+---@param optional string
+function features.printHUDRight(message, optional, forcedTickCount)
+    textRefreshCount = forcedTickCount or 0
+    local color = {1, 0.890, 0.949, 0.992}
+    if (optional) then
+        drawTextBuffer = {
+            message:upper() .. "\r" .. optional:upper(),
+            -60,
+            380,
+            640,
+            480,
+            const.hudFontTagId,
+            "right",
+            table.unpack(color)
+        }
+    end
+end
+
 function features.animateForgeLoading()
     local bitmapFrameTagId = const.bitmaps.forgingIconFrame0TagId
     if (loadingFrame == 0) then
@@ -168,8 +205,8 @@ function features.animateForgeLoading()
     end
 
     -- Animate Forge loading image
-    local uiWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions
-                                                 .loadingAnimation.id)
+    local uiWidget =
+        blam.uiWidgetDefinition(const.uiWidgetDefinitions.loadingAnimation.id)
     uiWidget.backgroundBitmap = bitmapFrameTagId
     return true
 end
@@ -282,42 +319,27 @@ function features.getObjectMenuFunctions()
         ["white (default)"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.white, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.white
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.white})
         end,
         ["black"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.black, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.black
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.black})
         end,
         ["red"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.red, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.red
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.red})
         end,
         ["blue"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.blue, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.blue
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.blue})
         end,
         ["gray"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.gray, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.gray
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.gray})
         end,
         ["yellow"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
@@ -330,18 +352,12 @@ function features.getObjectMenuFunctions()
         ["green"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.green, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.green
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.green})
         end,
         ["pink"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.pink, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.pink
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.pink})
         end,
         ["purple"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
@@ -354,10 +370,7 @@ function features.getObjectMenuFunctions()
         ["cyan"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.cyan, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.cyan
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.cyan})
         end,
         ["cobalt"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
@@ -378,34 +391,22 @@ function features.getObjectMenuFunctions()
         ["teal"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.teal, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.teal
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.teal})
         end,
         ["sage"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.sage, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.sage
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.sage})
         end,
         ["brown"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.brown, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.brown
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.brown})
         end,
         ["tan"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.tan, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.tan
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.tan})
         end,
         ["maroon"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
@@ -438,8 +439,7 @@ local function stringHas(str, list)
 end
 
 --- Hide or unhide forge reflection objects for gameplay purposes
----@param hide boolean
-function features.hideReflectionObjects(hide)
+function features.hideReflectionObjects()
     if (not config.forge.debugMode) then
         ---@type eventsState
         local eventsStore = eventsStore:getState()
@@ -449,13 +449,13 @@ function features.hideReflectionObjects(hide)
                 if (object) then
                     local tempTag = blam.getTag(object.tagId)
                     if (not stringHas(tempTag.path, const.hideObjectsExceptions)) then
-                        if (hide) then
-                            -- Hide objects by setting different properties
-                            object.isGhost = true
-                            object.z = const.minimumZSpawnPoint * 4
-                        else
+                        -- Hide objects by setting different properties
+                        if (core.isPlayerMonitor()) then
                             object.isGhost = false
                             object.z = forgeObject.z
+                        else
+                            object.isGhost = true
+                            object.z = const.minimumZSpawnPoint * 4
                         end
                     end
                 end
@@ -469,7 +469,7 @@ function features.playSound(tagPath, gain)
     local player = blam.player(get_player())
     if (player) then
         local playSoundCommand = const.hsc.playSound:format(tagPath, player.index,
-                                                                gain or 1.0)
+                                                            gain or 1.0)
         execute_script(playSoundCommand)
     end
 end
@@ -551,6 +551,7 @@ function features.hudUpgrades()
     end
 end
 
+--- Regenerate players health on low shield using game ticks
 function features.regenerateHealth(playerIndex)
     if (server_type == "sapp" or server_type == "local") then
         local player
@@ -574,6 +575,37 @@ function features.regenerateHealth(playerIndex)
                     player.health = newPlayerHealth
                 end
             end
+        end
+    end
+end
+
+--- Update forge keys text on pause menu
+function features.showForgeKeys()
+    local controlsStrings =
+        blam.unicodeStringList(const.unicodeStrings.forgeControlsTagId)
+    if (controlsStrings) then
+        if (core.isPlayerMonitor()) then
+            local newStrings = controlsStrings.stringList
+            -- E key
+            newStrings[1] = "Change rotation angle"
+            -- Q key
+            newStrings[2] = "Open Forge objects menu"
+            -- F key
+            newStrings[3] = "Swap Push N Pull mode"
+            -- Control key
+            newStrings[4] = "Get back into spartan mode"
+            controlsStrings.stringList = newStrings
+        else
+            local newStrings = controlsStrings.stringList
+            -- E key
+            newStrings[1] = "No Forge action"
+            -- Q key
+            newStrings[2] = "Get into monitor mode"
+            -- F key
+            newStrings[3] = "No Forge action"
+            -- Control key
+            newStrings[4] = "No Forge action"
+            controlsStrings.stringList = newStrings
         end
     end
 end

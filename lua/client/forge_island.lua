@@ -65,7 +65,9 @@ debugBuffer = ""
 textRefreshCount = 0
 -- Object used to store mouse input across pre frame update
 mouse = {}
-local currentPermutation = 0
+lastProjectileId = nil
+local lastHighlightedObjectIndex
+local lastPlayerBiped
 loadingFrame = 0
 
 --- Function to send debug messages to console output
@@ -110,21 +112,23 @@ function OnMapLoad()
 
     -- Like Redux we have some kind of store baby!! the rest is pure magic..
     playerStore = redux.createStore(playerReducer)
-    forgeStore = redux.createStore(forgeReducer) -- Isolated store for all the Forge 'app' data
-    eventsStore = redux.createStore(eventsReducer) -- Unique store for all the Forge Objects
+    -- Isolated store for all the Forge core data
+    forgeStore = redux.createStore(forgeReducer)
+    -- Store to process Forge events across client and server
+    eventsStore = redux.createStore(eventsReducer)
     votingStore = redux.createStore(votingReducer) -- Storage for all the state of map voting
 
     local forgeState = forgeStore:getState()
 
     -- TODO Migrate this into a feature or something
-    local sceneriesTagCollection = blam.tagCollection(
-                                       const.tagCollections.forgeObjectsTagId)
-    local forgeObjectsList = core.getForgeObjects(sceneriesTagCollection)
+    local sceneriesTagCollection = blam.tagCollection(const.tagCollections
+                                                          .forgeObjectsTagId)
+    local forgeObjectsList = core.getForgeSceneries(sceneriesTagCollection)
     -- Iterate over all the sceneries available in the sceneries tag collection
     for _, tagId in pairs(forgeObjectsList) do
-        local tempTag = blam.getTag(tagId)
-        if (tempTag and tempTag.path) then
-            local sceneryPath = tempTag.path
+        local tag = blam.getTag(tagId)
+        if (tag and tag.path) then
+            local sceneryPath = tag.path
             local sceneriesSplit = glue.string.split(sceneryPath, "\\")
             local sceneryFolderIndex
             for folderNameIndex, folderName in pairs(sceneriesSplit) do
@@ -224,8 +228,8 @@ function OnPreFrame()
             elseif (pressedButton == 11) then
                 core.saveForgeMap()
             else
-                local elementsList = blam.unicodeStringList(
-                                         const.unicodeStrings.mapsListTagId)
+                local elementsList = blam.unicodeStringList(const.unicodeStrings
+                                                                .mapsListTagId)
                 local mapName = elementsList.stringList[pressedButton]:gsub(" ", "_")
                 core.loadForgeMap(mapName)
             end
@@ -256,9 +260,8 @@ function OnPreFrame()
                 forgeStore:dispatch({type = "DECREMENT_FORGE_MENU_PAGE"})
             else
                 if (playerState.attachedObjectId) then
-                    local elementsList = blam.unicodeStringList(
-                                             const.unicodeStrings
-                                                 .forgeMenuElementsTagId)
+                    local elementsList = blam.unicodeStringList(const.unicodeStrings
+                                                                    .forgeMenuElementsTagId)
                     local selectedElement = elementsList.stringList[pressedButton]
                     if (selectedElement) then
                         local elementsFunctions = features.getObjectMenuFunctions()
@@ -266,17 +269,15 @@ function OnPreFrame()
                         if (buttonFunction) then
                             buttonFunction()
                         else
-                            forgeStore:dispatch(
-                                {
-                                    type = "DOWNWARD_NAV_FORGE_MENU",
-                                    payload = {desiredElement = selectedElement}
-                                })
+                            forgeStore:dispatch({
+                                type = "DOWNWARD_NAV_FORGE_MENU",
+                                payload = {desiredElement = selectedElement}
+                            })
                         end
                     end
                 else
-                    local elementsList = blam.unicodeStringList(
-                                             const.unicodeStrings
-                                                 .forgeMenuElementsTagId)
+                    local elementsList = blam.unicodeStringList(const.unicodeStrings
+                                                                    .forgeMenuElementsTagId)
                     local selectedSceneryName = elementsList.stringList[pressedButton]
                     local sceneryPath =
                         forgeState.forgeMenu.objectsDatabase[selectedSceneryName]
@@ -336,13 +337,20 @@ function OnPreFrame()
     end
 end
 
--- Where the magick happens, tiling!
+-- Where the magick happens, tling!
 function OnTick()
     local player = blam.biped(get_dynamic_player())
 
     ---@type playerState
     local playerState = playerStore:getState()
     if (player) then
+        if (lastPlayerBiped ~= player.tagId) then
+            lastPlayerBiped = player.tagId
+            dprint("Biped has changed!")
+            -- Hide spawning related Forge objects
+            features.hideReflectionObjects()
+            features.showForgeKeys()
+        end
         local oldPosition = playerState.position
         if (oldPosition) then
             player.x = oldPosition.x
@@ -353,29 +361,16 @@ function OnTick()
         if (player.isFrozen) then
             player.isFrozen = false
         end
+        if (lastHighlightedObjectIndex) then
+            features.unhighlightObject(lastHighlightedObjectIndex)
+            lastHighlightedObjectIndex = nil
+        end
         if (core.isPlayerMonitor()) then
-            local controlsStrings = blam.unicodeStringList(
-                                        const.unicodeStrings.forgeControlsTagId)
-            if (controlsStrings) then
-                local newStrings = controlsStrings.stringList
-                -- E key
-                newStrings[1] = "Change rotation angle"
-                -- Q key
-                newStrings[2] = "Open Forge objects menu"
-                -- F key
-                newStrings[3] = "Swap Push N Pull mode"
-                -- Control key
-                newStrings[4] = "Get back into spartan mode"
-                controlsStrings.stringList = newStrings
-            end
-            -- Provide better movement to monitors
-            if (not player.ignoreCollision) then
-                player.ignoreCollision = true
-            end
-
             -- Check if monitor has an object attached
             local playerAttachedObjectId = playerState.attachedObjectId
             if (playerAttachedObjectId) then
+                -- Unhighlight objects
+                features.unhighlightAll()
                 -- Calculate player point of view
                 playerStore:dispatch({type = "UPDATE_OFFSETS"})
                 -- Change rotation angle
@@ -436,9 +431,6 @@ function OnTick()
                     object.z = playerState.zOffset
                 end
 
-                -- Unhighlight objects
-                features.unhighlightAll()
-
                 -- Update crosshair
                 if (core.isObjectOutOfBounds(object)) then
                     features.setCrosshairState(4)
@@ -447,19 +439,19 @@ function OnTick()
                 end
 
             else
-
+                features.printHUDRight("Flashlight Key - Objects menu",
+                                       "Crouch Key - Spartan mode", 25)
                 -- Set crosshair to not selected state
                 features.setCrosshairState(1)
-
-                -- Unhide spawning related Forge objects
-                features.hideReflectionObjects(false)
-                features.unhighlightAll()
 
                 local objectIndex, forgeObject, projectile =
                     core.getForgeObjectFromPlayerAim()
                 -- Player is taking the object
                 if (objectIndex) then
-                    -- Hightlight the object that the player is looking at
+                    if (objectIndex ~= lastHighlightedObjectIndex) then
+                        lastHighlightedObjectIndex = objectIndex
+                    end
+                    -- Hightlight object that the player is looking at
                     features.highlightObject(objectIndex, 1)
                     features.setCrosshairState(2)
                     -- Get and parse object name
@@ -494,7 +486,6 @@ function OnTick()
                         })
                         local object = blam.object(get_object(objectIndex))
                         dprint(object.x .. " " .. object.y .. " " .. object.z)
-                        dprint(projectile.x .. " " .. projectile.y .. " " .. projectile.z)
                     elseif (player.actionKey) then
                         local tagId = blam.object(get_object(objectIndex)).tagId
                         local tagPath = blam.getTag(tagId).path
@@ -538,47 +529,23 @@ function OnTick()
                 player.yVel = player.cameraY * 0.2
                 player.zVel = player.cameraZ * 0.06
             end]]
-            local controlsStrings = blam.unicodeStringList(
-                                        const.unicodeStrings.forgeControlsTagId)
-            if (controlsStrings) then
-                local newStrings = controlsStrings.stringList
-                -- E key
-                newStrings[1] = "No Forge action"
-                -- Q key
-                newStrings[2] = "Get into monitor mode"
-                -- F key
-                newStrings[3] = "No Forge action"
-                -- Control key
-                newStrings[4] = "No Forge action"
-                controlsStrings.stringList = newStrings
-            end
             features.regenerateHealth()
             features.hudUpgrades()
-            features.hideReflectionObjects(true)
             features.setCrosshairState(0)
             -- Convert into monitor
             if (player.flashlightKey and not player.crouchHold) then
                 features.swapBiped()
-            elseif (config.forge.debugMode and player.actionKey and
-                player.crouchHold and server_type == "local") then
+            elseif (config.forge.debugMode and player.actionKey and player.crouchHold and
+                server_type == "local") then
                 local bipedTag = blam.getTag(const.bipeds.spartanTagId)
                 core.spawnObject(tagClasses.biped, bipedTag.path, player.x, player.y,
                                  player.z)
-            elseif (config.forge.debugMode and player.flashlightKey and
-                player.crouchHold and server_type == "local") then
-                if (currentPermutation < 12) then
-                    currentPermutation = currentPermutation + 1
-                else
-                    currentPermutation = 0
-                end
-                player.regionPermutation2 = currentPermutation
             end
         end
     end
 
     -- Attach respective hooks for menus
-    interface.hook("maps_menu_hook", interface.stop,
-                   const.uiWidgetDefinitions.mapsList)
+    interface.hook("maps_menu_hook", interface.stop, const.uiWidgetDefinitions.mapsList)
     interface.hook("forge_menu_hook", interface.stop,
                    const.uiWidgetDefinitions.objectsList)
     interface.hook("forge_menu_close_hook", interface.stop,
@@ -589,7 +556,7 @@ function OnTick()
     -- Update tick count
     textRefreshCount = textRefreshCount + 1
 
-    -- We need to draw new text, erase the older one
+    -- We need to draw new text, erase older text
     if (textRefreshCount > 30) then
         textRefreshCount = 0
         drawTextBuffer = nil

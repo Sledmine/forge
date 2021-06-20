@@ -19,8 +19,6 @@ print("Server is running " .. _VERSION)
 -- Bring compatibility with Lua 5.3
 require "compat53"
 print("Compatibility with Lua 5.3 has been loaded!")
--- Bring compatibility with Chimera Lua API
-require "chimera-lua-api"
 
 -- Lua modules
 local inspect = require "inspect"

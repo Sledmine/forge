@@ -200,9 +200,106 @@ local consoleColors = {
 ------------------------------------------------------------------------------
 -- SAPP API bindings
 ------------------------------------------------------------------------------
+-- All the functions at the top of the module are for EmmyLua autocompletion purposes!
+-- They do not have a real implementation and are not supossed to be imported
+if (variableThatObviouslyDoesNotExist) then
 
--- Create and bind Chimera functions to the ones in SAPP
+    --- Attempt to spawn an object given tag id and coordinates or tag type and class plus coordinates
+    ---@param tagId number Optional tag id of the object to spawn
+    ---@param tagType string Type of the tag to spawn
+    ---@param tagPath string Path of object to spawn
+    ---@param x number
+    ---@param y number
+    ---@param z number
+    function spawn_object(tagType, tagPath, x, y, z)
+    end
+
+    --- Get object address from a specific player given playerIndex
+    ---@param playerIndex number
+    ---@return number Player object memory address
+    function get_dynamic_player(playerIndex)
+    end
+end
 if (api_version) then
+    -- Provide global server type variable on SAPP
+    server_type = "sapp"
+
+    local split = function(s, sep)
+        if (sep == nil or sep == "") then
+            return 1
+        end
+        local position, array = 0, {}
+        for st, sp in function()
+            return string.find(s, sep, position, true)
+        end do
+            table.insert(array, string.sub(s, position, st - 1))
+            position = sp + 1
+        end
+        table.insert(array, string.sub(s, position))
+        return array
+    end
+
+    --- Function wrapper for file writing from Chimera to SAPP
+    ---@param path string Path to the file to write
+    ---@param content string Content to write into the file
+    ---@return boolean | nil, string True if successful otherwise nil, error
+    function write_file(path, content)
+        local file, error = io.open(path, "w")
+        if (not file) then
+            return nil, error
+        end
+        local success, err = file:write(content)
+        file:close()
+        if (not success) then
+            os.remove(path)
+            return nil, err
+        else
+            return true
+        end
+    end
+
+    --- Function wrapper for file reading from Chimera to SAPP
+    ---@param path string Path to the file to read
+    ---@return string | nil, string Content of the file otherwise nil, error
+    function read_file(path)
+        local file, error = io.open(path, "r")
+        if (not file) then
+            return nil, error
+        end
+        local content, error = file:read("*a")
+        if (content == nil) then
+            return nil, error
+        end
+        file:close()
+        return content
+    end
+
+    -- TODO PENDING FUNCTION!!
+    function directory_exists(dir)
+        return true
+    end
+
+    --- Function wrapper for directory listing from Chimera to SAPP
+    ---@param dir string
+    function list_directory(dir)
+        -- TODO This needs a way to separate folders from files
+        if (dir) then
+            local command = "dir " .. dir .. " /B"
+            local pipe = io.popen(command, "r")
+            local output = pipe:read("*a")
+            if (output) then
+                local items = split(output, "\n")
+                for index, item in pairs(items) do
+                    if (item and item == "") then
+                        items[index] = nil
+                    end
+                end
+                return items
+            end
+        end
+        return nil
+    end
+
     --- Return the memory address of a tag given tagId or tagClass and tagPath
     ---@param tagIdOrTagType string | number
     ---@param tagPath string
@@ -242,20 +339,41 @@ if (api_version) then
 
     --- Print text into console
     ---@param message string
-    -- TODO Add color printing to this function
-    function console_out(message)
+    ---@param red number
+    ---@param green number
+    ---@param blue number
+    function console_out(message, red, green, blue)
+        -- TODO Add color printing to this function
         cprint(message)
     end
 
-    local sapp_get_dynamic_player = get_dynamic_player
-    --- Get object address from a specific player given playerIndex
-    ---@param playerIndex number
-    ---@return number
-    function get_dynamic_player(playerIndex)
-        return sapp_get_dynamic_player(playerIndex)
+    --- Get if the game console is opened \
+    --- Always returns true on SAPP.
+    ---@return boolean
+    function console_is_open()
+        return true
     end
 
-    print("Chimera API functions are available now with LuaBlam!")
+    --- Get the value of a Halo scripting global\
+    ---An error will occur if the global is not found.
+    ---@param name string Name of the global variable to get from hsc
+    ---@return boolean | number
+    function get_global(name)
+        error("SAPP can't retrieve global variables as Chimera does.. yet!")
+    end
+
+    --- Print messages to the player HUD\
+    ---Server messages will be printed if executed from SAPP.
+    ---@param message string
+    function hud_message(message)
+        for playerIndex = 1, 16 do
+            if (player_present(playerIndex)) then
+                rprint(playerIndex, message)
+            end
+        end
+    end
+
+    print("Compatibility with Chimera Lua API has been loaded!")
 end
 
 ------------------------------------------------------------------------------
@@ -551,9 +669,9 @@ local function readList(address, propertyData)
     end
     local list = {}
     for currentElement = 1, elementCount do
-        list[currentElement] = operation.read(
-                                   addressList +
-                                       (propertyData.jump * (currentElement - 1)))
+        list[currentElement] = operation.read(addressList +
+                                                  (propertyData.jump *
+                                                      (currentElement - 1)))
     end
     return list
 end
@@ -671,7 +789,7 @@ local dataBindingMetaTable = {
 -- Object functions
 ------------------------------------------------------------------------------
 
---- Create a LuaBlam object
+--- Create a blam object
 ---@param address number
 ---@param struct table
 ---@return table
@@ -1510,6 +1628,25 @@ function blam.getCameraType()
     return nil
 end
 
+function blam.getJoystickInput(offset)
+    local value = 0
+    for controller_id = 0,3 do
+        controller_input_address = 0x64D998 + controller_id*0xA0
+        if offset >= 30 and offset <= 38 then -- sticks
+            value = value + read_long(controller_input_address + offset)
+        elseif offset > 96 then -- D-pad
+            local value2 = read_word(controller_input_address + 96)
+            if value2 == offset-100 then
+                value = 1
+            end
+        else
+            value = value + read_byte(controller_input_address + offset)
+        end
+    end
+    console_out(value)
+    return value
+end
+
 --- Create a tag object from a given address, this object can't write data to game memory
 ---@param address integer
 ---@return tag
@@ -1702,7 +1839,7 @@ function blam.collisionGeometry(tag)
     return nil
 end
 
---- Create a Model Animation object from a tag path or id
+--- Create a Model Animations object from a tag path or id
 ---@param tag string | number
 ---@return modelAnimations
 function blam.modelAnimations(tag)
@@ -1713,7 +1850,7 @@ function blam.modelAnimations(tag)
     return nil
 end
 
---- Create a Model Animation object from a tag path or id
+--- Create a Weapon tag object from a tag path or id
 ---@param tag string | number
 ---@return weaponTag
 function blam.weaponTag(tag)
@@ -1724,7 +1861,7 @@ function blam.weaponTag(tag)
     return nil
 end
 
---- Create a Model Animation object from a tag path or id
+--- Create a model (gbxmodel) object from a tag path or id
 ---@param tag string | number
 ---@return gbxModel
 function blam.model(tag)
@@ -1734,8 +1871,10 @@ function blam.model(tag)
     end
     return nil
 end
+-- Alias
+blam.gbxmodel = blam.model
 
---- Create a Globals tag table from a tag path or id
+--- Create a Globals tag object from a tag path or id
 ---@param tag string | number
 ---@return globalsTag
 function blam.globalsTag(tag)

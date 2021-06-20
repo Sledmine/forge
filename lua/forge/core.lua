@@ -604,6 +604,21 @@ function core.saveForgeMap()
     end
 end
 
+--- Force object shadow casting if available
+-- TODO Move this into features module
+---@param object blamObject
+function core.forceShadowCasting(object)
+    -- Force the object to render shadow
+    if (object.tagId ~= const.forgeProjectileTagId ) then
+        dprint("Bounding Radius: " .. object.boundingRadius)
+        if (config.forge.objectsCastShadow and object.boundingRadius <= const.maximumRenderShadowRadius and
+            object.z < const.maximumZRenderShadow) then
+                object.boundingRadius = object.boundingRadius * 1.2
+            object.isNotCastingShadow = false
+        end
+    end
+end
+
 --- Super function for debug printing and non self blocking spawning
 ---@param type string
 ---@param tagPath string
@@ -628,13 +643,12 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
     if (objectId) then
         local object = blam.object(get_object(objectId))
         if (not object) then
-            console_out(
-                ("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
+            console_out(("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
+            return nil
         end
         -- Force the object to render shadow
-        if (config.forge.objectsCastShadow) then
-            object.isNotCastingShadow = false
-        end
+        core.forceShadowCasting(object)
+        
         -- FIXME Object inside bsp detection is not working in SAPP, use minimumZSpawnPoint instead!
         if (server_type == "sapp") then
             -- SAPP for some reason can not detect if an object was spawned inside the map
@@ -665,11 +679,8 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
                 tempObject.y = y
                 tempObject.z = z
 
-                -- Forces the object to render shadow
-                if (config.forge.objectsCastShadow) then
-                    local tempObject = blam.object(get_object(objectId))
-                    tempObject.isNotCastingShadow = false
-                end
+                -- Force the object to render shadow
+                core.forceShadowCasting(object)
             end
         end
 
@@ -1166,14 +1177,16 @@ local function createProjectileSelector()
                 projectile.yaw = player.cameraX * const.forgeSelectorVelocity
                 projectile.pitch = player.cameraY * const.forgeSelectorVelocity
                 projectile.roll = player.cameraZ * const.forgeSelectorVelocity
+                return projectileId
             end
         end
     end
+    return nil
 end
 
 --- Return data about object that the player is looking at
 ---@return number, forgeObject, projectile
-function core.getForgeObjectFromPlayerAim()
+function core.oldGetForgeObjectFromPlayerAim()
     local forgeObjects = eventsStore:getState().forgeObjects
     for _, projectileObjectIndex in pairs(blam.getObjects()) do
         local projectile = blam.projectile(get_object(projectileObjectIndex))
@@ -1200,15 +1213,46 @@ function core.getForgeObjectFromPlayerAim()
                 delete_object(projectileObjectIndex)
                 return nil, nil, dumpedProjectile or nil
             end
-        elseif (forgeObjects[projectileObjectIndex]) then
-            if (core.playerIsAimingAt(projectileObjectIndex, 0.03, 0)) then
-                return projectileObjectIndex, forgeObjects[projectileObjectIndex],
-                       dumpedProjectile or nil
-            end
+        --elseif (forgeObjects[projectileObjectIndex]) then
+        --    if (core.playerIsAimingAt(projectileObjectIndex, 0.03, 0)) then
+        --        return projectileObjectIndex, forgeObjects[projectileObjectIndex],
+        --               dumpedProjectile or nil
+        --    end
         end
     end
     -- No object was found from player view, create a new selector
     createProjectileSelector()
+end
+
+--- Return data about object that the player is looking at
+---@return number, forgeObject, projectile
+function core.getForgeObjectFromPlayerAim()
+    if (lastProjectileId) then
+        local projectile = blam.projectile(get_object(lastProjectileId))
+        if (projectile) then
+            if (not blam.isNull(projectile.attachedToObjectId)) then
+                dprint("Found object by collision!")
+                local forgeObjects = eventsStore:getState().forgeObjects
+                local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
+                local selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
+                local forgeObject = forgeObjects[selectedObjIndex]
+                -- Erase current projectile selector
+                delete_object(lastProjectileId)
+                lastProjectileId = createProjectileSelector()
+                -- Player is looking at this object
+                if (forgeObject and selectedObject) then
+                    -- Create a new one
+                    return selectedObjIndex, forgeObject
+                end
+            --else
+            --    dprint("Searching for objects on view!")
+            end
+            delete_object(lastProjectileId)
+        end
+        lastProjectileId = nil
+    else
+        lastProjectileId = createProjectileSelector()
+    end
 end
 
 --- Return data about object that the player is looking at
@@ -1233,14 +1277,14 @@ end
 --- Get Forge objects from recursive tag collection
 ---@param tagCollection tagCollection
 ---@return number[] tagIdsArray
-function core.getForgeObjects(tagCollection)
+function core.getForgeSceneries(tagCollection)
     local objects = {}
     for _, tagId in pairs(tagCollection.tagList) do
         local tag = blam.getTag(tagId)
         if (tag.class == tagClasses.tagCollection) then
             local subTagCollection = blam.tagCollection(tag.id)
             if (subTagCollection) then
-                local subTags = core.getForgeObjects(subTagCollection)
+                local subTags = core.getForgeSceneries(subTagCollection)
                 glue.extend(objects, subTags)
             end
         else

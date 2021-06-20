@@ -13,6 +13,7 @@ local function forgeCommands(command)
     if (command == "fdebug") then
         debugBuffer = nil
         config.forge.debugMode = not config.forge.debugMode
+        features.hideReflectionObjects()
         console_out("Debug mode: " .. tostring(config.forge.debugMode))
         return false
     else
@@ -81,6 +82,19 @@ local function forgeCommands(command)
             return false
         elseif (forgeCommand == "fcast") then
             config.forge.objectsCastShadow = not config.forge.objectsCastShadow
+            local objectsCastShadow = config.forge.objectsCastShadow
+            ---@type eventsState
+            local eventsState = eventsStore:getState()
+            for objectIndex, forgeObject in pairs(eventsState.forgeObjects) do
+                local object = blam.object(get_object(objectIndex))
+                if (object) then
+                    if (objectsCastShadow) then                    
+                        core.forceShadowCasting(object)
+                    else
+                        object.isNotCastingShadow = true
+                    end
+                end
+            end
             console_out("Objects Cast Shadow: " .. tostring(config.forge.objectsCastShadow))
             return false
         elseif (forgeCommand == "fload") then

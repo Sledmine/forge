@@ -21,6 +21,8 @@ constants.localPlayerAddress = 0x815918
 constants.requestSeparator = "&"
 constants.maximumObjectsBudget = 1024
 constants.minimumZSpawnPoint = -18.69
+constants.maximumZRenderShadow = -14.12
+constants.maximumRenderShadowRadius = 7
 constants.forgeSelectorOffset = 0.33
 constants.forgeSelectorVelocity = 15
 
@@ -39,6 +41,7 @@ constants.healthRegenerationAmount = 0.006
 constants.hudFontTagId = core.findTag("blender_pro_medium_12", tagClasses.font).id
 local forgeProjectile = core.findTag("forge", tagClasses.projectile)
 constants.forgeProjectilePath = forgeProjectile.path
+constants.forgeProjectileTagId = forgeProjectile.id
 constants.forgeProjectileTagIndex = forgeProjectile.index
 constants.fragGrenadeProjectileTagIndex = core.findTag("frag", tagClasses.projectile)
                                               .index

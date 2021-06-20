@@ -4800,6 +4800,19 @@ local function forgeCommands(command)
             return false
         elseif (forgeCommand == "fcast") then
             config.forge.objectsCastShadow = not config.forge.objectsCastShadow
+            local objectsCastShadow = config.forge.objectsCastShadow
+            ---@type eventsState
+            local eventsState = eventsStore:getState()
+            for objectIndex, forgeObject in pairs(eventsState.forgeObjects) do
+                local object = blam.object(get_object(objectIndex))
+                if (object) then
+                    if (objectsCastShadow) then                    
+                        core.forceShadowCasting(object)
+                    else
+                        object.isNotCastingShadow = true
+                    end
+                end
+            end
             console_out("Objects Cast Shadow: " .. tostring(config.forge.objectsCastShadow))
             return false
         elseif (forgeCommand == "fload") then
@@ -4995,6 +5008,8 @@ constants.localPlayerAddress = 0x815918
 constants.requestSeparator = "&"
 constants.maximumObjectsBudget = 1024
 constants.minimumZSpawnPoint = -18.69
+constants.maximumZRenderShadow = -14.12
+constants.maximumRenderShadowRadius = 7
 constants.forgeSelectorOffset = 0.33
 constants.forgeSelectorVelocity = 15
 
@@ -5013,6 +5028,7 @@ constants.healthRegenerationAmount = 0.006
 constants.hudFontTagId = core.findTag("blender_pro_medium_12", tagClasses.font).id
 local forgeProjectile = core.findTag("forge", tagClasses.projectile)
 constants.forgeProjectilePath = forgeProjectile.path
+constants.forgeProjectileTagId = forgeProjectile.id
 constants.forgeProjectileTagIndex = forgeProjectile.index
 constants.fragGrenadeProjectileTagIndex = core.findTag("frag", tagClasses.projectile)
                                               .index
@@ -5838,6 +5854,20 @@ function core.saveForgeMap()
     end
 end
 
+--- Force object shadow casting if available
+---@param object blamObject
+function core.forceShadowCasting(object)
+    -- Force the object to render shadow
+    if (object.tagId ~= const.forgeProjectileTagId ) then
+        dprint("Bounding Radius: " .. object.boundingRadius)
+        if (config.forge.objectsCastShadow and object.boundingRadius <= const.maximumRenderShadowRadius and
+            object.z < const.maximumZRenderShadow) then
+                object.boundingRadius = object.boundingRadius * 1.2
+            object.isNotCastingShadow = false
+        end
+    end
+end
+
 --- Super function for debug printing and non self blocking spawning
 ---@param type string
 ---@param tagPath string
@@ -5862,13 +5892,12 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
     if (objectId) then
         local object = blam.object(get_object(objectId))
         if (not object) then
-            console_out(
-                ("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
+            console_out(("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
+            return nil
         end
         -- Force the object to render shadow
-        if (config.forge.objectsCastShadow) then
-            object.isNotCastingShadow = false
-        end
+        core.forceShadowCasting(object)
+        
         -- FIXME Object inside bsp detection is not working in SAPP, use minimumZSpawnPoint instead!
         if (server_type == "sapp") then
             -- SAPP for some reason can not detect if an object was spawned inside the map
@@ -5899,11 +5928,8 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
                 tempObject.y = y
                 tempObject.z = z
 
-                -- Forces the object to render shadow
-                if (config.forge.objectsCastShadow) then
-                    local tempObject = blam.object(get_object(objectId))
-                    tempObject.isNotCastingShadow = false
-                end
+                -- Force the object to render shadow
+                core.forceShadowCasting(object)
             end
         end
 
@@ -6400,14 +6426,16 @@ local function createProjectileSelector()
                 projectile.yaw = player.cameraX * const.forgeSelectorVelocity
                 projectile.pitch = player.cameraY * const.forgeSelectorVelocity
                 projectile.roll = player.cameraZ * const.forgeSelectorVelocity
+                return projectileId
             end
         end
     end
+    return nil
 end
 
 --- Return data about object that the player is looking at
 ---@return number, forgeObject, projectile
-function core.getForgeObjectFromPlayerAim()
+function core.oldGetForgeObjectFromPlayerAim()
     local forgeObjects = eventsStore:getState().forgeObjects
     for _, projectileObjectIndex in pairs(blam.getObjects()) do
         local projectile = blam.projectile(get_object(projectileObjectIndex))
@@ -6434,15 +6462,46 @@ function core.getForgeObjectFromPlayerAim()
                 delete_object(projectileObjectIndex)
                 return nil, nil, dumpedProjectile or nil
             end
-        elseif (forgeObjects[projectileObjectIndex]) then
-            if (core.playerIsAimingAt(projectileObjectIndex, 0.03, 0)) then
-                return projectileObjectIndex, forgeObjects[projectileObjectIndex],
-                       dumpedProjectile or nil
-            end
+        --elseif (forgeObjects[projectileObjectIndex]) then
+        --    if (core.playerIsAimingAt(projectileObjectIndex, 0.03, 0)) then
+        --        return projectileObjectIndex, forgeObjects[projectileObjectIndex],
+        --               dumpedProjectile or nil
+        --    end
         end
     end
     -- No object was found from player view, create a new selector
     createProjectileSelector()
+end
+
+--- Return data about object that the player is looking at
+---@return number, forgeObject, projectile
+function core.getForgeObjectFromPlayerAim()
+    if (lastProjectileId) then
+        local projectile = blam.projectile(get_object(lastProjectileId))
+        if (projectile) then
+            if (not blam.isNull(projectile.attachedToObjectId)) then
+                dprint("Found object by collision!")
+                local forgeObjects = eventsStore:getState().forgeObjects
+                local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
+                local selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
+                local forgeObject = forgeObjects[selectedObjIndex]
+                -- Erase current projectile selector
+                delete_object(lastProjectileId)
+                lastProjectileId = createProjectileSelector()
+                -- Player is looking at this object
+                if (forgeObject and selectedObject) then
+                    -- Create a new one
+                    return selectedObjIndex, forgeObject
+                end
+            else
+                dprint("Searching for objects on view!")
+            end
+            delete_object(lastProjectileId)
+        end
+        lastProjectileId = nil
+    else
+        lastProjectileId = createProjectileSelector()
+    end
 end
 
 --- Return data about object that the player is looking at
@@ -6467,14 +6526,14 @@ end
 --- Get Forge objects from recursive tag collection
 ---@param tagCollection tagCollection
 ---@return number[] tagIdsArray
-function core.getForgeObjects(tagCollection)
+function core.getForgeSceneries(tagCollection)
     local objects = {}
     for _, tagId in pairs(tagCollection.tagList) do
         local tag = blam.getTag(tagId)
         if (tag.class == tagClasses.tagCollection) then
             local subTagCollection = blam.tagCollection(tag.id)
             if (subTagCollection) then
-                local subTags = core.getForgeObjects(subTagCollection)
+                local subTags = core.getForgeSceneries(subTagCollection)
                 glue.extend(objects, subTags)
             end
         else
@@ -6556,6 +6615,21 @@ function features.unhighlightAll()
     end
 end
 
+function features.unhighlightObject(objectIndex)
+    if (objectIndex) then
+        local object = blam.object(get_object(objectIndex))
+        -- Object exists
+        if (object) then
+            -- It is a scenery
+            -- FIXME We probably do not need this verification
+            local tag = blam.getTag(object.tagId)
+            if (tag and tag.class == tagClasses.scenery) then
+                object.health = 0
+            end
+        end
+    end
+end
+
 ---@param objectId number
 ---@param transparency number | "0.1" | "0.5" | "1"
 function features.highlightObject(objectId, transparency)
@@ -6592,13 +6666,15 @@ function features.swapBiped()
                 if (object) then
                     if (object.address == get_dynamic_player()) then
                         if (object.tagId == monitorTagId) then
-                            local newMultiplayerInformation = globals.multiplayerInformation
+                            local newMultiplayerInformation =
+                                globals.multiplayerInformation
                             newMultiplayerInformation[1].unit = spartanTagId
                             -- Update globals tag data to force respawn as new biped
                             globals.multiplayerInformation = newMultiplayerInformation
-                            
+
                         else
-                            local newMultiplayerInformation = globals.multiplayerInformation
+                            local newMultiplayerInformation =
+                                globals.multiplayerInformation
                             newMultiplayerInformation[1].unit = monitorTagId
                             -- Update globals tag data to force respawn as new biped
                             globals.multiplayerInformation = newMultiplayerInformation
@@ -6608,7 +6684,7 @@ function features.swapBiped()
                 end
             end
         end
-        
+
         -- else
         -- dprint("Requesting monitor biped...")
         -- TODO Replace this with a send request function
@@ -6659,6 +6735,26 @@ function features.printHUD(message, optional, forcedTickCount)
     end
 end
 
+--- Print formatted text into HUD message output
+---@param message string
+---@param optional string
+function features.printHUDRight(message, optional, forcedTickCount)
+    textRefreshCount = forcedTickCount or 0
+    local color = {1, 0.890, 0.949, 0.992}
+    if (optional) then
+        drawTextBuffer = {
+            message:upper() .. "\r" .. optional:upper(),
+            -60,
+            380,
+            640,
+            480,
+            const.hudFontTagId,
+            "right",
+            table.unpack(color)
+        }
+    end
+end
+
 function features.animateForgeLoading()
     local bitmapFrameTagId = const.bitmaps.forgingIconFrame0TagId
     if (loadingFrame == 0) then
@@ -6670,8 +6766,8 @@ function features.animateForgeLoading()
     end
 
     -- Animate Forge loading image
-    local uiWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions
-                                                 .loadingAnimation.id)
+    local uiWidget =
+        blam.uiWidgetDefinition(const.uiWidgetDefinitions.loadingAnimation.id)
     uiWidget.backgroundBitmap = bitmapFrameTagId
     return true
 end
@@ -6784,42 +6880,27 @@ function features.getObjectMenuFunctions()
         ["white (default)"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.white, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.white
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.white})
         end,
         ["black"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.black, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.black
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.black})
         end,
         ["red"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.red, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.red
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.red})
         end,
         ["blue"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.blue, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.blue
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.blue})
         end,
         ["gray"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.gray, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.gray
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.gray})
         end,
         ["yellow"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
@@ -6832,18 +6913,12 @@ function features.getObjectMenuFunctions()
         ["green"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.green, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.green
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.green})
         end,
         ["pink"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.pink, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.pink
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.pink})
         end,
         ["purple"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
@@ -6856,10 +6931,7 @@ function features.getObjectMenuFunctions()
         ["cyan"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.cyan, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.cyan
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.cyan})
         end,
         ["cobalt"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
@@ -6880,34 +6952,22 @@ function features.getObjectMenuFunctions()
         ["teal"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.teal, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.teal
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.teal})
         end,
         ["sage"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.sage, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.sage
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.sage})
         end,
         ["brown"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.brown, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.brown
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.brown})
         end,
         ["tan"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
             features.setObjectColor(const.colors.tan, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.tan
-            })
+            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.tan})
         end,
         ["maroon"] = function()
             local tempObject = blam.object(get_object(playerState.attachedObjectId))
@@ -6971,7 +7031,7 @@ function features.playSound(tagPath, gain)
     local player = blam.player(get_player())
     if (player) then
         local playSoundCommand = const.hsc.playSound:format(tagPath, player.index,
-                                                                gain or 1.0)
+                                                            gain or 1.0)
         execute_script(playSoundCommand)
     end
 end
