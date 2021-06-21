@@ -2332,6 +2332,7 @@ end,
 if (variableThatObviouslyDoesNotExist) then
     -- All the functions at the top of the module are for EmmyLua autocompletion purposes!
     -- They do not have a real implementation and are not supossed to be imported
+
     --- Attempt to spawn an object given tag id and coordinates or tag type and class plus coordinates
     ---@param tagId number Optional tag id of the object to spawn
     ---@param tagType string Type of the tag to spawn
@@ -4784,8 +4785,8 @@ local features = require "forge.features"
 
 local function forgeCommands(command)
     if (command == "fdebug") then
+        debugBuffer = nil
         configuration.forge.debugMode = not configuration.forge.debugMode
-        configuration.forge.debugMode = configuration.forge.debugMode
         console_out("Debug mode: " .. tostring(configuration.forge.debugMode))
         return false
     else
@@ -8610,12 +8611,13 @@ configuration = {
 configuration.forge.debugMode = false
 --- Function to send debug messages to console output
 ---@param message string
----@param color string | category | warning | error | success
+---@param color string
 function dprint(message, color)
-    if (type(message) ~= "string") then
-        message = inspect(message)
-    end
     if (configuration.forge.debugMode) then
+        local message = message
+        if (type(message) ~= "string") then
+            message = inspect(message)
+        end
         debugBuffer = (debugBuffer or "") .. message .. "\n"
         if (color == "category") then
             console_out(message, 0.31, 0.631, 0.976)
@@ -8670,7 +8672,8 @@ function OnTick()
                 if (playerObjectId) then
                     local player = blam.biped(get_object(playerObjectId))
                     if (player) then
-                        if (ticksTimer[playerIndex]) then
+                        -- Armor abilities test
+                        --[[if (ticksTimer[playerIndex]) then
                             ticksTimer[playerIndex] = ticksTimer[playerIndex] + 1
                             cprint(ticksTimer[playerIndex])
                         end
@@ -8685,7 +8688,7 @@ function OnTick()
                             else
                                 ticksTimer[playerIndex] = nil
                             end
-                        end
+                        end]]
                         if (forgingEnabled) then
                             if (constants.bipeds.monitorTagId) then
                                 if (player.crouchHold and player.tagId ==
@@ -8791,10 +8794,6 @@ function rcon.commandInterceptor(playerIndex, message, environment, rconPassword
             local eventsState = eventsStore:getState()
             local cachedResponses = eventsState.cachedResponses
             console_out(#glue.keys(cachedResponses))
-        --elseif (forgeCommand == "freload") then
-        --    ffi.cdef [[void reload(); void load(); void unload();]]
-        --    local sapp_reloader = ffi.load("sapp_reloader")
-        --    sapp_reloader.reload()
         end
     end
 end
@@ -8832,7 +8831,7 @@ function OnGameStart()
     end
 
     -- Add forge admin commands
-    local adminCommands = {"fload", "fsave", "fforge", "fbiped", "freload"}
+    local adminCommands = {"fload", "fsave", "fforge", "fbiped"}
     for _, command in pairs(adminCommands) do
         rcon.submitAdmimCommand(command)
     end
@@ -8963,16 +8962,13 @@ function OnGameEnd()
             eventsStore:dispatch({type = constants.requests.loadVoteMapScreen.actionType})
         end
     end
-    -- FIXME THIS IS GARBAGE, BUT GARBAGE IS A THING.. AND IT WORKS SO....
+    -- FIXME This needs a better implementation
     -- write_file("eventsState.json", json.encode(eventsStore:getState()))
     -----@type forgeState
     -- local dumpedState = forgeStore:getState()
     -- dumpedState.currentMap.name = forgeMapName
     -- write_file("forgeState.json", json.encode(dumpedState))
     playersObjectId = {}
-    --ffi.cdef [[void reload(); void load(); void unload();]]
-    --local sapp_reloader = ffi.load("sapp_reloader")
-    --sapp_reloader.reload()
     collectgarbage("collect")
 end
 
