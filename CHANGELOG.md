@@ -2,8 +2,10 @@
 
 # 1.0.0-beta.5
 ## Code changes:
+- Add dynamic FP model swapping
+- Added Forge settings menu
 - Fixed memory leaks causing incremental low performance and eventual crashes
-- Add dynamic multibipeds support
+- Added dynamic multibipeds support
 
 # 1.0.0-beta.4
 ## Code changes:

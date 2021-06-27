@@ -48,8 +48,8 @@ end
 --- Normalize any map name from snake case to a map name with sentence case
 ---@field mapName string
 function core.toSentenceCase(mapName)
-    return string.gsub(" " .. mapName:gsub(".fmap", ""):gsub("_", " "),
-    "%W%l", string.upper):sub(2)
+    return string.gsub(" " .. mapName:gsub(".fmap", ""):gsub("_", " "), "%W%l",
+                       string.upper):sub(2)
 end
 
 --- Normalize any string to a lower snake case
@@ -61,8 +61,8 @@ end
 --- Normalize any string to camel case
 ---@field mapName string
 function core.toCamelCase(name)
-    return string.gsub("" .. name:gsub("_", " "),
-    "%W%l", string.upper):sub(1):gsub(" ", "")
+    return string.gsub("" .. name:gsub("_", " "), "%W%l", string.upper):sub(1):gsub(" ",
+                                                                                    "")
 end
 
 --- Load previous Forge maps
@@ -609,11 +609,11 @@ end
 ---@param object blamObject
 function core.forceShadowCasting(object)
     -- Force the object to render shadow
-    if (object.tagId ~= const.forgeProjectileTagId ) then
+    if (object.tagId ~= const.forgeProjectileTagId) then
         dprint("Bounding Radius: " .. object.boundingRadius)
-        if (config.forge.objectsCastShadow and object.boundingRadius <= const.maximumRenderShadowRadius and
-            object.z < const.maximumZRenderShadow) then
-                object.boundingRadius = object.boundingRadius * 1.2
+        if (config.forge.objectsCastShadow and object.boundingRadius <=
+            const.maximumRenderShadowRadius and object.z < const.maximumZRenderShadow) then
+            object.boundingRadius = object.boundingRadius * 1.2
             object.isNotCastingShadow = false
         end
     end
@@ -643,12 +643,13 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
     if (objectId) then
         local object = blam.object(get_object(objectId))
         if (not object) then
-            console_out(("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
+            console_out(
+                ("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
             return nil
         end
         -- Force the object to render shadow
         core.forceShadowCasting(object)
-        
+
         -- FIXME Object inside bsp detection is not working in SAPP, use minimumZSpawnPoint instead!
         if (server_type == "sapp") then
             -- SAPP for some reason can not detect if an object was spawned inside the map
@@ -1134,6 +1135,30 @@ function core.findTagsList(partialName, searchTagType)
     return tagsList
 end
 
+--- Find first person hands models on the map
+---@return tag[] tag
+function core.findFirstPersonHands()
+    local tagsList
+    for tagIndex = 0, blam.tagDataHeader.count - 1 do
+        local tag = blam.getTag(tagIndex)
+        if (tag and tag.path:find("fp") and tag.path:find("characters") and tag.class ==
+            tagClasses.gbxmodel) then
+            if (not tagsList) then
+                tagsList = {}
+            end
+            glue.append(tagsList, {
+                id = tag.id,
+                path = tag.path,
+                index = tag.index,
+                class = tag.class,
+                indexed = tag.indexed,
+                data = tag.data
+            })
+        end
+    end
+    return tagsList
+end
+
 --- Find tag data given index number
 ---@param tagIndex number
 function core.findTagByIndex(tagIndex)
@@ -1197,8 +1222,8 @@ function core.oldGetForgeObjectFromPlayerAim()
             local projectileTag = blam.getTag(projectile.tagId)
             if (projectileTag and projectileTag.index == const.forgeProjectileTagIndex) then
                 if (projectile.attachedToObjectId) then
-                    local selectedObject = blam.object(
-                                               get_object(projectile.attachedToObjectId))
+                    local selectedObject = blam.object(get_object(
+                                                           projectile.attachedToObjectId))
                     selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
                     forgeObject = forgeObjects[selectedObjIndex]
                     -- Player is looking at this object
@@ -1213,11 +1238,11 @@ function core.oldGetForgeObjectFromPlayerAim()
                 delete_object(projectileObjectIndex)
                 return nil, nil, dumpedProjectile or nil
             end
-        --elseif (forgeObjects[projectileObjectIndex]) then
-        --    if (core.playerIsAimingAt(projectileObjectIndex, 0.03, 0)) then
-        --        return projectileObjectIndex, forgeObjects[projectileObjectIndex],
-        --               dumpedProjectile or nil
-        --    end
+            -- elseif (forgeObjects[projectileObjectIndex]) then
+            --    if (core.playerIsAimingAt(projectileObjectIndex, 0.03, 0)) then
+            --        return projectileObjectIndex, forgeObjects[projectileObjectIndex],
+            --               dumpedProjectile or nil
+            --    end
         end
     end
     -- No object was found from player view, create a new selector
@@ -1233,7 +1258,8 @@ function core.getForgeObjectFromPlayerAim()
             if (not blam.isNull(projectile.attachedToObjectId)) then
                 dprint("Found object by collision!")
                 local forgeObjects = eventsStore:getState().forgeObjects
-                local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
+                local selectedObject = blam.object(get_object(
+                                                       projectile.attachedToObjectId))
                 local selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
                 local forgeObject = forgeObjects[selectedObjIndex]
                 -- Erase current projectile selector
@@ -1244,8 +1270,8 @@ function core.getForgeObjectFromPlayerAim()
                     -- Create a new one
                     return selectedObjIndex, forgeObject
                 end
-            --else
-            --    dprint("Searching for objects on view!")
+                -- else
+                --    dprint("Searching for objects on view!")
             end
             delete_object(lastProjectileId)
         end
@@ -1261,8 +1287,8 @@ end
 function core.isObjectOutOfBounds(object)
     if (object) then
         local projectileId = spawn_object(tagClasses.projectile,
-                                          const.forgeProjectilePath, object.x,
-                                          object.y, object.z)
+                                          const.forgeProjectilePath, object.x, object.y,
+                                          object.z)
         if (projectileId) then
             local blamObject = blam.object(get_object(projectileId))
             if (blamObject) then

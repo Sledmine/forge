@@ -360,6 +360,7 @@ function OnTick()
             -- Hide spawning related Forge objects
             features.hideReflectionObjects()
             features.showForgeKeys()
+            features.swapFirstPerson()
         end
         local oldPosition = playerState.position
         if (oldPosition) then

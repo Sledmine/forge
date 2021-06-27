@@ -139,11 +139,20 @@ constants.tagCollections = {
 
 -- Biped Tags ID
 constants.bipeds = {}
-for tagNumber, tag in pairs(core.findTagsList("characters", tagClasses.biped)) do
+for _, tag in pairs(core.findTagsList("characters", tagClasses.biped)) do
     if (tag) then
         local pathSplit = glue.string.split(tag.path, "\\")
         local tagName = core.toCamelCase(pathSplit[#pathSplit]:gsub("_mp", ""))
         constants.bipeds[tagName .. "TagId"] = tag.id
+    end
+end
+
+constants.firstPersonHands = {}
+for _, tag in pairs(core.findFirstPersonHands()) do
+    if (tag) then
+        local pathSplit = glue.string.split(tag.path, "\\")
+        local tagName = pathSplit[#pathSplit - 2]
+        constants.firstPersonHands[tagName] = tag.id
     end
 end
 

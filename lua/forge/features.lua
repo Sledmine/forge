@@ -81,15 +81,17 @@ end
 function features.swapBiped()
     features.unhighlightAll()
     if (server_type == "local") then
-        local player = blam.biped(get_dynamic_player())
-        if (player) then
+        -- If player is alive save his last position
+        local playerBiped = blam.biped(get_dynamic_player())
+        if (playerBiped) then
             playerStore:dispatch({type = "SAVE_POSITION"})
         end
 
         -- Avoid annoying low health/shield bug after swaping bipeds
-        player.health = 1
-        player.shield = 1
+        playerBiped.health = 1
+        playerBiped.shield = 1
 
+        -- Find monitor and alternative spartan biped
         local monitorTagId = const.bipeds.monitorTagId
         local spartanTagId
         for bipedPropertyName, bipedTagId in pairs(const.bipeds) do
@@ -100,34 +102,46 @@ function features.swapBiped()
         end
         local globals = blam.globalsTag()
         if (globals) then
-            for objectNumber, objectIndex in pairs(blam.getObjects()) do
-                local object = blam.object(get_object(objectIndex))
-                if (object) then
-                    if (object.address == get_dynamic_player()) then
-                        if (object.tagId == monitorTagId) then
-                            local newMultiplayerInformation =
-                                globals.multiplayerInformation
-                            newMultiplayerInformation[1].unit = spartanTagId
-                            -- Update globals tag data to force respawn as new biped
-                            globals.multiplayerInformation = newMultiplayerInformation
+            local player = blam.player(get_player())
+            local playerObject = blam.object(get_object(player.objectId))
+            if (player and playerObject) then
+                if (playerObject.tagId == monitorTagId) then
+                    local newMultiplayerInformation = globals.multiplayerInformation
+                    newMultiplayerInformation[1].unit = spartanTagId
+                    -- Update globals tag data to set new biped
+                    globals.multiplayerInformation = newMultiplayerInformation
+                else
+                    local newMultiplayerInformation = globals.multiplayerInformation
+                    newMultiplayerInformation[1].unit = monitorTagId
+                    -- Update globals tag data to set new biped
+                    globals.multiplayerInformation = newMultiplayerInformation
+                end
+                -- Erase player object to force biped respawn
+                delete_object(player.objectId)
+            end
+        end
+    end
+end
 
-                        else
-                            local newMultiplayerInformation =
-                                globals.multiplayerInformation
-                            newMultiplayerInformation[1].unit = monitorTagId
-                            -- Update globals tag data to force respawn as new biped
-                            globals.multiplayerInformation = newMultiplayerInformation
-                        end
-                        delete_object(objectIndex)
-                    end
+-- TODO Finish first person model lookup from constants
+function features.swapFirstPerson()
+    local globals = blam.globalsTag()
+    if (globals) then
+        local player = blam.player(get_player())
+        local playerObject = blam.object(get_object(player.objectId))
+        if (player and playerObject) then
+            local bipedTag = blam.getTag(playerObject.tagId)
+            if (bipedTag) then
+                local tagPathSplit = glue.string.split(bipedTag.path, "\\")
+                local bipedName = tagPathSplit[#tagPathSplit]
+                local fpModelTagId = const.firstPersonHands[bipedName]
+                if (fpModelTagId) then
+                    local newFirstPersonInterface = globals.firstPersonInterface
+                    newFirstPersonInterface[1].firstPersonHands = fpModelTagId
+                    globals.firstPersonInterface = newFirstPersonInterface
                 end
             end
         end
-
-        -- else
-        -- dprint("Requesting monitor biped...")
-        -- TODO Replace this with a send request function
-        -- execute_script("rcon forge #b")
     end
 end
 
