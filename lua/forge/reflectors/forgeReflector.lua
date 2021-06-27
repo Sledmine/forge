@@ -24,8 +24,8 @@ local function forgeReflector()
     end
 
     -- Forge Menu
-    local forgeMenuElementsStrings = blam.unicodeStringList(
-                                         const.unicodeStrings.forgeMenuElementsTagId)
+    local forgeMenuElementsStrings = blam.unicodeStringList(const.unicodeStrings
+                                                                .forgeMenuElementsTagId)
     forgeMenuElementsStrings.stringList = currentElements
     interface.update(const.uiWidgetDefinitions.objectsList, #currentElements + 2)
 
@@ -48,7 +48,8 @@ local function forgeReflector()
     }
 
     -- Refresh budget bar status
-    local amountBarWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions.amountBar.id)
+    local amountBarWidget =
+        blam.uiWidgetDefinition(const.uiWidgetDefinitions.amountBar.id)
     amountBarWidget.width = forgeState.forgeMenu.currentBarSize
 
     -- Refresh loading bar size
@@ -79,7 +80,8 @@ local function forgeReflector()
     sidebarWidget.boundsY = forgeState.mapsMenu.sidebar.position
 
     -- Refresh current forge map information
-    local pauseGameStrings = blam.unicodeStringList(const.unicodeStrings.pauseGameStringsTagId)
+    local pauseGameStrings = blam.unicodeStringList(const.unicodeStrings
+                                                        .pauseGameStringsTagId)
     pauseGameStrings.stringList = {
         -- Skip elements using empty string
         "",
@@ -96,7 +98,31 @@ local function forgeReflector()
         "",
         "",
         "",
-        "v".. forgeVersion
+        "v" .. forgeVersion
+    }
+
+    local settingsMenuList =
+        blam.uiWidgetDefinition(const.uiWidgetDefinitions.settingsMenuList.id)
+    if (settingsMenuList) then
+        settingsMenuList.childWidgetsCount = 4
+    end
+
+    local settingsMenuStrings = blam.unicodeStringList(const.unicodeStrings
+                                                           .settingsMenuStringsTagId)
+    if (settingsMenuStrings) then
+        settingsMenuStrings.stringList = {
+            "Enable debug mode",
+            "Constantly save current map",
+            "Enable object snap mode",
+            "Cast shadow on objects"
+        }
+    end
+    local settingsMenuValuesStrings = blam.unicodeStringList(const.unicodeStrings.settingsMenuValueStringsTagId)
+    settingsMenuValuesStrings.stringList = {
+        core.toSentenceCase(tostring(config.forge.debugMode)),
+        core.toSentenceCase(tostring(config.forge.autoSave)),
+        core.toSentenceCase(tostring(config.forge.snapMode)),
+        core.toSentenceCase(tostring(config.forge.objectsCastShadow)),
     }
 end
 

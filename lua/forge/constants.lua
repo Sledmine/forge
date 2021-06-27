@@ -159,8 +159,8 @@ constants.bitmaps = {
     unitHudBackgroundTagId = core.findTag("combined\\visor", tagClasses.bitmap).id
 }
 
--- UI widget definitions
-constants.uiWidgetDefinitions = {
+-- UI Widget definitions
+local uiWidgetDefinitions = {
     forgeMenu = core.findTag("forge_menu", tagClasses.uiWidgetDefinition),
     voteMenu = core.findTag("map_vote_menu", tagClasses.uiWidgetDefinition),
     voteMenuList = core.findTag("vote_menu_list", tagClasses.uiWidgetDefinition),
@@ -173,11 +173,14 @@ constants.uiWidgetDefinitions = {
     -- TODO An implementation of this should be possible on the future
     -- loadoutMenu = "[shm]\\halo_4\\ui\\shell\\loadout_menu\\loadout_menu_no_background",
     mapsList = core.findTag("maps_list", tagClasses.uiWidgetDefinition),
-    sidebar = core.findTag("forge_map_list_sidebar_bar", tagClasses.uiWidgetDefinition)
+    sidebar = core.findTag("forge_map_list_sidebar_bar", tagClasses.uiWidgetDefinition),
+    settingsMenuList = core.findTag("forge_settings_menu\\options\\options",
+                                    tagClasses.uiWidgetDefinition)
 }
--- TODO Migrate all the references to these strings, ensure the correct properties are being used
+constants.uiWidgetDefinitions = uiWidgetDefinitions
+
 -- Unicode string definitions
-constants.unicodeStrings = {
+local unicodeStrings = {
     budgetCountTagId = core.findTag("budget_count", tagClasses.unicodeStringList).id,
     forgeMenuElementsTagId = core.findTag("elements_text", tagClasses.unicodeStringList)
         .id,
@@ -188,8 +191,13 @@ constants.unicodeStrings = {
     mapsListTagId = core.findTag("maps_name", tagClasses.unicodeStringList).id,
     pauseGameStringsTagId = core.findTag("titles_and_headers",
                                          tagClasses.unicodeStringList).id,
-    forgeControlsTagId = core.findTag("forge_controls", tagClasses.unicodeStringList).id
+    forgeControlsTagId = core.findTag("forge_controls", tagClasses.unicodeStringList).id,
+    settingsMenuStringsTagId = core.findTag("forge_settings_menu\\strings\\options",
+                                            tagClasses.unicodeStringList).id,
+    settingsMenuValueStringsTagId = core.findTag("forge_settings_menu\\strings\\values",
+                                                 tagClasses.unicodeStringList).id
 }
+constants.unicodeStrings = unicodeStrings
 
 constants.hsc = {
     playSound = [[(begin (sound_impulse_start "%s" (list_get (players) %s) %s))]]

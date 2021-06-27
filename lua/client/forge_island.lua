@@ -310,6 +310,16 @@ function OnPreFrame()
             dprint("Vote Map menu:")
             dprint("Button " .. pressedButton .. " was pressed!", "category")
         end
+
+        local pressedButton = interface.triggers("settings_menu", 8)
+        if (pressedButton) then
+            dprint("Settings menu:")
+            dprint("Button " .. pressedButton .. " was pressed!", "category")
+            
+            local configOptions = {"fdebug", "fauto", "fsnap", "fcast"}
+            commands(configOptions[pressedButton])
+            forgeReflector()
+        end
     else
         ---@type playerState
         local playerState = playerStore:getState()

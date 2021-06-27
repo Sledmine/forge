@@ -54,6 +54,9 @@ if (args.updateVersion) then
     end
 end
 
+print("Fixing script nodes for stock compatibility...")
+local fixScenarioNodes = [[invader-bludgeon -t tags\ -T excessive-script-nodes "[shm]\halo_4\maps\forge_island\forge_island_dev.scenario"]]
+os.execute(fixScenarioNodes)
 -- Compile map
 local compileMapCmd =
     [[cd tags\ & invader-build.exe -t . -P -m "D:\Program Files (x86)\Microsoft Games\Halo Custom Edition\maps" -A pc-custom -E -g pc-custom -N %s -q "[shm]\halo_4\maps\forge_island\forge_island_dev.scenario"]]
