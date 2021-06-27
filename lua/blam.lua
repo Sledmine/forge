@@ -45,7 +45,9 @@ local addressList = {
     tagDataHeader = 0x40440000,
     cameraType = 0x00647498, -- from Giraffe
     gamePaused = 0x004ACA79,
-    gameOnMenus = 0x00622058
+    gameOnMenus = 0x00622058,
+    joystickInput = 0x64D998, -- from aLTis
+    firstPerson = 0x40000EB8 -- from aLTis
 }
 
 -- Tag classes values
@@ -159,6 +161,7 @@ local cameraTypes = {
     deadCamera = 5 -- 23776
 }
 
+-- Netgame flags type 
 local netgameFlagTypes = {
     ctfFlag = 0,
     ctfVehicle = 1,
@@ -171,6 +174,7 @@ local netgameFlagTypes = {
     hillFlag = 8
 }
 
+-- Netgame equipment types
 local netgameEquipmentTypes = {
     none = 0,
     ctf = 1,
@@ -189,12 +193,55 @@ local netgameEquipmentTypes = {
     allExceptRaceCtf = 14
 }
 
--- Console colors
+-- Standard console colors
 local consoleColors = {
     success = {1, 0.235, 0.82, 0},
     warning = {1, 0.94, 0.75, 0.098},
     error = {1, 1, 0.2, 0.2},
     unknown = {1, 0.66, 0.66, 0.66}
+}
+
+-- Offset input from the joystick game data
+local joystickInputs = {
+    -- No zero values also pressed time until maxmimum byte size
+    button1 = 0, -- Triangle
+    button2 = 1, -- Circle
+    button3 = 2, -- Cross
+    button4 = 3, -- Square
+    leftBumper = 4,
+    rightBumper = 5,
+    leftTrigger = 6,
+    rightTrigger = 7,
+    backButton = 8,
+    startButton = 9,
+    leftStick = 10,
+    rightStick = 11,
+    -- Multiple values on the same offset, check dPadValues table
+    dPad = 96,
+    -- Non zero values
+    dPadUp = 100,
+    dPadDown = 104,
+    dPadLeft = 106,
+    dPadRight = 102,
+    dPadUpRight = 101,
+    dPadDownRight = 103,
+    dPadUpLeft = 107,
+    dPadDownLeft = 105
+    -- TODO Add joys axis
+    -- rightJoystick = 30,
+}
+
+-- Values for the possible dPad values from the joystick inputs
+local dPadValues = {
+    noButton = 1020,
+    upRight = 766,
+    downRight = 768,
+    upLeft = 772,
+    downLeft = 770,
+    left = 771,
+    right = 767,
+    down = 769,
+    up = 765
 }
 
 ------------------------------------------------------------------------------
@@ -1430,6 +1477,15 @@ local modelAnimationsStructure = {
     }
 }
 
+---@class weapon : blamObject
+---@field pressedReloadKey boolean Is weapon trying to reload
+---@field isWeaponPunching boolean Is weapon playing melee or grenade animation
+
+local weaponStructure = extendStructure(objectStructure, {
+    pressedReloadKey = {type = "bit", offset = 0x230, bitLevel = 3},
+    isWeaponPunching = {type = "bit", offset = 0x230, bitLevel = 4}
+})
+
 ---@class weaponTag
 ---@field model number Tag ID of the weapon model
 
@@ -1547,15 +1603,18 @@ local playerStructure = {
     ping = {type = "dword", offset = 0xDC}
 }
 
+---@class firstPersonInterface number
+---@field firstPersonHands number
+
 ---@class multiplayerInformation
 ---@field flag number Tag ID of the flag object used for multiplayer games
 ---@field unit number Tag ID of the unit object used for multiplayer games
 
 ---@class globalsTag
 ---@field multiplayerInformation multiplayerInformation[]
+---@field firstPersonInterface firstPersonInterface[]
 
 local globalsTagStructure = {
-    -- WARNING Separeted properties for easier accesibility, structure is an array of properties
     multiplayerInformation = {
         type = "table",
         jump = 0x0,
@@ -1564,23 +1623,34 @@ local globalsTagStructure = {
             flag = {type = "dword", offset = 0xC},
             unit = {type = "dword", offset = 0x1C}
         }
+    },
+    firstPersonInterface = {
+        type = "table",
+        jump = 0x0,
+        offset = 0x180,
+        rows = {firstPersonHands = {type = "dword", offset = 0xC}}
     }
 }
+
+---@class firstPerson
+---@field weaponObjectId number Weapon Id from the first person view
+
+local firstPersonStructure = {weaponObjectId = {type = "dword", offset = 0x10}}
 
 ------------------------------------------------------------------------------
 -- LuaBlam globals
 ------------------------------------------------------------------------------
 
--- Add blam! data tables to library
+-- Provide with public blam! data tables
 blam.addressList = addressList
 blam.tagClasses = tagClasses
 blam.objectClasses = objectClasses
+blam.joystickInputs = joystickInputs
+blam.dPadValues = dPadValues
 blam.cameraTypes = cameraTypes
 blam.netgameFlagTypes = netgameFlagTypes
 blam.netgameEquipmentTypes = netgameEquipmentTypes
 blam.consoleColors = consoleColors
-
--- LuaBlam globals
 
 ---@class tagDataHeader
 ---@field array any
@@ -1618,7 +1688,7 @@ function blam.getCameraType()
             return cameraTypes.firstPerson
         elseif (camera == 30704) then
             return cameraTypes.devcam
-            -- //FIXME Validate this value, it seems to be wrong!
+            -- FIXME Validate this value, it seems to be wrong!
         elseif (camera == 21952) then
             return cameraTypes.thirdPerson
         elseif (camera == 23776) then
@@ -1628,23 +1698,32 @@ function blam.getCameraType()
     return nil
 end
 
-function blam.getJoystickInput(offset)
-    local value = 0
-    for controller_id = 0,3 do
-        controller_input_address = 0x64D998 + controller_id*0xA0
-        if offset >= 30 and offset <= 38 then -- sticks
-            value = value + read_long(controller_input_address + offset)
-        elseif offset > 96 then -- D-pad
-            local value2 = read_word(controller_input_address + 96)
-            if value2 == offset-100 then
-                value = 1
+--- Get input from the joystick in the game
+-- Based on aLTis controller method
+-- TODO Check if it is better to return an entire table with all input values 
+---@param joystickOffset number Offset input from the joystick data, use blam.joystickInputs
+---@return boolean | number Value of the joystick input
+function blam.getJoystickInput(joystickOffset)
+    joystickOffset = joystickOffset or 0
+    -- Nothing is pressed by default
+    local inputValue = false
+    -- Look for every input from every joystick available
+    for controllerId = 0, 3 do
+        local inputAddress = addressList.joystickInput + controllerId * 0xA0
+        if (joystickOffset >= 30 and joystickOffset <= 38) then
+            -- Sticks
+            inputValue = inputValue + read_long(inputAddress + joystickOffset)
+        elseif (joystickOffset > 96) then
+            -- D-pad related
+            local tempValue = read_word(inputAddress + 96)
+            if (tempValue == joystickOffset - 100) then
+                inputValue = true
             end
         else
-            value = value + read_byte(controller_input_address + offset)
+            inputValue = inputValue + read_byte(inputAddress + joystickOffset)
         end
     end
-    console_out(value)
-    return value
+    return inputValue
 end
 
 --- Create a tag object from a given address, this object can't write data to game memory
@@ -1707,6 +1786,7 @@ function blam.getTag(tagIdOrTagPath, tagClass, ...)
 end
 
 --- Create a player object given player entry table address
+---@return player
 function blam.player(address)
     if (isValid(address)) then
         return createObject(address, playerStructure)
@@ -1850,6 +1930,16 @@ function blam.modelAnimations(tag)
     return nil
 end
 
+--- Create a Weapon object from the given object address
+---@param address number
+---@return weapon
+function blam.weapon(address)
+    if (isValid(address)) then
+        return createObject(address, weaponStructure)
+    end
+    return nil
+end
+
 --- Create a Weapon tag object from a tag path or id
 ---@param tag string | number
 ---@return weaponTag
@@ -1884,6 +1974,13 @@ function blam.globalsTag(tag)
         return createObject(globalsTag.data, globalsTagStructure)
     end
     return nil
+end
+
+--- Create a First person object from a given address, game known address by default
+---@param address number
+---@return firstPerson
+function blam.firstPerson(address)
+    return createObject(address or addressList.firstPerson, firstPersonStructure)
 end
 
 return blam
