@@ -2,10 +2,18 @@
 
 # 1.0.0-beta.5
 ## Code changes:
-- Add dynamic FP model swapping
+- Added map limits to kill players under specific coordinates (under water limit)
+- Fixed auto map saving when player is on menus
+- Added dynamic multiple first person hands support
 - Added Forge settings menu
+- General code optimizations, monitor mode, biped swapping, object selection and other features
+recieved a huge optimization, dramatically decreasing CPU usage
+- Fixed objects selection by collision, providing more accurate object picking on monitor mode
 - Fixed memory leaks causing incremental low performance and eventual crashes
-- Added dynamic multibipeds support
+- Added dynamic multiple bipeds support
+
+## Map changes:
+- Added new motion sensor values for more accurate radar behaviour
 
 # 1.0.0-beta.4
 ## Code changes:

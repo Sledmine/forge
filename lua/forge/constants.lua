@@ -22,6 +22,7 @@ constants.requestSeparator = "&"
 constants.maximumObjectsBudget = 1024
 constants.minimumZSpawnPoint = -18.69
 constants.maximumZRenderShadow = -14.12
+constants.minimumZMapLimit = -69.9
 constants.maximumRenderShadowRadius = 7
 constants.forgeSelectorOffset = 0.33
 constants.forgeSelectorVelocity = 15
@@ -43,8 +44,7 @@ local forgeProjectile = core.findTag("forge", tagClasses.projectile)
 constants.forgeProjectilePath = forgeProjectile.path
 constants.forgeProjectileTagId = forgeProjectile.id
 constants.forgeProjectileTagIndex = forgeProjectile.index
-constants.fragGrenadeProjectileTagIndex = core.findTag("frag", tagClasses.projectile)
-                                              .index
+constants.fragGrenadeProjectileTagIndex = core.findTag("frag", tagClasses.projectile).index
 
 -- Constant Forge requests data
 constants.requests = {
@@ -147,14 +147,26 @@ for _, tag in pairs(core.findTagsList("characters", tagClasses.biped)) do
     end
 end
 
+-- Biped Tags ID
+constants.bipedsPaths = {}
+-- First Person Model Tags ID
 constants.firstPersonHands = {}
-for _, tag in pairs(core.findFirstPersonHands()) do
+for _, tag in pairs(core.findTagsList("characters", tagClasses.biped)) do
     if (tag) then
         local pathSplit = glue.string.split(tag.path, "\\")
-        local tagName = pathSplit[#pathSplit - 2]
-        constants.firstPersonHands[tagName] = tag.id
+        local tagName = pathSplit[#pathSplit]
+        local tagNameFixed = core.toCamelCase(tagName):gsub("_mp", "")
+        constants.bipeds[tagNameFixed .. "TagId"] = tag.id
+        local pathToBiped = table.concat(glue.shift(pathSplit, #pathSplit, -1), "\\")
+        local fpTagPath = pathToBiped .. "\\fp\\" .. tagName .. " fp"
+        local fpTag = blam.getTag(fpTagPath, tagClasses.gbxmodel)
+        if (fpTag) then
+            constants.firstPersonHands[tagName] = fpTag.id
+        end
     end
 end
+-- Hardcode specific sets of armours with a resusable fp
+constants.firstPersonHands["mark vii"] = constants.firstPersonHands["mark vi"]
 
 -- Weapon HUD Interface Tags ID
 constants.weaponHudInterfaces = {
@@ -165,7 +177,7 @@ constants.weaponHudInterfaces = {
 constants.bitmaps = {
     forgingIconFrame0TagId = core.findTag("forge_loading_progress0", tagClasses.bitmap).id,
     forgeIconFrame1TagId = core.findTag("forge_loading_progress1", tagClasses.bitmap).id,
-    unitHudBackgroundTagId = core.findTag("combined\\visor", tagClasses.bitmap).id
+    unitHudBackgroundTagId = core.findTag("combined\\hud_background", tagClasses.bitmap).id
 }
 
 -- UI Widget definitions
@@ -176,8 +188,7 @@ local uiWidgetDefinitions = {
     objectsList = core.findTag("category_list", tagClasses.uiWidgetDefinition),
     amountBar = core.findTag("budget_progress_bar", tagClasses.uiWidgetDefinition),
     loadingMenu = core.findTag("loading_menu", tagClasses.uiWidgetDefinition),
-    loadingAnimation = core.findTag("loading_menu_progress_animation",
-                                    tagClasses.uiWidgetDefinition),
+    loadingAnimation = core.findTag("loading_menu_progress_animation", tagClasses.uiWidgetDefinition),
     loadingProgress = core.findTag("loading_progress_bar", tagClasses.uiWidgetDefinition),
     -- TODO An implementation of this should be possible on the future
     -- loadoutMenu = "[shm]\\halo_4\\ui\\shell\\loadout_menu\\loadout_menu_no_background",
@@ -191,15 +202,12 @@ constants.uiWidgetDefinitions = uiWidgetDefinitions
 -- Unicode string definitions
 local unicodeStrings = {
     budgetCountTagId = core.findTag("budget_count", tagClasses.unicodeStringList).id,
-    forgeMenuElementsTagId = core.findTag("elements_text", tagClasses.unicodeStringList)
-        .id,
+    forgeMenuElementsTagId = core.findTag("elements_text", tagClasses.unicodeStringList).id,
     votingMapsListTagId = core.findTag("vote_maps_names", tagClasses.unicodeStringList).id,
-    votingCountListTagId = core.findTag("vote_maps_count", tagClasses.unicodeStringList)
-        .id,
+    votingCountListTagId = core.findTag("vote_maps_count", tagClasses.unicodeStringList).id,
     paginationTagId = core.findTag("pagination", tagClasses.unicodeStringList).id,
     mapsListTagId = core.findTag("maps_name", tagClasses.unicodeStringList).id,
-    pauseGameStringsTagId = core.findTag("titles_and_headers",
-                                         tagClasses.unicodeStringList).id,
+    pauseGameStringsTagId = core.findTag("titles_and_headers", tagClasses.unicodeStringList).id,
     forgeControlsTagId = core.findTag("forge_controls", tagClasses.unicodeStringList).id,
     settingsMenuStringsTagId = core.findTag("forge_settings_menu\\strings\\options",
                                             tagClasses.unicodeStringList).id,
@@ -208,9 +216,7 @@ local unicodeStrings = {
 }
 constants.unicodeStrings = unicodeStrings
 
-constants.hsc = {
-    playSound = [[(begin (sound_impulse_start "%s" (list_get (players) %s) %s))]]
-}
+constants.hsc = {playSound = [[(begin (sound_impulse_start "%s" (list_get (players) %s) %s))]]}
 
 constants.sounds = {
     landHardPlayerDamagePath = core.findTag("land_hard_plyr_dmg", tagClasses.sound).path,
@@ -265,8 +271,25 @@ constants.colorsNumber = {
 
 -- Name to search in some tags that are ignored at hidding objects as spartan
 constants.hideObjectsExceptions = {"stand", "teleporters"}
+constants.objectsMigration = {
+    ["[shm]\\halo_4\\scenery\\spawning\\vehicles\\warthog spawn\\warthog spawn"] = [[[shm]\halo_4\scenery\spawning\vehicles\warthogs\warthog spawn\warthog spawn]],
+    ["[shm]\\halo_4\\scenery\\spawning\\vehicles\\rocket warthog spawn\\rocket warthog spawn"] = [[[shm]\halo_4\scenery\spawning\vehicles\warthogs\rocket warthog spawn\rocket warthog spawn]]
+}
 
-constants.teleportersChannels = {alpha = 0, bravo = 1, charly = 2}
+-- constants.teleportersChannels = {alpha = 0, bravo = 1, charly = 2, delta = 3, echo = }
+constants.teleportersChannels = {
+    "alpha",
+    "bravo",
+    "charly",
+    "delta",
+    "echo",
+    "foxtrot",
+    "golf",
+    "hotel",
+    "india",
+    "juliett",
+    "kilo"
+}
 
 dprint(string.format("Constants gathered, elapsed time: %.6f\n", os.clock() - time))
 

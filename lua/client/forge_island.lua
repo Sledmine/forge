@@ -33,6 +33,7 @@ local interface = require "forge.interface"
 local features = require "forge.features"
 local commands = require "forge.commands"
 local core = require "forge.core"
+actions = require "forge.redux.actions"
 
 -- Reducers importation
 local playerReducer = require "forge.reducers.playerReducer"
@@ -68,6 +69,7 @@ mouse = {}
 lastProjectileId = nil
 local lastHighlightedObjectIndex
 local lastPlayerBiped
+local lastInBoundsCoordinates
 loadingFrame = 0
 
 --- Function to send debug messages to console output
@@ -96,7 +98,8 @@ end
 
 --- Function to automatically save a current Forge map
 function autoSaveForgeMap()
-    if (config.forge.autoSave and core.isPlayerMonitor()) then
+    local isPlayerOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
+    if (config.forge.autoSave and core.isPlayerMonitor() and not isPlayerOnMenu) then
         ---@type forgeState
         local forgeState = forgeStore:getState()
         local currentMapName = forgeState.currentMap.name
@@ -121,8 +124,7 @@ function OnMapLoad()
     local forgeState = forgeStore:getState()
 
     -- TODO Migrate this into a feature or something
-    local sceneriesTagCollection = blam.tagCollection(const.tagCollections
-                                                          .forgeObjectsTagId)
+    local sceneriesTagCollection = blam.tagCollection(const.tagCollections.forgeObjectsTagId)
     local forgeObjectsList = core.getForgeSceneries(sceneriesTagCollection)
     -- Iterate over all the sceneries available in the sceneries tag collection
     for _, tagId in pairs(forgeObjectsList) do
@@ -151,8 +153,7 @@ function OnMapLoad()
             for currentLevel, categoryLevel in pairs(sceneriesSplit) do
                 -- TODO This is horrible, remove this "sort" implementation
                 if (categoryLevel:sub(1, 1) == "_") then
-                    categoryLevel = glue.string.fromhex(tostring((0x2))) ..
-                                        categoryLevel:sub(2, -1)
+                    categoryLevel = glue.string.fromhex(tostring((0x2))) .. categoryLevel:sub(2, -1)
                 end
                 if (not treePosition[categoryLevel]) then
                     treePosition[categoryLevel] = {}
@@ -228,8 +229,7 @@ function OnPreFrame()
             elseif (pressedButton == 11) then
                 core.saveForgeMap()
             else
-                local elementsList = blam.unicodeStringList(const.unicodeStrings
-                                                                .mapsListTagId)
+                local elementsList = blam.unicodeStringList(const.unicodeStrings.mapsListTagId)
                 local mapName = elementsList.stringList[pressedButton]:gsub(" ", "_")
                 core.loadForgeMap(mapName)
             end
@@ -279,8 +279,7 @@ function OnPreFrame()
                     local elementsList = blam.unicodeStringList(const.unicodeStrings
                                                                     .forgeMenuElementsTagId)
                     local selectedSceneryName = elementsList.stringList[pressedButton]
-                    local sceneryPath =
-                        forgeState.forgeMenu.objectsDatabase[selectedSceneryName]
+                    local sceneryPath = forgeState.forgeMenu.objectsDatabase[selectedSceneryName]
                     if (sceneryPath) then
                         playerStore:dispatch({
                             type = "CREATE_AND_ATTACH_OBJECT",
@@ -315,7 +314,7 @@ function OnPreFrame()
         if (pressedButton) then
             dprint("Settings menu:")
             dprint("Button " .. pressedButton .. " was pressed!", "category")
-            
+
             local configOptions = {"fdebug", "fauto", "fsnap", "fcast"}
             commands(configOptions[pressedButton])
             forgeReflector()
@@ -347,13 +346,14 @@ function OnPreFrame()
     end
 end
 
--- Where the magick happens, tling!
 function OnTick()
     local player = blam.biped(get_dynamic_player())
 
     ---@type playerState
     local playerState = playerStore:getState()
     if (player) then
+        -- Prevent players from getting outside map limits
+        features.mapLimit()
         if (lastPlayerBiped ~= player.tagId) then
             lastPlayerBiped = player.tagId
             dprint("Biped has changed!")
@@ -362,6 +362,7 @@ function OnTick()
             features.showForgeKeys()
             features.swapFirstPerson()
         end
+        -- Reposition player if needed
         local oldPosition = playerState.position
         if (oldPosition) then
             player.x = oldPosition.x
@@ -369,9 +370,7 @@ function OnTick()
             player.z = oldPosition.z + 0.1
             playerStore:dispatch({type = "RESET_POSITION"})
         end
-        if (player.isFrozen) then
-            player.isFrozen = false
-        end
+        -- Reset latest hilighted object
         if (lastHighlightedObjectIndex) then
             features.unhighlightObject(lastHighlightedObjectIndex)
             lastHighlightedObjectIndex = nil
@@ -391,6 +390,7 @@ function OnTick()
                     playerStore:dispatch({type = "CHANGE_ROTATION_ANGLE"})
                     features.printHUD("Rotating in " .. playerState.currentAngle)
                 elseif (player.weaponPTH and player.jumpHold) then
+                    features.printHUD("Restoring current object...")
                     local forgeObjects = eventsStore:getState().forgeObjects
                     local forgeObject = forgeObjects[playerAttachedObjectId]
                     if (forgeObject) then
@@ -401,10 +401,7 @@ function OnTick()
                         object.z = forgeObject.z
                         core.rotateObject(playerAttachedObjectId, forgeObject.yaw,
                                           forgeObject.pitch, forgeObject.roll)
-                        playerStore:dispatch({
-                            type = "DETACH_OBJECT",
-                            payload = {undo = true}
-                        })
+                        playerStore:dispatch({type = "DETACH_OBJECT", payload = {undo = true}})
                         return true
                     end
                 elseif (player.meleeKey) then
@@ -413,8 +410,7 @@ function OnTick()
                         payload = {lockDistance = not playerState.lockDistance}
                     })
                     features.printHUD("Distance from object is " ..
-                                          tostring(glue.round(playerState.distance)) ..
-                                          " units.")
+                                          tostring(glue.round(playerState.distance)) .. " units.")
                     if (playerState.lockDistance) then
                         features.printHUD("Push n pull.")
                     else
@@ -424,7 +420,11 @@ function OnTick()
                     playerStore:dispatch({type = "DESTROY_OBJECT"})
                 elseif (player.weaponSTH) then
                     local object = blam.object(get_object(playerAttachedObjectId))
-                    if (not core.isObjectOutOfBounds(object)) then
+                    if (not core.isObjectOutOfBounds({
+                        playerState.xOffset,
+                        playerState.yOffset,
+                        playerState.zOffset
+                    })) then
                         playerStore:dispatch({type = "DETACH_OBJECT"})
                     end
                 end
@@ -434,29 +434,49 @@ function OnTick()
                     playerStore:dispatch({type = "UPDATE_OFFSETS"})
                 end
 
-                -- Update object position
                 local object = blam.object(get_object(playerAttachedObjectId))
-                if (object) then
-                    object.x = playerState.xOffset
-                    object.y = playerState.yOffset
-                    object.z = playerState.zOffset
-                end
 
                 -- Update crosshair
-                if (core.isObjectOutOfBounds(object)) then
+                local isObjectOutOfBounds = core.isObjectOutOfBounds({
+                    playerState.xOffset,
+                    playerState.yOffset,
+                    playerState.zOffset
+                })
+                if (isObjectOutOfBounds) then
                     features.setCrosshairState(4)
                 else
                     features.setCrosshairState(3)
+                    lastInBoundsCoordinates = {
+                        playerState.xOffset,
+                        playerState.yOffset,
+                        playerState.zOffset
+                    }
+                end
+
+                -- Update object position
+                if (object) then
+                    if (isObjectOutOfBounds) then
+                        if (lastInBoundsCoordinates) then
+                            -- dprint("Preventing out of bounds...")
+                            object.x = lastInBoundsCoordinates[1]
+                            object.y = lastInBoundsCoordinates[2]
+                            object.z = lastInBoundsCoordinates[3]
+                        end
+                    else
+                        -- dprint("Normal positioning...")
+                        object.x = playerState.xOffset
+                        object.y = playerState.yOffset
+                        object.z = playerState.zOffset
+                    end
                 end
 
             else
-                features.printHUDRight("Flashlight Key - Objects menu",
-                                       "Crouch Key - Spartan mode", 25)
+                features.printHUDRight("Flashlight Key - Objects menu", "Crouch Key - Spartan mode",
+                                       25)
                 -- Set crosshair to not selected state
                 features.setCrosshairState(1)
 
-                local objectIndex, forgeObject, projectile =
-                    core.getForgeObjectFromPlayerAim()
+                local objectIndex, forgeObject, projectile = core.getForgeObjectFromPlayerAim()
                 -- Player is taking the object
                 if (objectIndex) then
                     if (objectIndex ~= lastHighlightedObjectIndex) then
@@ -465,22 +485,24 @@ function OnTick()
                     -- Hightlight object that the player is looking at
                     features.highlightObject(objectIndex, 1)
                     features.setCrosshairState(2)
-                    -- Get and parse object name
+
+                    -- Get and parse object path
                     local tagId = blam.object(get_object(objectIndex)).tagId
                     local tagPath = blam.getTag(tagId).path
-                    local objectPath = glue.string.split(tagPath, "\\")
-                    local objectName = objectPath[#objectPath - 1]
-                    local objectCategory = objectPath[#objectPath - 2]
+                    local splitPath = glue.string.split(tagPath, "\\")
+                    local objectPath = table.concat(glue.shift(splitPath, 1, -3), "\\")
+                    local objectCategory = splitPath[#splitPath - 2]
 
-                    if (objectCategory:sub(1, 1) == "_") then
-                        objectCategory = objectCategory:sub(2, -1)
+                    -- Get Forge object info
+                    local eventsState = actions.getEventsState()
+                    local forgeObject = eventsState.forgeObjects[objectIndex]
+
+                    if (forgeObject) then
+                        features.printHUD("NAME:  " .. objectPath,
+                                          "DATA INDEX:  " .. forgeObject.teamIndex, 25)
+                    else
+                        features.printHUD("NAME:  " .. objectPath, nil, 25)
                     end
-
-                    objectName = objectName:gsub("^%l", string.upper)
-                    objectCategory = objectCategory:gsub("^%l", string.upper)
-
-                    features.printHUD("NAME:  " .. objectName,
-                                      "CATEGORY:  " .. objectCategory, 25)
 
                     if (player.weaponPTH and not player.jumpHold) then
                         playerStore:dispatch({
@@ -533,13 +555,29 @@ function OnTick()
                 end
             end
         else
-            --[[local projectile, projectileIndex = core.getPlayerAimingSword()
-            if (projectile) then
-                dprint(player.xVel .. " " .. player.yVel .. " " .. player.zVel)
-                player.xVel = player.cameraX * 0.2
-                player.yVel = player.cameraY * 0.2
-                player.zVel = player.cameraZ * 0.06
-            end]]
+            -- local projectile, projectileIndex = core.getPlayerAimingSword()
+            -- Melee magnetisim concept
+            for _, objectIndex in pairs(blam.getObjects()) do
+                local object = blam.object(get_object(objectIndex))
+                if (object and object.type == objectClasses.biped and not object.isHealthEmpty) then
+                    local isPlayerOnAim = core.playerIsAimingAt(objectIndex, 0.11, 0.2, 1.4)
+                    if (isPlayerOnAim) then
+                        if (player.meleeKey) then
+                            dprint(player.cameraX .. " " .. player.cameraY .. " " .. player.cameraZ)
+                            -- Add velocity to current velocity
+                            player.yVel = player.yVel + player.cameraY * 0.13
+                            player.xVel = player.xVel + player.cameraX * 0.13
+                            player.zVel = player.zVel + player.cameraZ * 0.04
+
+                            -- Replace velocity with camera position
+                            -- player.yVel = player.cameraY * 0.15
+                            -- player.xVel = player.cameraX * 0.15
+                            -- player.zVel = player.cameraZ * 0.06
+                        end
+                    end
+                end
+            end
+
             features.regenerateHealth()
             features.hudUpgrades()
             features.setCrosshairState(0)
@@ -548,23 +586,21 @@ function OnTick()
                 features.swapBiped()
             elseif (config.forge.debugMode and player.actionKey and player.crouchHold and
                 server_type == "local") then
-                local bipedTag = blam.getTag(const.bipeds.spartanTagId)
-                core.spawnObject(tagClasses.biped, bipedTag.path, player.x, player.y,
-                                 player.z)
+                -- TODO Refactor this into a different module for debug tools
+                local bipedTag = blam.getTag(player.tagId)
+                testBipedId = core.spawnObject(bipedTag.class, bipedTag.path, player.x, player.y,
+                                               player.z)
             end
         end
     end
 
     -- Attach respective hooks for menus
     interface.hook("maps_menu_hook", interface.stop, const.uiWidgetDefinitions.mapsList)
-    interface.hook("forge_menu_hook", interface.stop,
-                   const.uiWidgetDefinitions.objectsList)
-    interface.hook("forge_menu_close_hook", interface.stop,
-                   const.uiWidgetDefinitions.forgeMenu)
-    interface.hook("loading_menu_close_hook", interface.stop,
-                   const.uiWidgetDefinitions.loadingMenu)
+    interface.hook("forge_menu_hook", interface.stop, const.uiWidgetDefinitions.objectsList)
+    interface.hook("forge_menu_close_hook", interface.stop, const.uiWidgetDefinitions.forgeMenu)
+    interface.hook("loading_menu_close_hook", interface.stop, const.uiWidgetDefinitions.loadingMenu)
 
-    -- Update tick count
+    -- Update text refresh tick count
     textRefreshCount = textRefreshCount + 1
 
     -- We need to draw new text, erase older text

@@ -119,7 +119,7 @@ function core.playerIsAimingAt(target, sensitivity, zOffset, maximumDistance)
                                   (targetZ - playerZ) ^ 2)
         local localX = targetX - playerX
         local localY = targetY - playerY
-        local localZ = (targetZ + zOffset) - playerZ
+        local localZ = (targetZ + (zOffset or 0)) - playerZ
         local pointX = 1 / distance * localX
         local pointY = 1 / distance * localY
         local pointZ = 1 / distance * localZ
@@ -168,28 +168,65 @@ function core.deprecatedEulerToRotation(yaw, pitch, roll)
 end
 
 --- Covert euler into game rotation array, optional rotation matrix
+--- @param yaw number
+--- @param pitch number
+--- @param roll number
+--- @return table<number, number>, table<number, table<number, number>>
+function core.eulerToRotation(yaw, pitch, roll)
+   local matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
+   local cosRoll = cos(rad(roll))
+   local sinRoll = sin(rad(roll))
+   local cosYaw = cos(rad(yaw))
+   local sinYaw = sin(rad(yaw))
+   local cosPitch = cos(rad(pitch))
+   local sinPitch = sin(rad(pitch))
+   matrix[1][1] = cosRoll * cosYaw
+   matrix[1][2] = sinRoll * sinPitch - cosRoll * sinYaw * cosPitch
+   matrix[1][3] = cosRoll * sinYaw * sinPitch + sinRoll * cosPitch
+   matrix[2][1] = sinYaw
+   matrix[2][2] = cosYaw * cosPitch
+   matrix[2][3] = -cosYaw * sinPitch
+   matrix[3][1] = -sinRoll * cosYaw
+   matrix[3][2] = sinRoll * sinYaw * cosPitch + cosRoll * sinPitch
+   matrix[3][3] = -sinRoll * sinYaw * sinPitch + cosRoll * cosPitch
+   local array = {
+       matrix[1][1],
+       matrix[2][1],
+       matrix[3][1],
+       matrix[1][3],
+       matrix[2][3],
+       matrix[3][3]
+   }
+   return array, matrix
+end
+
+--- Covert euler angles into game rotation array, optional rotation matrix
 ---@param yaw number
 ---@param pitch number
 ---@param roll number
----@return table<number, number>, table<number, table<number, number>>
-function core.eulerToRotation(yaw, pitch, roll)
-    local matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
+---@return number[], table<number, number[]>
+function core.anglesToRotation(yaw, pitch, roll)
+    local matrix = {
+        {1, 0, 0},
+        {0, 1, 0},
+        {0, 0, 1}
+    }
 
-    local cosRoll = cos(rad(roll))
-    local sinRoll = sin(rad(roll))
-    local cosYaw = cos(rad(yaw))
-    local sinYaw = sin(rad(yaw))
     local cosPitch = cos(rad(pitch))
     local sinPitch = sin(rad(pitch))
-    matrix[1][1] = cosRoll * cosYaw
-    matrix[1][2] = sinRoll * sinPitch - cosRoll * sinYaw * cosPitch
-    matrix[1][3] = cosRoll * sinYaw * sinPitch + sinRoll * cosPitch
+    local cosYaw = cos(rad(yaw))
+    local sinYaw = sin(rad(yaw))
+    local cosRoll = cos(rad(roll))
+    local sinRoll = sin(rad(roll))
+    matrix[1][1] = cosPitch * cosYaw
+    matrix[1][2] = sinPitch * sinRoll - cosPitch * sinYaw * cosRoll
+    matrix[1][3] = cosPitch * sinYaw * sinRoll + sinPitch * cosRoll
     matrix[2][1] = sinYaw
-    matrix[2][2] = cosYaw * cosPitch
-    matrix[2][3] = -cosYaw * sinPitch
-    matrix[3][1] = -sinRoll * cosYaw
-    matrix[3][2] = sinRoll * sinYaw * cosPitch + cosRoll * sinPitch
-    matrix[3][3] = -sinRoll * sinYaw * sinPitch + cosRoll * cosPitch
+    matrix[2][2] = cosYaw * cosRoll
+    matrix[2][3] = -cosYaw * sinRoll
+    matrix[3][1] = -sinPitch * cosYaw
+    matrix[3][2] = sinPitch * sinYaw * cosRoll + cosPitch * sinRoll
+    matrix[3][3] = -sinPitch * sinYaw * sinRoll + cosPitch * cosRoll
     local array = {
         matrix[1][1],
         matrix[2][1],
@@ -201,20 +238,54 @@ function core.eulerToRotation(yaw, pitch, roll)
     return array, matrix
 end
 
+--- Covert euler angles into quaternions
+---@param yaw number
+---@param pitch number
+---@param roll number
+---@return number[], table<number[]>[]
+function core.anglesToQuaternion(yaw, pitch, roll)
+
+    local cy = cos(rad(yaw))
+    local sy = sin(rad(yaw))
+    local cp = cos(rad(pitch))
+    local sp = sin(rad(pitch))
+    local cr = cos(rad(roll))
+    local sr = sin(rad(roll))
+    
+    local w = (cr * cp * cy + sr * sp * sy)
+	local x = (sr * cp * cy - cr * sp * sy)
+	local y = (cr * sp * cy + sr * cp * sy)
+	local z = (cr * cp * sy - sr * sp * cy)
+
+    local quaternion = {w = w, x = x, y = y, z = z}
+    local array = {w, nil, nil, x, y, z}
+    
+    return array, quaternion
+end
+
 --- Rotate object into desired angles
 ---@param objectId number
 ---@param yaw number
 ---@param pitch number
 ---@param roll number
 function core.rotateObject(objectId, yaw, pitch, roll)
+    --local rotation = core.anglesToQuaternion(yaw, pitch, roll)
+    --local rotation = core.anglesToRotation(yaw, pitch, roll)
     local rotation = core.eulerToRotation(yaw, pitch, roll)
-    local tempObject = blam.object(get_object(objectId))
-    tempObject.vX = rotation[1]
-    tempObject.vY = rotation[2]
-    tempObject.vZ = rotation[3]
-    tempObject.v2X = rotation[4]
-    tempObject.v2Y = rotation[5]
-    tempObject.v2Z = rotation[6]
+    local object = blam.object(get_object(objectId))
+    object.vX = rotation[1]
+    object.vY = rotation[2]
+    object.vZ = rotation[3]
+    object.v2X = rotation[4]
+    object.v2Y = rotation[5]
+    object.v2Z = rotation[6]
+    --dprint("Array from game:")
+    --dprint(inspect({object.vX,
+    --object.vY,
+    --object.vZ,
+    --object.v2X,
+    --object.v2Y,
+    --object.v2Z}))
 end
 
 --[[function core.rotatePoint(x, y, z)
@@ -484,6 +555,7 @@ function core.loadForgeMap(mapName)
                 else
                     dprint("Warning, object with path \"" .. spawnRequest.tagPath ..
                                "\" can not be spawned...", "warning")
+                    --error(debug.traceback("An object tag can't be spawned"), 2)
                 end
             end
             forgeMapFinishedLoading = true
@@ -1135,30 +1207,6 @@ function core.findTagsList(partialName, searchTagType)
     return tagsList
 end
 
---- Find first person hands models on the map
----@return tag[] tag
-function core.findFirstPersonHands()
-    local tagsList
-    for tagIndex = 0, blam.tagDataHeader.count - 1 do
-        local tag = blam.getTag(tagIndex)
-        if (tag and tag.path:find("fp") and tag.path:find("characters") and tag.class ==
-            tagClasses.gbxmodel) then
-            if (not tagsList) then
-                tagsList = {}
-            end
-            glue.append(tagsList, {
-                id = tag.id,
-                path = tag.path,
-                index = tag.index,
-                class = tag.class,
-                indexed = tag.indexed,
-                data = tag.data
-            })
-        end
-    end
-    return tagsList
-end
-
 --- Find tag data given index number
 ---@param tagIndex number
 function core.findTagByIndex(tagIndex)
@@ -1256,7 +1304,14 @@ function core.getForgeObjectFromPlayerAim()
         local projectile = blam.projectile(get_object(lastProjectileId))
         if (projectile) then
             if (not blam.isNull(projectile.attachedToObjectId)) then
+                local object = blam.object(get_object(projectile.attachedToObjectId))
                 dprint("Found object by collision!")
+                --[[dprint(inspect({object.vX,
+                        object.vY,
+                        object.vZ,
+                        object.v2X,
+                        object.v2Y,
+                        object.v2Z}))]]
                 local forgeObjects = eventsStore:getState().forgeObjects
                 local selectedObject = blam.object(get_object(
                                                        projectile.attachedToObjectId))
@@ -1282,19 +1337,20 @@ function core.getForgeObjectFromPlayerAim()
 end
 
 --- Return data about object that the player is looking at
----@param object blamObject
+---@param coordinates table<number, number, number>
 ---@return boolean
-function core.isObjectOutOfBounds(object)
-    if (object) then
+function core.isObjectOutOfBounds(coordinates)
+    if (coordinates) then
         local projectileId = spawn_object(tagClasses.projectile,
-                                          const.forgeProjectilePath, object.x, object.y,
-                                          object.z)
+                                          const.forgeProjectilePath, coordinates[1], coordinates[2],
+                                          coordinates[3])
         if (projectileId) then
-            local blamObject = blam.object(get_object(projectileId))
-            if (blamObject) then
-                local isObjectOutOfBounds = blamObject.isOutSideMap
+            local testerObject = blam.object(get_object(projectileId))
+            if (testerObject) then
+                --dprint(object.x .. " " .. object.y .. " " .. object.z)
+                local isOutSideMap = testerObject.isOutSideMap
                 delete_object(projectileId)
-                return isObjectOutOfBounds
+                return isOutSideMap
             end
         end
     end

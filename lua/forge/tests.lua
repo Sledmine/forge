@@ -202,14 +202,13 @@ end
 
 function testCore.testFindTag()
     local time = os.clock()
-    local tag = core.findTag("cyborg_mp", tagClasses.biped)
+    local tag = core.findTag("characters", tagClasses.biped)
     console_out(string.format("Elapsed time: %.6f\n", os.clock() - time))
     lu.assertNotIsNil(tag.path)
     lu.assertNotIsNil(tag.indexed)
     lu.assertNotIsNil(tag.index)
     lu.assertNotIsNil(tag.id)
     lu.assertNotIsNil(tag.class)
-    -- lu.assertEquals(tagPath, constants.bipeds.spartanTagId)
 end
 
 ----------------------------------

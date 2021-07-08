@@ -267,7 +267,7 @@ local function forgeReducer(state, action)
         if (action.type == "@@lua-redux/INIT") then
             dprint("Default state has been created!")
         else
-            dprint("ERROR!!! The dispatched event does not exist:", "error")
+            dprint(("Warning, Dispatched event \"%s\" does not exist:"):format(tostring(action.type)), "warning")
         end
         return state
     end
