@@ -24,6 +24,7 @@
         "forge.reducers.votingReducer",
         "forge.reflectors.forgeReflector",
         "forge.reflectors.votingReflector",
+        "forge.redux.actions",
         "forge.version"
     ],
     "main":"lua\\client\\forge_island",
