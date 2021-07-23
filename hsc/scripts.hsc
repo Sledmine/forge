@@ -51,6 +51,11 @@
     )
 )
 
+;; Settings Menu
+(script static void set_settings_menu_hook
+    (set settings_menu_hook true)
+)
+
 ;; Auto respawn vehicles system
 (script continuous respawn_vehicles
     (begin
