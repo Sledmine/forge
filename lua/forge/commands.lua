@@ -27,8 +27,7 @@ local function forgeCommands(command)
         if (forgeCommand == "fstep") then
             local newRotationStep = tonumber(splitCommand[2])
             if (newRotationStep) then
-                features.printHUD("Rotation step now is " .. newRotationStep ..
-                                      " degrees.")
+                features.printHUD("Rotation step now is " .. newRotationStep .. " degrees.")
                 playerStore:dispatch({
                     type = "SET_ROTATION_STEP",
                     payload = {step = newRotationStep}
@@ -40,24 +39,15 @@ local function forgeCommands(command)
         elseif (forgeCommand == "fdis" or forgeCommand == "fdistance") then
             local newDistance = tonumber(splitCommand[2])
             if (newDistance) then
-                features.printHUD(
-                    "Distance from object has been set to " .. newDistance .. " units.")
+                features.printHUD("Distance from object has been set to " .. newDistance ..
+                                      " units.")
                 -- Force distance object update
-                playerStore:dispatch({
-                    type = "SET_LOCK_DISTANCE",
-                    payload = {lockDistance = true}
-                })
+                playerStore:dispatch({type = "SET_LOCK_DISTANCE", payload = {lockDistance = true}})
                 local distance = glue.round(newDistance)
-                playerStore:dispatch({
-                    type = "SET_DISTANCE",
-                    payload = {distance = distance}
-                })
+                playerStore:dispatch({type = "SET_DISTANCE", payload = {distance = distance}})
             else
                 local distance = 3
-                playerStore:dispatch({
-                    type = "SET_DISTANCE",
-                    payload = {distance = distance}
-                })
+                playerStore:dispatch({type = "SET_DISTANCE", payload = {distance = distance}})
             end
             return false
         elseif (forgeCommand == "fsave") then
@@ -67,13 +57,11 @@ local function forgeCommands(command)
             config.forge.snapMode = not config.forge.snapMode
             console_out("Snap Mode: " .. tostring(config.forge.snapMode))
             -- Force settings menu update
-            forgeStore:dispatch({})
             return false
         elseif (forgeCommand == "fauto") then
             config.forge.autoSave = not config.forge.autoSave
             console_out("Auto Save: " .. tostring(config.forge.autoSave))
             -- Force settings menu update
-            forgeStore:dispatch({})
             return false
         elseif (forgeCommand == "fcast") then
             config.forge.objectsCastShadow = not config.forge.objectsCastShadow
@@ -91,9 +79,7 @@ local function forgeCommands(command)
                 end
             end
             -- Force settings menu update
-            forgeStore:dispatch({})
-            console_out("Objects Cast Shadow: " ..
-                            tostring(config.forge.objectsCastShadow))
+            console_out("Objects Cast Shadow: " .. tostring(config.forge.objectsCastShadow))
             return false
         elseif (forgeCommand == "fload") then
             local mapName = table.concat(glue.shift(splitCommand, 1, -1), " ")
@@ -110,13 +96,11 @@ local function forgeCommands(command)
             end
             return false
         elseif (forgeCommand == "fname") then
-            local mapName = table.concat(glue.shift(splitCommand, 1, -1), " "):gsub(",",
-                                                                                    " ")
+            local mapName = table.concat(glue.shift(splitCommand, 1, -1), " "):gsub(",", " ")
             forgeStore:dispatch({type = "SET_MAP_NAME", payload = {mapName = mapName}})
             return false
         elseif (forgeCommand == "fdesc") then
-            local mapDescription =
-                table.concat(glue.shift(splitCommand, 1, -1), " "):gsub(",", " ")
+            local mapDescription = table.concat(glue.shift(splitCommand, 1, -1), " "):gsub(",", " ")
             forgeStore:dispatch({
                 type = "SET_MAP_DESCRIPTION",
                 payload = {mapDescription = mapDescription}
@@ -167,9 +151,8 @@ local function forgeCommands(command)
                 local player = blam.biped(get_dynamic_player())
                 local weaponResult = weaponsList[weaponName]
                 if (weaponResult) then
-                    local weaponObjectId = core.spawnObject(tagClasses.weapon,
-                                                            weaponResult, player.x,
-                                                            player.y, player.z + 0.5)
+                    local weaponObjectId = core.spawnObject(tagClasses.weapon, weaponResult,
+                                                            player.x, player.y, player.z + 0.5)
                 end
                 return false
             elseif (forgeCommand == "ftest") then
@@ -188,8 +171,7 @@ local function forgeCommands(command)
                 if (player) then
                     local playerBiped = blam.object(get_object(player.objectId))
                     if (playerBiped) then
-                        local bipedName = table.concat(glue.shift(splitCommand, 1, -1),
-                                                       " ")
+                        local bipedName = table.concat(glue.shift(splitCommand, 1, -1), " ")
                         for tagIndex = 0, blam.tagDataHeader.count - 1 do
                             local tag = blam.getTag(tagIndex)
                             if (tag.class == tagClasses.biped) then
@@ -221,6 +203,7 @@ local function forgeCommands(command)
                 write_file("voting_dump.lua", inspect(votingStore:getState()))
                 write_file("constants.lua", inspect(const))
                 write_file("debug_dump.txt", debugBuffer or "No debug messages to print.")
+                dprint("Done, dumped forge reducers to files.")
                 return false
             elseif (forgeCommand == "fixmaps") then
                 --[[local mapsFiles = list_directory(defaultMapsPath)
@@ -244,9 +227,7 @@ local function forgeCommands(command)
                 dprint(inspect(storeObjects))
 
                 dprint("[Objects Database]", "category")
-                local objectsDatabase = glue.keys(
-                                            forgeStore:getState().forgeMenu
-                                                .objectsDatabase)
+                local objectsDatabase = glue.keys(forgeStore:getState().forgeMenu.objectsDatabase)
                 dprint("Count: " .. #objectsDatabase)
                 dprint(inspect(objectsDatabase))
 
@@ -255,8 +236,7 @@ local function forgeCommands(command)
                 console_out("lua-blam " .. blam._VERSION)
                 return false
             elseif (forgeCommand == "fspeed") then
-                local newSpeed = tonumber(table.concat(glue.shift(splitCommand, 1, -1),
-                                                       " "))
+                local newSpeed = tonumber(table.concat(glue.shift(splitCommand, 1, -1), " "))
                 if (newSpeed) then
                     local player = get_player()
                     write_float(player + 0x6C, newSpeed)
@@ -265,15 +245,14 @@ local function forgeCommands(command)
             elseif (forgeCommand == "fpos") then
                 local playerBiped = blam.object(get_dynamic_player())
                 if (playerBiped) then
-                    console_out(("%s,%s,%s"):format(playerBiped.x, playerBiped.y,
-                                                    playerBiped.z))
+                    console_out(("%s,%s,%s"):format(playerBiped.x, playerBiped.y, playerBiped.z))
                 end
                 return false
             elseif (forgeCommand == "frot") then
                 local yaw = splitCommand[2]
                 local pitch = splitCommand[3]
                 local roll = splitCommand[4]
-                local _,quaternion = core.anglesToQuaternion(yaw, pitch, roll)
+                local _, quaternion = core.anglesToQuaternion(yaw, pitch, roll)
                 dprint("QUAT:")
                 dprint(inspect(quaternion))
                 local _, matrix = core.anglesToRotation(yaw, pitch, roll)

@@ -49,11 +49,11 @@ local widgetButton = {
         }
     },
     background_bitmap = [[[shm]\halo_4\ui\shell\bitmaps\settings_button.bitmap]],
-    text_label_unicode_strings_list = [[[shm]\halo_4\ui\shell\pause_game\forge_settings_menu\strings\options.unicode_string_list]],
+    text_label_unicode_strings_list = [[[shm]\halo_4\ui\shell\pause_game\general_menu\strings\options.unicode_string_list]],
     text_font = [[[shm]\halo_4\ui\blender_pro_12.font]],
     text_color = "1 0.8 0.9 1",
     string_list_index = "{realButtonIndex}",
-    horiz_offset = 23,
+    horiz_offset = 10,
     vert_offset = 5,
     -- Remove when we don't need value labels anymore
     child_widgets = {
