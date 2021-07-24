@@ -76,7 +76,9 @@ end
 -- Every hook executes a callback
 function interface.hook(variable, callback, ...)
     if (get_global(variable)) then
-        execute_script("set " .. variable .. " false")
+        dprint("Hooking " .. variable .. "...")
+        --execute_script("set " .. variable .. " false")
+        set_global(variable, false)
         callback(...)
     end
 end
