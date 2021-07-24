@@ -45,11 +45,10 @@ function core.loadForgeConfiguration(path)
     end
 end
 
---- Normalize any map name from snake case to a map name with sentence case
----@field mapName string
-function core.toSentenceCase(mapName)
-    return string.gsub(" " .. mapName:gsub(".fmap", ""):gsub("_", " "), "%W%l",
-                       string.upper):sub(2)
+--- Normalize any map name or snake case name to a name with sentence case
+---@field name string
+function core.toSentenceCase(name)
+    return string.gsub(" " .. name:gsub("_", " "), "%W%l", string.upper):sub(2)
 end
 
 --- Normalize any string to a lower snake case
@@ -61,8 +60,7 @@ end
 --- Normalize any string to camel case
 ---@field mapName string
 function core.toCamelCase(name)
-    return string.gsub("" .. name:gsub("_", " "), "%W%l", string.upper):sub(1):gsub(" ",
-                                                                                    "")
+    return string.gsub("" .. name:gsub("_", " "), "%W%l", string.upper):sub(1):gsub(" ", "")
 end
 
 --- Load previous Forge maps
@@ -83,7 +81,8 @@ function core.loadForgeMaps(path)
             -- Only load files with extension .fmap
             if (fileExtension == "fmap") then
                 -- Normalize map name
-                local mapName = core.toSentenceCase(file)
+                local fileName = file:gsub(".fmap", "")
+                local mapName = core.toSentenceCase(fileName)
                 glue.append(mapsList, mapName)
             end
         end
@@ -173,31 +172,31 @@ end
 --- @param roll number
 --- @return table<number, number>, table<number, table<number, number>>
 function core.eulerToRotation(yaw, pitch, roll)
-   local matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
-   local cosRoll = cos(rad(roll))
-   local sinRoll = sin(rad(roll))
-   local cosYaw = cos(rad(yaw))
-   local sinYaw = sin(rad(yaw))
-   local cosPitch = cos(rad(pitch))
-   local sinPitch = sin(rad(pitch))
-   matrix[1][1] = cosRoll * cosYaw
-   matrix[1][2] = sinRoll * sinPitch - cosRoll * sinYaw * cosPitch
-   matrix[1][3] = cosRoll * sinYaw * sinPitch + sinRoll * cosPitch
-   matrix[2][1] = sinYaw
-   matrix[2][2] = cosYaw * cosPitch
-   matrix[2][3] = -cosYaw * sinPitch
-   matrix[3][1] = -sinRoll * cosYaw
-   matrix[3][2] = sinRoll * sinYaw * cosPitch + cosRoll * sinPitch
-   matrix[3][3] = -sinRoll * sinYaw * sinPitch + cosRoll * cosPitch
-   local array = {
-       matrix[1][1],
-       matrix[2][1],
-       matrix[3][1],
-       matrix[1][3],
-       matrix[2][3],
-       matrix[3][3]
-   }
-   return array, matrix
+    local matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
+    local cosRoll = cos(rad(roll))
+    local sinRoll = sin(rad(roll))
+    local cosYaw = cos(rad(yaw))
+    local sinYaw = sin(rad(yaw))
+    local cosPitch = cos(rad(pitch))
+    local sinPitch = sin(rad(pitch))
+    matrix[1][1] = cosRoll * cosYaw
+    matrix[1][2] = sinRoll * sinPitch - cosRoll * sinYaw * cosPitch
+    matrix[1][3] = cosRoll * sinYaw * sinPitch + sinRoll * cosPitch
+    matrix[2][1] = sinYaw
+    matrix[2][2] = cosYaw * cosPitch
+    matrix[2][3] = -cosYaw * sinPitch
+    matrix[3][1] = -sinRoll * cosYaw
+    matrix[3][2] = sinRoll * sinYaw * cosPitch + cosRoll * sinPitch
+    matrix[3][3] = -sinRoll * sinYaw * sinPitch + cosRoll * cosPitch
+    local array = {
+        matrix[1][1],
+        matrix[2][1],
+        matrix[3][1],
+        matrix[1][3],
+        matrix[2][3],
+        matrix[3][3]
+    }
+    return array, matrix
 end
 
 --- Covert euler angles into game rotation array, optional rotation matrix
@@ -206,11 +205,7 @@ end
 ---@param roll number
 ---@return number[], table<number, number[]>
 function core.anglesToRotation(yaw, pitch, roll)
-    local matrix = {
-        {1, 0, 0},
-        {0, 1, 0},
-        {0, 0, 1}
-    }
+    local matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
 
     local cosPitch = cos(rad(pitch))
     local sinPitch = sin(rad(pitch))
@@ -251,15 +246,15 @@ function core.anglesToQuaternion(yaw, pitch, roll)
     local sp = sin(rad(pitch))
     local cr = cos(rad(roll))
     local sr = sin(rad(roll))
-    
+
     local w = (cr * cp * cy + sr * sp * sy)
-	local x = (sr * cp * cy - cr * sp * sy)
-	local y = (cr * sp * cy + sr * cp * sy)
-	local z = (cr * cp * sy - sr * sp * cy)
+    local x = (sr * cp * cy - cr * sp * sy)
+    local y = (cr * sp * cy + sr * cp * sy)
+    local z = (cr * cp * sy - sr * sp * cy)
 
     local quaternion = {w = w, x = x, y = y, z = z}
-    local array = {w, nil, nil, x, y, z}
-    
+    local array = {w, -x, -y, x, x - x, z}
+
     return array, quaternion
 end
 
@@ -269,8 +264,8 @@ end
 ---@param pitch number
 ---@param roll number
 function core.rotateObject(objectId, yaw, pitch, roll)
-    --local rotation = core.anglesToQuaternion(yaw, pitch, roll)
-    --local rotation = core.anglesToRotation(yaw, pitch, roll)
+    -- local rotation = core.anglesToQuaternion(yaw, pitch, roll)
+    -- local rotation = core.anglesToRotation(yaw, pitch, roll)
     local rotation = core.eulerToRotation(yaw, pitch, roll)
     local object = blam.object(get_object(objectId))
     object.vX = rotation[1]
@@ -279,13 +274,13 @@ function core.rotateObject(objectId, yaw, pitch, roll)
     object.v2X = rotation[4]
     object.v2Y = rotation[5]
     object.v2Z = rotation[6]
-    --dprint("Array from game:")
-    --dprint(inspect({object.vX,
-    --object.vY,
-    --object.vZ,
-    --object.v2X,
-    --object.v2Y,
-    --object.v2Z}))
+    -- dprint("Array from game:")
+    -- dprint(inspect({object.vX,
+    -- object.vY,
+    -- object.vZ,
+    -- object.v2X,
+    -- object.v2Y,
+    -- object.v2Z}))
 end
 
 --[[function core.rotatePoint(x, y, z)
@@ -367,8 +362,7 @@ function core.createRequest(requestTable)
             local encodedTable = maeth.encodeTable(instanceObject, requestFormat)
             --[[print(inspect(requestFormat))
             print(inspect(requestTable))]]
-            request = maeth.tableToRequest(encodedTable, requestFormat,
-                                           const.requestSeparator)
+            request = maeth.tableToRequest(encodedTable, requestFormat, const.requestSeparator)
             -- TODO Add size validation for requests
             dprint("Request size: " .. #request)
         else
@@ -555,7 +549,7 @@ function core.loadForgeMap(mapName)
                 else
                     dprint("Warning, object with path \"" .. spawnRequest.tagPath ..
                                "\" can not be spawned...", "warning")
-                    --error(debug.traceback("An object tag can't be spawned"), 2)
+                    -- error(debug.traceback("An object tag can't be spawned"), 2)
                 end
             end
             forgeMapFinishedLoading = true
@@ -715,8 +709,7 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
     if (objectId) then
         local object = blam.object(get_object(objectId))
         if (not object) then
-            console_out(
-                ("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
+            console_out(("Error, game can't spawn %s on %s %s %s"):format(tagPath, x, y, z))
             return nil
         end
         -- Force the object to render shadow
@@ -948,28 +941,23 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
         if (disable) then
             if (flagType == netgameFlagsTypes.teleportTo or flagType ==
                 netgameFlagsTypes.teleportFrom) then
-                dprint("Erasing netgame flag teleport with index: " ..
-                           forgeObject.reflectionId)
+                dprint("Erasing netgame flag teleport with index: " .. forgeObject.reflectionId)
                 -- Vegas bank is a unused gametype, so this is basically the same as disabling it
-                mapNetgameFlagsPoints[forgeObject.reflectionId].type =
-                    netgameFlagsTypes.vegasBank
+                mapNetgameFlagsPoints[forgeObject.reflectionId].type = netgameFlagsTypes.vegasBank
             end
         else
             -- Replace spawn point values
             mapNetgameFlagsPoints[forgeObject.reflectionId].x = forgeObject.x
             mapNetgameFlagsPoints[forgeObject.reflectionId].y = forgeObject.y
             mapNetgameFlagsPoints[forgeObject.reflectionId].z = forgeObject.z
-            mapNetgameFlagsPoints[forgeObject.reflectionId].rotation =
-                rad(forgeObject.yaw)
+            mapNetgameFlagsPoints[forgeObject.reflectionId].rotation = rad(forgeObject.yaw)
             if (flagType == netgameFlagsTypes.teleportFrom or flagType ==
                 netgameFlagsTypes.teleportTo) then
                 dprint("Update teamIndex: " .. forgeObject.teamIndex)
-                mapNetgameFlagsPoints[forgeObject.reflectionId].teamIndex =
-                    forgeObject.teamIndex
+                mapNetgameFlagsPoints[forgeObject.reflectionId].teamIndex = forgeObject.teamIndex
             end
             -- Debug spawn index
-            dprint("Updating flag replacing index: " .. forgeObject.reflectionId,
-                   "warning")
+            dprint("Updating flag replacing index: " .. forgeObject.reflectionId, "warning")
         end
     end
     -- Update spawn point list
@@ -991,8 +979,7 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
     end
     if (not itemCollectionTagId) then
         -- TODO This needs more review
-        error("Could not find item collection tag id for desired weapon spawn: " ..
-                  tagPath)
+        error("Could not find item collection tag id for desired weapon spawn: " .. tagPath)
         return false
     end
 
@@ -1103,8 +1090,7 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
                 scenario.vehicleLocationList = vehicleSpawnPoints
 
                 dprint("object_create_anew v" .. vehicleSpawnPoints[spawnId].nameIndex)
-                execute_script("object_create_anew v" ..
-                                   vehicleSpawnPoints[spawnId].nameIndex)
+                execute_script("object_create_anew v" .. vehicleSpawnPoints[spawnId].nameIndex)
                 -- Stop looking for "available" spawn slots
                 break
             end
@@ -1116,8 +1102,7 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
             vehicleSpawnPoints[forgeObject.reflectionId].type = 65535
             -- Update spawn point list
             scenario.vehicleLocationList = vehicleSpawnPoints
-            dprint("object_create_anew v" ..
-                       vehicleSpawnPoints[forgeObject.reflectionId].nameIndex)
+            dprint("object_create_anew v" .. vehicleSpawnPoints[forgeObject.reflectionId].nameIndex)
             execute_script("object_destroy v" ..
                                vehicleSpawnPoints[forgeObject.reflectionId].nameIndex)
             return true
@@ -1238,9 +1223,8 @@ local function createProjectileSelector()
             y = player.y + player.yVel + player.cameraY * const.forgeSelectorOffset,
             z = player.z + player.zVel + player.cameraZ * const.forgeSelectorOffset
         }
-        local projectileId = core.spawnObject(tagClasses.projectile,
-                                              const.forgeProjectilePath, selector.x,
-                                              selector.y, selector.z, true)
+        local projectileId = core.spawnObject(tagClasses.projectile, const.forgeProjectilePath,
+                                              selector.x, selector.y, selector.z, true)
         if (projectileId) then
             local projectile = blam.projectile(get_object(projectileId))
             if (projectile) then
@@ -1270,8 +1254,7 @@ function core.oldGetForgeObjectFromPlayerAim()
             local projectileTag = blam.getTag(projectile.tagId)
             if (projectileTag and projectileTag.index == const.forgeProjectileTagIndex) then
                 if (projectile.attachedToObjectId) then
-                    local selectedObject = blam.object(get_object(
-                                                           projectile.attachedToObjectId))
+                    local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
                     selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
                     forgeObject = forgeObjects[selectedObjIndex]
                     -- Player is looking at this object
@@ -1306,15 +1289,10 @@ function core.getForgeObjectFromPlayerAim()
             if (not blam.isNull(projectile.attachedToObjectId)) then
                 local object = blam.object(get_object(projectile.attachedToObjectId))
                 dprint("Found object by collision!")
-                --[[dprint(inspect({object.vX,
-                        object.vY,
-                        object.vZ,
-                        object.v2X,
-                        object.v2Y,
-                        object.v2Z}))]]
+                dprint(
+                    inspect({object.vX, object.vY, object.vZ, object.v2X, object.v2Y, object.v2Z}))
                 local forgeObjects = eventsStore:getState().forgeObjects
-                local selectedObject = blam.object(get_object(
-                                                       projectile.attachedToObjectId))
+                local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
                 local selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
                 local forgeObject = forgeObjects[selectedObjIndex]
                 -- Erase current projectile selector
@@ -1341,13 +1319,12 @@ end
 ---@return boolean
 function core.isObjectOutOfBounds(coordinates)
     if (coordinates) then
-        local projectileId = spawn_object(tagClasses.projectile,
-                                          const.forgeProjectilePath, coordinates[1], coordinates[2],
-                                          coordinates[3])
+        local projectileId = spawn_object(tagClasses.projectile, const.forgeProjectilePath,
+                                          coordinates[1], coordinates[2], coordinates[3])
         if (projectileId) then
             local testerObject = blam.object(get_object(projectileId))
             if (testerObject) then
-                --dprint(object.x .. " " .. object.y .. " " .. object.z)
+                -- dprint(object.x .. " " .. object.y .. " " .. object.z)
                 local isOutSideMap = testerObject.isOutSideMap
                 delete_object(projectileId)
                 return isOutSideMap

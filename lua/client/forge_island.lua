@@ -40,10 +40,12 @@ local playerReducer = require "forge.reducers.playerReducer"
 local eventsReducer = require "forge.reducers.eventsReducer"
 local forgeReducer = require "forge.reducers.forgeReducer"
 local votingReducer = require "forge.reducers.votingReducer"
+local generalMenuReducer = require "forge.reducers.generalMenuReducer"
 
 -- Reflectors importation
 local forgeReflector = require "forge.reflectors.forgeReflector"
 local votingReflector = require "forge.reflectors.votingReflector"
+local generalMenuReflector = require "forge.reflectors.generalMenuReflector"
 
 -- Forge default configuration
 config = {}
@@ -119,7 +121,11 @@ function OnMapLoad()
     forgeStore = redux.createStore(forgeReducer)
     -- Store to process Forge events across client and server
     eventsStore = redux.createStore(eventsReducer)
-    votingStore = redux.createStore(votingReducer) -- Storage for all the state of map voting
+    -- Storage for all the state of map voting
+    votingStore = redux.createStore(votingReducer)
+    -- Storage for the general menu state
+    generalMenuStore = redux.createStore(generalMenuReducer)
+    generalMenuStore:subscribe(generalMenuReflector)
 
     local forgeState = forgeStore:getState()
 
@@ -599,6 +605,7 @@ function OnTick()
     interface.hook("forge_menu_hook", interface.stop, const.uiWidgetDefinitions.objectsList)
     interface.hook("forge_menu_close_hook", interface.stop, const.uiWidgetDefinitions.forgeMenu)
     interface.hook("loading_menu_close_hook", interface.stop, const.uiWidgetDefinitions.loadingMenu)
+    interface.hook("settings_menu_hook", features.createBipedsMenu)
 
     -- Update text refresh tick count
     textRefreshCount = textRefreshCount + 1

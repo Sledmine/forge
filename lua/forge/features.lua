@@ -528,6 +528,33 @@ function features.mapLimit(playerIndex)
     end
 end
 
+--- Dynamically modify the general menu to reflect Forge settings
+function features.createSettingsMenu()
+    generalMenuStore:dispatch({
+        type = "SET_MENU",
+        payload = {
+            title = "Forge Settings",
+            elements = {
+                "Enable debug mode",
+                "Constantly save current map",
+                "Enable object snap mode",
+                "Cast dynamic shadows on objects"
+            }
+        }
+    })
+end
+
+--- Dynamically modify the general menu to reflect biped selection
+function features.createBipedsMenu()
+    generalMenuStore:dispatch({
+        type = "SET_MENU",
+        payload = {
+            title = "Bipeds Selection",
+            elements = const.bipedNames
+        }
+    })
+end
+
 --[[unction core.getPlayerFragGrenade()
     for objectNumber, objectIndex in pairs(blam.getObjects()) do
         local projectile = blam.projectile(get_object(objectIndex))

@@ -137,18 +137,23 @@ constants.tagCollections = {
                                      tagClasses.tagCollection).id
 }
 
+-- Biped Names
+constants.bipedNames = {}
 -- Biped Tags ID
 constants.bipeds = {}
 for _, tag in pairs(core.findTagsList("characters", tagClasses.biped)) do
     if (tag) then
         local pathSplit = glue.string.split(tag.path, "\\")
-        local tagName = core.toCamelCase(pathSplit[#pathSplit]:gsub("_mp", ""))
-        constants.bipeds[tagName .. "TagId"] = tag.id
+        local tagName = pathSplit[#pathSplit]
+        if (not tagName:find("monitor")) then
+            glue.append(constants.bipedNames, core.toSentenceCase(tagName))
+        end
+
+        local bipedName = core.toCamelCase(tagName:gsub("_mp", ""))
+        constants.bipeds[bipedName .. "TagId"] = tag.id
     end
 end
 
--- Biped Tags ID
-constants.bipedsPaths = {}
 -- First Person Model Tags ID
 constants.firstPersonHands = {}
 for _, tag in pairs(core.findTagsList("characters", tagClasses.biped)) do
@@ -194,8 +199,7 @@ local uiWidgetDefinitions = {
     -- loadoutMenu = "[shm]\\halo_4\\ui\\shell\\loadout_menu\\loadout_menu_no_background",
     mapsList = core.findTag("maps_list", tagClasses.uiWidgetDefinition),
     sidebar = core.findTag("forge_map_list_sidebar_bar", tagClasses.uiWidgetDefinition),
-    settingsMenuList = core.findTag("forge_settings_menu\\options\\options",
-                                    tagClasses.uiWidgetDefinition)
+    generalMenuList = core.findTag("general_menu\\options\\options", tagClasses.uiWidgetDefinition)
 }
 constants.uiWidgetDefinitions = uiWidgetDefinitions
 
@@ -209,10 +213,12 @@ local unicodeStrings = {
     mapsListTagId = core.findTag("maps_name", tagClasses.unicodeStringList).id,
     pauseGameStringsTagId = core.findTag("titles_and_headers", tagClasses.unicodeStringList).id,
     forgeControlsTagId = core.findTag("forge_controls", tagClasses.unicodeStringList).id,
-    settingsMenuStringsTagId = core.findTag("forge_settings_menu\\strings\\options",
-                                            tagClasses.unicodeStringList).id,
-    settingsMenuValueStringsTagId = core.findTag("forge_settings_menu\\strings\\values",
-                                                 tagClasses.unicodeStringList).id
+    generalMenuHeaderTagId = core.findTag("general_menu\\strings\\header",
+                                          tagClasses.unicodeStringList).id,
+    generalMenuStringsTagId = core.findTag("general_menu\\strings\\options",
+                                           tagClasses.unicodeStringList).id,
+    generalMenuValueStringsTagId = core.findTag("general_menu\\strings\\values",
+                                                tagClasses.unicodeStringList).id
 }
 constants.unicodeStrings = unicodeStrings
 
@@ -272,8 +278,8 @@ constants.colorsNumber = {
 -- Name to search in some tags that are ignored at hidding objects as spartan
 constants.hideObjectsExceptions = {"stand", "teleporters"}
 constants.objectsMigration = {
-    ["[shm]\\halo_4\\scenery\\spawning\\vehicles\\warthog spawn\\warthog spawn"] = [[[shm]\halo_4\scenery\spawning\vehicles\warthogs\warthog spawn\warthog spawn]],
-    ["[shm]\\halo_4\\scenery\\spawning\\vehicles\\rocket warthog spawn\\rocket warthog spawn"] = [[[shm]\halo_4\scenery\spawning\vehicles\warthogs\rocket warthog spawn\rocket warthog spawn]]
+    ["[shm]\\halo_4\\scenery\\spawning\\vehicles\\warthog spawn\\warthog spawn"] = "[shm]\\halo_4\\scenery\\spawning\\vehicles\\warthogs\\warthog spawn\\warthog spawn",
+    ["[shm]\\halo_4\\scenery\\spawning\\vehicles\\rocket warthog spawn\\rocket warthog spawn"] = "[shm]\\halo_4\\scenery\\spawning\\vehicles\\warthogs\\rocket warthog spawn\\rocket warthog spawn"
 }
 
 -- constants.teleportersChannels = {alpha = 0, bravo = 1, charly = 2, delta = 3, echo = }
