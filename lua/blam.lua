@@ -647,7 +647,7 @@ local function writeString(address, propertyData, propertyValue)
     return write_string(address, propertyValue)
 end
 
--- //TODO Refactor this tu support full unicode char size
+-- //TODO Refactor this to support full unicode char size
 --- Return the string of a unicode string given address
 ---@param address number
 ---@param rawRead boolean
@@ -814,7 +814,7 @@ local dataBindingMetaTable = {
         else
             local errorMessage = "Unable to write an invalid property ('" .. property ..
                                      "')"
-            consoleOutput(debug.traceback(errorMessage, 2), consoleColors.error)
+            error(debug.traceback(errorMessage, 2))
         end
     end,
     __index = function(object, property)
@@ -827,7 +827,7 @@ local dataBindingMetaTable = {
         else
             local errorMessage = "Unable to read an invalid property ('" .. property ..
                                      "')"
-            consoleOutput(debug.traceback(errorMessage, 2), consoleColors.error)
+            error(debug.traceback(errorMessage, 2))
         end
     end
 }
@@ -1026,6 +1026,10 @@ local objectStructure = {
 ---@field landing number Biped landing state, 0 when landing, stays on 0 when landing hard, null otherwise
 ---@field bumpedObjectId number Object ID that the biped is bumping, vehicles, bipeds, etc, keeps the previous value if not bumping a new object
 ---@field vehicleSeatIndex number Current vehicle seat index of this biped
+---@field walkingState number Biped walking state, 0 = not walking, 1 = walking, 2 = stoping walking, 3 = stationary
+---@field motionState number Biped motion state, 0 = standing , 1 = walking , 2 = jumping/falling
+
+
 
 -- Biped structure (extends object structure)
 local bipedStructure = extendStructure(objectStructure, {
@@ -1055,7 +1059,9 @@ local bipedStructure = extendStructure(objectStructure, {
     secondaryNades = {type = "byte", offset = 0x31F},
     landing = {type = "byte", offset = 0x508},
     bumpedObjectId = {type = "dword", offset = 0x4FC},
-    vehicleSeatIndex = {type = "word", offset = 0x2F0}
+    vehicleSeatIndex = {type = "word", offset = 0x2F0},
+    walkingState = {type = "char", offset = 0x503},
+    motionState = {type = "byte", offset = 0x4D2}
 })
 
 -- Tag data header structure
@@ -1106,6 +1112,11 @@ local unicodeStringListStructure = {
     stringList = {type = "list", offset = 0x4, elementsType = "pustring", jump = 0x14}
 }
 
+---@class bitmapSequence
+---@field name string
+---@field firtBitmapIndex number
+---@field bitmapCount number
+
 ---@class bitmap
 ---@field type number
 ---@field format number
@@ -1126,7 +1137,7 @@ local unicodeStringListStructure = {
 ---@field spriteUsage number
 ---@field spriteSpacing number
 ---@field sequencesCount number
----@field sequences table
+---@field sequences bitmapSequence[]
 ---@field bitmapsCount number
 ---@field bitmaps table
 
@@ -1590,6 +1601,7 @@ local projectileStructure = extendStructure(objectStructure, {
 ---@field index number Local index of this player (0-15
 ---@field speed number Current speed of this player
 ---@field ping number Ping amount from server of this player in milliseconds
+---@field kills number Kills quantity done by this player
 
 local playerStructure = {
     id = {type = "word", offset = 0x0},
@@ -1600,7 +1612,8 @@ local playerStructure = {
     color = {type = "word", offset = 0x60},
     index = {type = "byte", offset = 0x67},
     speed = {type = "float", offset = 0x6C},
-    ping = {type = "dword", offset = 0xDC}
+    ping = {type = "dword", offset = 0xDC},
+    kills = {type = "word", offset = 0x9C}
 }
 
 ---@class firstPersonInterface number
