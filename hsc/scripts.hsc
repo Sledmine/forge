@@ -51,9 +51,19 @@
     )
 )
 
+;; General Menu
+(script static void gm_forced_event
+    (set general_menu_forced_event_hook true)
+)
+
 ;; Settings Menu
 (script static void set_settings_menu_hook
     (set settings_menu_hook true)
+)
+
+;; Bipeds Menu
+(script static void set_biped_menu_hook
+    (set bipeds_menu_hook true)
 )
 
 ;; Auto respawn vehicles system
@@ -158,13 +168,16 @@
     )
 )
 
-(script static void "sound_test"
+;; For some reason the sound play command does not work if the sound is not referenced
+(script static void sounds
     (begin
+        ;; Player land hard
         (sound_impulse_start
             "[shm]\halo_4\sound\sfx\impulse\footsteps\mc\land_hard_plyr_dmg"
             (list_get (players) 0)
             1.0
         )
+        ;; HUD Sounds
         (sound_impulse_start
             "sound\sfx\ui\forward"
             (list_get (players) 0)
