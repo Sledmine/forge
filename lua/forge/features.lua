@@ -229,6 +229,21 @@ function features.animateForgeLoading()
     return true
 end
 
+function features.animateDialogLoading()
+    local bitmap = blam.bitmap(const.bitmaps.dialogIconsTagId)
+    if (bitmap) then
+        local newSequences = bitmap.sequences
+        if (newSequences[1].firstBitmapIndex < 5) then
+            newSequences[1].firstBitmapIndex = newSequences[1].firstBitmapIndex + 1
+        else
+            newSequences[1].firstBitmapIndex = 0
+        end
+        bitmap.sequences = newSequences
+    else
+        error("Oops!")
+    end
+end
+
 --- Get information from the mouse input in the game
 ---@return mouseInput
 function features.getMouseInput()
@@ -349,8 +364,8 @@ function features.hideReflectionObjects()
             if (forgeObject and forgeObject.reflectionId) then
                 local object = blam.object(get_object(objectIndex))
                 if (object) then
-                    local tempTag = blam.getTag(object.tagId)
-                    if (not stringHas(tempTag.path, const.hideObjectsExceptions)) then
+                    local tag = blam.getTag(object.tagId)
+                    if (not stringHas(tag.path, const.hideObjectsExceptions)) then
                         -- Hide objects by setting different properties
                         if (core.isPlayerMonitor()) then
                             object.isGhost = false
@@ -529,7 +544,7 @@ function features.mapLimit(playerIndex)
 end
 
 --- Dynamically modify the general menu to reflect Forge settings
-function features.createSettingsMenu()
+function features.createSettingsMenu(open)
     generalMenuStore:dispatch({
         type = "SET_MENU",
         payload = {
@@ -539,20 +554,46 @@ function features.createSettingsMenu()
                 "Constantly save current map",
                 "Enable object snap mode",
                 "Cast dynamic shadows on objects"
-            }
+            },
+            values = {
+                config.forge.debugMode,
+                config.forge.autoSave,
+                config.forge.snapMode,
+                config.forge.objectsCastShadow,
+            },
+            format = "settings"
         }
     })
+    if (open and not features.openMenu(const.uiWidgetDefinitions.generalMenu.path)) then
+        dprint("Error, at trying to open general menu!")
+    end
 end
 
 --- Dynamically modify the general menu to reflect biped selection
-function features.createBipedsMenu()
+function features.createBipedsMenu(open)
     generalMenuStore:dispatch({
         type = "SET_MENU",
-        payload = {
-            title = "Bipeds Selection",
-            elements = const.bipedNames
-        }
+        payload = {title = "Bipeds Selection", elements = const.bipedNames, format = "bipeds"}
     })
+    if (open and not features.openMenu(const.uiWidgetDefinitions.generalMenu.path)) then
+        dprint("Error, at trying to open general menu!")
+    end
+end
+
+function features.getCurrentWidget()
+    local widgetIdAddress = read_dword(const.currentWidgetIdAddress)
+    if (widgetIdAddress and widgetIdAddress ~= 0) then
+        local widgetId = read_dword(widgetIdAddress)
+        local tag = blam.getTag(widgetId)
+        if (tag) then
+            local isPlayerOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
+            if (isPlayerOnMenu) then
+                --dprint("Current widget: " .. tag.path)
+            end
+            return tag.id
+        end
+    end
+    return nil
 end
 
 --[[unction core.getPlayerFragGrenade()

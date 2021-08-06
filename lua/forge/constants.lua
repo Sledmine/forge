@@ -16,6 +16,11 @@ local constants = {}
 -- constants.myGamesFolder = read_string(0x00647830)
 constants.mouseInputAddress = 0x64C73C
 constants.localPlayerAddress = 0x815918
+-- Looks like the history/memory of the current widget loaded
+-- It appears to work different on the main menu/ui
+constants.currentWidgetIdAddress = 0x6B401C
+--constants.isWidgetOpenAddress = constants.currentWidgetIdAddress + 19
+-- + 671 = New element??
 
 -- Constant Forge values
 constants.requestSeparator = "&"
@@ -31,8 +36,6 @@ constants.forgeSelectorVelocity = 15
 constants.absoluteMapName = map:gsub("_dev", ""):gsub("_beta", "")
 
 -- Constant UI widget definition values
-constants.maximumSidebarSize = 249
-constants.minimumSidebarSize = 40
 constants.maximumProgressBarSize = 171
 constants.maxLoadingBarSize = 422
 
@@ -182,24 +185,29 @@ constants.weaponHudInterfaces = {
 constants.bitmaps = {
     forgingIconFrame0TagId = core.findTag("forge_loading_progress0", tagClasses.bitmap).id,
     forgeIconFrame1TagId = core.findTag("forge_loading_progress1", tagClasses.bitmap).id,
-    unitHudBackgroundTagId = core.findTag("combined\\hud_background", tagClasses.bitmap).id
+    unitHudBackgroundTagId = core.findTag("combined\\hud_background", tagClasses.bitmap).id,
+    dialogIconsTagId = core.findTag("bitmaps\\loading_orb", tagClasses.bitmap).id,
 }
 
 -- UI Widget definitions
 local uiWidgetDefinitions = {
     forgeMenu = core.findTag("forge_menu", tagClasses.uiWidgetDefinition),
+    objectsList = core.findTag("category_list", tagClasses.uiWidgetDefinition),
     voteMenu = core.findTag("map_vote_menu", tagClasses.uiWidgetDefinition),
     voteMenuList = core.findTag("vote_menu_list", tagClasses.uiWidgetDefinition),
-    objectsList = core.findTag("category_list", tagClasses.uiWidgetDefinition),
     amountBar = core.findTag("budget_progress_bar", tagClasses.uiWidgetDefinition),
     loadingMenu = core.findTag("loading_menu", tagClasses.uiWidgetDefinition),
     loadingAnimation = core.findTag("loading_menu_progress_animation", tagClasses.uiWidgetDefinition),
     loadingProgress = core.findTag("loading_progress_bar", tagClasses.uiWidgetDefinition),
-    -- TODO An implementation of this should be possible on the future
-    -- loadoutMenu = "[shm]\\halo_4\\ui\\shell\\loadout_menu\\loadout_menu_no_background",
+    mapsMenu = core.findTag("forge_options_menu\\forge_options_menu", tagClasses.uiWidgetDefinition),
     mapsList = core.findTag("maps_list", tagClasses.uiWidgetDefinition),
-    sidebar = core.findTag("forge_map_list_sidebar_bar", tagClasses.uiWidgetDefinition),
-    generalMenuList = core.findTag("general_menu\\options\\options", tagClasses.uiWidgetDefinition)
+    generalMenu = core.findTag("general_menu\\general_menu", tagClasses.uiWidgetDefinition),
+    generalMenuList = core.findTag("general_menu\\options\\options", tagClasses.uiWidgetDefinition),
+    scrollBar = core.findTag("common\\scroll_bar", tagClasses.uiWidgetDefinition),
+    scrollPosition = core.findTag("common\\scroll_position", tagClasses.uiWidgetDefinition),
+    warningDialog = core.findTag("warning_dialog", tagClasses.uiWidgetDefinition),
+    actionsMenu = core.findTag("forge_actions_menu\\forge_actions_menu", tagClasses.uiWidgetDefinition)
+
 }
 constants.uiWidgetDefinitions = uiWidgetDefinitions
 

@@ -425,7 +425,7 @@ function OnGameEnd()
 end
 
 function OnError()
-    print(debug.traceback())
+    cprint(debug.traceback())
 end
 
 function OnScriptUnload()

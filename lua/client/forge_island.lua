@@ -8,8 +8,6 @@ clua_version = 2.042
 
 -- Script name must be the base script name, without variants or extensions
 scriptName = script_name:gsub(".lua", ""):gsub("_dev", ""):gsub("_beta", "")
--- Map name should be the base project name, without build env variants
-absoluteMapName = map:gsub("_dev", ""):gsub("_beta", "")
 defaultConfigurationPath = "config"
 defaultMapsPath = "fmaps"
 
@@ -66,8 +64,7 @@ core.loadForgeConfiguration()
 debugBuffer = ""
 -- Tick counter until next text draw refresh
 textRefreshCount = 0
--- Object used to store mouse input across pre frame update
-mouse = {}
+
 lastProjectileId = nil
 local lastHighlightedObjectIndex
 local lastPlayerBiped
@@ -216,121 +213,147 @@ function OnPreFrame()
         ---@type playerState
         local playerState = playerStore:getState()
 
-        -- Maps Menu
+        -- Get mouse input to interact with menus
         local mouse = features.getMouseInput()
-        local pressedButton = interface.triggers("maps_menu", 11)
-        if (mouse.scroll > 0) then
-            pressedButton = 10
-        elseif (mouse.scroll < 0) then
-            pressedButton = 9
-        end
-        if (pressedButton) then
-            dprint(" -> [ Maps Menu ]")
-            if (pressedButton == 9) then
-                -- Dispatch an event to increment current page
-                forgeStore:dispatch({type = "DECREMENT_MAPS_MENU_PAGE"})
-            elseif (pressedButton == 10) then
-                -- Dispatch an event to decrement current page
-                forgeStore:dispatch({type = "INCREMENT_MAPS_MENU_PAGE"})
-            elseif (pressedButton == 11) then
-                core.saveForgeMap()
-            else
-                local elementsList = blam.unicodeStringList(const.unicodeStrings.mapsListTagId)
-                local mapName = elementsList.stringList[pressedButton]:gsub(" ", "_")
-                core.loadForgeMap(mapName)
+        local currentWidgetId = features.getCurrentWidget()
+        -- Maps Menu
+        if (currentWidgetId == const.uiWidgetDefinitions.mapsMenu.id) then
+            local pressedButton = interface.triggers("maps_menu", 11)
+            if (mouse.scroll > 0) then
+                pressedButton = 10
+            elseif (mouse.scroll < 0) then
+                pressedButton = 9
             end
-            dprint("Button " .. pressedButton .. " was pressed!", "category")
-        end
-
-        -- Forge Objects Menu
-        mouse = features.getMouseInput()
-        pressedButton = interface.triggers("forge_menu", 9)
-        if (mouse.scroll > 0) then
-            pressedButton = 8
-        elseif (mouse.scroll < 0) then
-            pressedButton = 7
-        end
-        if (pressedButton) then
-            dprint(" -> [ Forge Menu ]")
-            local forgeState = forgeStore:getState()
-            if (pressedButton == 9) then
-                if (forgeState.forgeMenu.desiredElement ~= "root") then
-                    forgeStore:dispatch({type = "UPWARD_NAV_FORGE_MENU"})
+            if (pressedButton) then
+                dprint(" -> [ Maps Menu ]")
+                if (pressedButton == 9) then
+                    -- Dispatch an event to increment current page
+                    forgeStore:dispatch({type = "DECREMENT_MAPS_MENU_PAGE"})
+                elseif (pressedButton == 10) then
+                    -- Dispatch an event to decrement current page
+                    forgeStore:dispatch({type = "INCREMENT_MAPS_MENU_PAGE"})
                 else
-                    dprint("Closing Forge menu...")
-                    interface.close(const.uiWidgetDefinitions.forgeMenu)
+                    local elementsList = blam.unicodeStringList(const.unicodeStrings.mapsListTagId)
+                    local mapName = elementsList.stringList[pressedButton]:gsub(" ", "_")
+                    core.loadForgeMap(mapName)
                 end
-            elseif (pressedButton == 8) then
-                forgeStore:dispatch({type = "INCREMENT_FORGE_MENU_PAGE"})
-            elseif (pressedButton == 7) then
-                forgeStore:dispatch({type = "DECREMENT_FORGE_MENU_PAGE"})
-            else
-                if (playerState.attachedObjectId) then
-                    local elementsList = blam.unicodeStringList(const.unicodeStrings
-                                                                    .forgeMenuElementsTagId)
-                    local selectedElement = elementsList.stringList[pressedButton]
-                    if (selectedElement) then
-                        local elementsFunctions = features.getObjectMenuFunctions()
-                        local buttonFunction = elementsFunctions[selectedElement]
-                        if (buttonFunction) then
-                            buttonFunction()
+                dprint("Button " .. pressedButton .. " was pressed!", "category")
+            end
+        elseif (currentWidgetId == const.uiWidgetDefinitions.actionsMenu.id) then
+            -- FIXME This needs its own trigger
+            local pressedButton = interface.triggers("maps_menu", 11)
+            if (pressedButton == 11) then
+                core.saveForgeMap()
+            end
+            -- Forge Objects Menu
+        elseif (currentWidgetId == const.uiWidgetDefinitions.forgeMenu.id) then
+            local pressedButton = interface.triggers("forge_menu", 9)
+            if (mouse.scroll > 0) then
+                pressedButton = 8
+            elseif (mouse.scroll < 0) then
+                pressedButton = 7
+            end
+            if (pressedButton) then
+                dprint(" -> [ Forge Menu ]")
+                local forgeState = forgeStore:getState()
+                if (pressedButton == 9) then
+                    if (forgeState.forgeMenu.desiredElement ~= "root") then
+                        forgeStore:dispatch({type = "UPWARD_NAV_FORGE_MENU"})
+                    else
+                        dprint("Closing Forge menu...")
+                        interface.close(const.uiWidgetDefinitions.forgeMenu)
+                    end
+                elseif (pressedButton == 8) then
+                    forgeStore:dispatch({type = "INCREMENT_FORGE_MENU_PAGE"})
+                elseif (pressedButton == 7) then
+                    forgeStore:dispatch({type = "DECREMENT_FORGE_MENU_PAGE"})
+                else
+                    if (playerState.attachedObjectId) then
+                        local elementsList = blam.unicodeStringList(const.unicodeStrings
+                                                                        .forgeMenuElementsTagId)
+                        local selectedElement = elementsList.stringList[pressedButton]
+                        if (selectedElement) then
+                            local elementsFunctions = features.getObjectMenuFunctions()
+                            local buttonFunction = elementsFunctions[selectedElement]
+                            if (buttonFunction) then
+                                buttonFunction()
+                            else
+                                forgeStore:dispatch({
+                                    type = "DOWNWARD_NAV_FORGE_MENU",
+                                    payload = {desiredElement = selectedElement}
+                                })
+                            end
+                        end
+                    else
+                        local elementsList = blam.unicodeStringList(const.unicodeStrings
+                                                                        .forgeMenuElementsTagId)
+                        local selectedSceneryName = elementsList.stringList[pressedButton]
+                        local sceneryPath =
+                            forgeState.forgeMenu.objectsDatabase[selectedSceneryName]
+                        if (sceneryPath) then
+                            playerStore:dispatch({
+                                type = "CREATE_AND_ATTACH_OBJECT",
+                                payload = {path = sceneryPath}
+                            })
+                            interface.close(const.uiWidgetDefinitions.forgeMenu)
                         else
                             forgeStore:dispatch({
                                 type = "DOWNWARD_NAV_FORGE_MENU",
-                                payload = {desiredElement = selectedElement}
+                                payload = {desiredElement = selectedSceneryName}
                             })
                         end
                     end
-                else
-                    local elementsList = blam.unicodeStringList(const.unicodeStrings
-                                                                    .forgeMenuElementsTagId)
-                    local selectedSceneryName = elementsList.stringList[pressedButton]
-                    local sceneryPath = forgeState.forgeMenu.objectsDatabase[selectedSceneryName]
-                    if (sceneryPath) then
-                        playerStore:dispatch({
-                            type = "CREATE_AND_ATTACH_OBJECT",
-                            payload = {path = sceneryPath}
-                        })
-                        interface.close(const.uiWidgetDefinitions.forgeMenu)
-                    else
-                        forgeStore:dispatch({
-                            type = "DOWNWARD_NAV_FORGE_MENU",
-                            payload = {desiredElement = selectedSceneryName}
-                        })
-                    end
+                end
+                dprint(" -> [ Forge Menu ]")
+                dprint("Button " .. pressedButton .. " was pressed!", "category")
+
+            end
+            pressedButton = interface.triggers("map_vote_menu", 5)
+            if (pressedButton) then
+                local voteMapRequest = {
+                    requestType = const.requests.sendMapVote.requestType,
+                    mapVoted = pressedButton
+                }
+                core.sendRequest(core.createRequest(voteMapRequest))
+                dprint("Vote Map menu:")
+                dprint("Button " .. pressedButton .. " was pressed!", "category")
+            end
+            -- Settings Menu
+        elseif (currentWidgetId == const.uiWidgetDefinitions.generalMenu.id) then
+            ---@type generalMenuReducer
+            local state = generalMenuStore:getState()
+            -- FIXME Rename these triggers on hsc
+            if (mouse.scroll > 0) then
+                generalMenuStore:dispatch({type = "FORWARD_PAGE"})
+            elseif (mouse.scroll < 0) then
+                generalMenuStore:dispatch({type = "BACKWARD_PAGE"})
+            end
+            local pressedButton = interface.triggers("settings_menu", 8)
+            if (state.menu.format == "settings") then
+                if (pressedButton) then
+                    dprint("Settings menu:")
+                    dprint("Button " .. pressedButton .. " was pressed!", "category")
+
+                    local configOptions = {"fdebug", "fauto", "fsnap", "fcast"}
+                    commands(configOptions[pressedButton])
+                    features.createSettingsMenu()
+                end
+            elseif (state.menu.format == "bipeds") then
+                if (pressedButton) then
+                    dprint("Bipeds menu:")
+                    dprint("Button " .. pressedButton .. " was pressed!", "category")
+                    features.createBipedsMenu()
                 end
             end
-            dprint(" -> [ Forge Menu ]")
-            dprint("Button " .. pressedButton .. " was pressed!", "category")
-
-        end
-
-        pressedButton = interface.triggers("map_vote_menu", 5)
-        if (pressedButton) then
-            local voteMapRequest = {
-                requestType = const.requests.sendMapVote.requestType,
-                mapVoted = pressedButton
-            }
-            core.sendRequest(core.createRequest(voteMapRequest))
-            dprint("Vote Map menu:")
-            dprint("Button " .. pressedButton .. " was pressed!", "category")
-        end
-
-        local pressedButton = interface.triggers("settings_menu", 8)
-        if (pressedButton) then
-            dprint("Settings menu:")
-            dprint("Button " .. pressedButton .. " was pressed!", "category")
-
-            local configOptions = {"fdebug", "fauto", "fsnap", "fcast"}
-            commands(configOptions[pressedButton])
-            forgeReflector()
+        elseif (currentWidgetId == const.uiWidgetDefinitions.warningDialog.id) then
+            -- features.animateDialogLoading()
         end
     else
         ---@type playerState
         local playerState = playerStore:getState()
-
+        -- Get mouse input to interact with menus
+        local mouse = features.getMouseInput()
         if (core.isPlayerMonitor() and playerState.attachedObjectId) then
-            local mouse = features.getMouseInput()
             if (mouse.scroll > 0) then
                 playerStore:dispatch({
                     type = "STEP_ROTATION_DEGREE",
@@ -605,7 +628,9 @@ function OnTick()
     interface.hook("forge_menu_hook", interface.stop, const.uiWidgetDefinitions.objectsList)
     interface.hook("forge_menu_close_hook", interface.stop, const.uiWidgetDefinitions.forgeMenu)
     interface.hook("loading_menu_close_hook", interface.stop, const.uiWidgetDefinitions.loadingMenu)
-    interface.hook("settings_menu_hook", features.createBipedsMenu)
+    interface.hook("settings_menu_hook", features.createSettingsMenu, true)
+    interface.hook("general_menu_forced_event_hook", interface.stop,
+                   const.uiWidgetDefinitions.generalMenuList)
 
     -- Update text refresh tick count
     textRefreshCount = textRefreshCount + 1

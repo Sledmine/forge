@@ -1314,7 +1314,7 @@ function core.getForgeObjectFromPlayerAim()
     end
 end
 
---- Return data about object that the player is looking at
+--- Determine if an object is out of the map
 ---@param coordinates table<number, number, number>
 ---@return boolean
 function core.isObjectOutOfBounds(coordinates)

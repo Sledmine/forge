@@ -14,7 +14,7 @@ function interface.triggers(triggerName, triggersNumber)
     local restoreTriggersState = (function()
         for triggerIndex = 1, triggersNumber do
             -- TODO Replace this function with set global
-            execute_script("set " .. triggerName .. "_trigger_" .. triggerIndex .. " false")
+            set_global(triggerName .. "_trigger_" .. triggerIndex, false)
         end
     end)
     for i = 1, triggersNumber do
