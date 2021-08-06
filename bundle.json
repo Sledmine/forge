@@ -22,8 +22,10 @@
         "forge.reducers.eventsReducer",
         "forge.reducers.playerReducer",
         "forge.reducers.votingReducer",
+        "forge.reducers.generalMenuReducer",
         "forge.reflectors.forgeReflector",
         "forge.reflectors.votingReflector",
+        "forge.reflectors.generalMenuReflector",
         "forge.redux.actions",
         "forge.version"
     ],
