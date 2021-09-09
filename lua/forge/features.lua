@@ -580,6 +580,8 @@ function features.createBipedsMenu(open)
     end
 end
 
+--- Get the widget id of the current ui open in the game
+---@return number
 function features.getCurrentWidget()
     local widgetIdAddress = read_dword(const.currentWidgetIdAddress)
     if (widgetIdAddress and widgetIdAddress ~= 0) then
@@ -596,7 +598,17 @@ function features.getCurrentWidget()
     return nil
 end
 
---[[unction core.getPlayerFragGrenade()
+function features.overrideDialog(title, message, type)
+    local dialogStrings = blam.unicodeStringList(const.unicodeStrings.dialogStringsId)
+    local newStrings = dialogStrings.stringList
+    newStrings[1] = title
+    newStrings[2] = message
+    dialogStrings.stringList = newStrings
+    -- TODO Refactor this method to allow ids instead of path strings
+    features.openMenu(const.uiWidgetDefinitions.warningDialog.path)
+end
+
+--[[function core.getPlayerFragGrenade()
     for objectNumber, objectIndex in pairs(blam.getObjects()) do
         local projectile = blam.projectile(get_object(objectIndex))
         local selectedObjIndex

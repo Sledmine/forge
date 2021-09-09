@@ -274,13 +274,6 @@ function core.rotateObject(objectId, yaw, pitch, roll)
     object.v2X = rotation[4]
     object.v2Y = rotation[5]
     object.v2Z = rotation[6]
-    -- dprint("Array from game:")
-    -- dprint(inspect({object.vX,
-    -- object.vY,
-    -- object.vZ,
-    -- object.v2X,
-    -- object.v2Y,
-    -- object.v2Z}))
 end
 
 --[[function core.rotatePoint(x, y, z)
@@ -535,7 +528,8 @@ function core.loadForgeMap(mapName)
             local objectsList = {}
             for objectId, forgeObject in pairs(forgeMap.objects) do
                 local spawnRequest = forgeObject
-                local objectTag = blam.getTag(spawnRequest.tagPath, tagClasses.scenery)
+                local objectTagPath = const.objectsMigration[spawnRequest.tagPath]
+                local objectTag = blam.getTag(objectTagPath or spawnRequest.tagPath, tagClasses.scenery)
                 if (objectTag and objectTag.id) then
                     spawnRequest.requestType = const.requests.spawnObject.requestType
                     spawnRequest.tagPath = nil
@@ -1046,6 +1040,9 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
     elseif (tagPath:find("rocket warthog")) then
         dprint("rocket warthog")
         vehicleType = 5
+    elseif (tagPath:find("civ warthog")) then
+        dprint("civ warthog")
+        vehicleType = 6
     elseif (tagPath:find("warthog")) then
         dprint("normal warthog")
         vehicleType = 1

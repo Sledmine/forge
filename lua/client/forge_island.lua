@@ -381,6 +381,10 @@ function OnTick()
     ---@type playerState
     local playerState = playerStore:getState()
     if (player) then
+        --if (player.flashlightKey) then
+        --    features.overrideDialog("Kono giorno giovanna niwa yume ga aru",
+        --                            "Sexy... isn't?\rOH YEAH BOI")
+        --end
         -- Prevent players from getting outside map limits
         features.mapLimit()
         if (lastPlayerBiped ~= player.tagId) then

@@ -191,7 +191,7 @@ constants.bitmaps = {
 
 -- UI Widget definitions
 local uiWidgetDefinitions = {
-    forgeMenu = core.findTag("forge_menu", tagClasses.uiWidgetDefinition),
+    forgeMenu = core.findTag("forge_menu\\forge_menu", tagClasses.uiWidgetDefinition),
     objectsList = core.findTag("category_list", tagClasses.uiWidgetDefinition),
     voteMenu = core.findTag("map_vote_menu", tagClasses.uiWidgetDefinition),
     voteMenuList = core.findTag("vote_menu_list", tagClasses.uiWidgetDefinition),
@@ -201,13 +201,12 @@ local uiWidgetDefinitions = {
     loadingProgress = core.findTag("loading_progress_bar", tagClasses.uiWidgetDefinition),
     mapsMenu = core.findTag("forge_options_menu\\forge_options_menu", tagClasses.uiWidgetDefinition),
     mapsList = core.findTag("maps_list", tagClasses.uiWidgetDefinition),
+    actionsMenu = core.findTag("forge_actions_menu\\forge_actions_menu", tagClasses.uiWidgetDefinition),
     generalMenu = core.findTag("general_menu\\general_menu", tagClasses.uiWidgetDefinition),
     generalMenuList = core.findTag("general_menu\\options\\options", tagClasses.uiWidgetDefinition),
     scrollBar = core.findTag("common\\scroll_bar", tagClasses.uiWidgetDefinition),
     scrollPosition = core.findTag("common\\scroll_position", tagClasses.uiWidgetDefinition),
-    warningDialog = core.findTag("warning_dialog", tagClasses.uiWidgetDefinition),
-    actionsMenu = core.findTag("forge_actions_menu\\forge_actions_menu", tagClasses.uiWidgetDefinition)
-
+    warningDialog = core.findTag("warning_dialog", tagClasses.uiWidgetDefinition)
 }
 constants.uiWidgetDefinitions = uiWidgetDefinitions
 
@@ -226,7 +225,8 @@ local unicodeStrings = {
     generalMenuStringsTagId = core.findTag("general_menu\\strings\\options",
                                            tagClasses.unicodeStringList).id,
     generalMenuValueStringsTagId = core.findTag("general_menu\\strings\\values",
-                                                tagClasses.unicodeStringList).id
+                                                tagClasses.unicodeStringList).id,
+    dialogStringsId = core.findTag("dialog_menu\\strings\\header_and_message", tagClasses.unicodeStringList).id
 }
 constants.unicodeStrings = unicodeStrings
 
