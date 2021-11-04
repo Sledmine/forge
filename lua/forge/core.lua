@@ -45,13 +45,13 @@ function core.loadForgeConfiguration(path)
     end
 end
 
---- Normalize any map name or snake case name to a name with sentence case
+--- Normalize any map name or snake case name to sentence case
 ---@param name string
 function core.toSentenceCase(name)
     return string.gsub(" " .. name:gsub("_", " "), "%W%l", string.upper):sub(2)
 end
 
---- Normalize any string to a lower snake case
+--- Normalize any string to lower snake case
 ---@param name string
 function core.toSnakeCase(name)
     return name:gsub(" ", "_"):lower()
@@ -141,121 +141,44 @@ function core.playerIsAimingAt(target, sensitivity, zOffset, maximumDistance)
     return false
 end
 
--- Old internal functions for rotation calculation
-local function deprecatedRotate(x, y, alpha)
-    local cosAlpha = cos(rad(alpha))
-    local sinAlpha = sin(rad(alpha))
-    local t1 = x[1] * sinAlpha
-    local t2 = x[2] * sinAlpha
-    local t3 = x[3] * sinAlpha
-    x[1] = x[1] * cosAlpha + y[1] * sinAlpha
-    x[2] = x[2] * cosAlpha + y[2] * sinAlpha
-    x[3] = x[3] * cosAlpha + y[3] * sinAlpha
-    y[1] = y[1] * cosAlpha - t1
-    y[2] = y[2] * cosAlpha - t2
-    y[3] = y[3] * cosAlpha - t3
-end
-
-function core.deprecatedEulerToRotation(yaw, pitch, roll)
-    local F = {1, 0, 0}
-    local L = {0, 1, 0}
-    local T = {0, 0, 1}
-    deprecatedRotate(F, L, yaw)
-    deprecatedRotate(F, T, pitch)
-    deprecatedRotate(T, L, roll)
-    return {F[1], -L[1], -T[1], -F[3], L[3], T[3]}, {F, L, T}
-end
+---@class vector3D
+---@field x number
+---@field y number
+---@field z number
 
 --- Covert euler into game rotation array, optional rotation matrix
+-- Based on https://www.mecademic.com/en/how-is-orientation-in-space-represented-with-euler-angles
 --- @param yaw number
 --- @param pitch number
 --- @param roll number
---- @return table<number, number>, table<number, table<number, number>>
+--- @return vector3D, vector3D
 function core.eulerToRotation(yaw, pitch, roll)
-    local matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
-    local cosRoll = cos(rad(roll))
-    local sinRoll = sin(rad(roll))
-    local cosYaw = cos(rad(yaw))
-    local sinYaw = sin(rad(yaw))
-    local cosPitch = cos(rad(pitch))
-    local sinPitch = sin(rad(pitch))
-    matrix[1][1] = cosRoll * cosYaw
-    matrix[1][2] = sinRoll * sinPitch - cosRoll * sinYaw * cosPitch
-    matrix[1][3] = cosRoll * sinYaw * sinPitch + sinRoll * cosPitch
-    matrix[2][1] = sinYaw
-    matrix[2][2] = cosYaw * cosPitch
-    matrix[2][3] = -cosYaw * sinPitch
-    matrix[3][1] = -sinRoll * cosYaw
-    matrix[3][2] = sinRoll * sinYaw * cosPitch + cosRoll * sinPitch
-    matrix[3][3] = -sinRoll * sinYaw * sinPitch + cosRoll * cosPitch
-    local array = {
-        matrix[1][1],
-        matrix[2][1],
-        matrix[3][1],
-        matrix[1][3],
-        matrix[2][3],
-        matrix[3][3]
-    }
-    return array, matrix
-end
-
---- Covert euler angles into game rotation array, optional rotation matrix
----@param yaw number
----@param pitch number
----@param roll number
----@return number[], table<number, number[]>
-function core.anglesToRotation(yaw, pitch, roll)
+    local yaw = math.rad(yaw)
+    local pitch = math.rad(-pitch) -- Negative pitch due to Sapien handling anticlockwise pitch
+    local roll = math.rad(roll)
     local matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
 
-    local cosPitch = cos(rad(pitch))
-    local sinPitch = sin(rad(pitch))
-    local cosYaw = cos(rad(yaw))
-    local sinYaw = sin(rad(yaw))
-    local cosRoll = cos(rad(roll))
-    local sinRoll = sin(rad(roll))
-    matrix[1][1] = cosPitch * cosYaw
-    matrix[1][2] = sinPitch * sinRoll - cosPitch * sinYaw * cosRoll
-    matrix[1][3] = cosPitch * sinYaw * sinRoll + sinPitch * cosRoll
-    matrix[2][1] = sinYaw
-    matrix[2][2] = cosYaw * cosRoll
-    matrix[2][3] = -cosYaw * sinRoll
-    matrix[3][1] = -sinPitch * cosYaw
-    matrix[3][2] = sinPitch * sinYaw * cosRoll + cosPitch * sinRoll
-    matrix[3][3] = -sinPitch * sinYaw * sinRoll + cosPitch * cosRoll
-    local array = {
-        matrix[1][1],
-        matrix[2][1],
-        matrix[3][1],
-        matrix[1][3],
-        matrix[2][3],
-        matrix[3][3]
-    }
-    return array, matrix
-end
+    -- Roll, Pitch, Yaw = a, b, y
+    local cosA = math.cos(roll)
+    local sinA = math.sin(roll)
+    local cosB = math.cos(pitch)
+    local sinB = math.sin(pitch)
+    local cosY = math.cos(yaw)
+    local sinY = math.sin(yaw)
 
---- Covert euler angles into quaternions
----@param yaw number
----@param pitch number
----@param roll number
----@return number[]
-function core.anglesToQuaternion(yaw, pitch, roll)
+    matrix[1][1] = cosB * cosY
+    matrix[1][2] = -cosB * sinY
+    matrix[1][3] = sinB
+    matrix[2][1] = cosA * sinY + sinA * sinB * cosY
+    matrix[2][2] = cosA * cosY - sinA * sinB * sinY
+    matrix[2][3] = -sinA * cosB
+    matrix[3][1] = sinA * sinY - cosA * sinB * cosY
+    matrix[3][2] = sinA * cosY + cosA * sinB * sinY
+    matrix[3][3] = cosA * cosB
 
-    local cy = cos(rad(yaw))
-    local sy = sin(rad(yaw))
-    local cp = cos(rad(pitch))
-    local sp = sin(rad(pitch))
-    local cr = cos(rad(roll))
-    local sr = sin(rad(roll))
-
-    local w = (cr * cp * cy + sr * sp * sy)
-    local x = (sr * cp * cy - cr * sp * sy)
-    local y = (cr * sp * cy + sr * cp * sy)
-    local z = (cr * cp * sy - sr * sp * cy)
-
-    local quaternion = {w = w, x = x, y = y, z = z}
-    local array = {w, -x, -y, x, x - x, z}
-
-    return array, quaternion
+    local rollVector = {x = matrix[1][1], y = matrix[2][1], z = matrix[3][1]}
+    local yawVector = {x = matrix[1][3], y = matrix[2][3], z = matrix[3][3]}
+    return rollVector, yawVector, matrix
 end
 
 --- Rotate object into desired angles
@@ -264,16 +187,59 @@ end
 ---@param pitch number
 ---@param roll number
 function core.rotateObject(objectId, yaw, pitch, roll)
-    -- local rotation = core.anglesToQuaternion(yaw, pitch, roll)
-    -- local rotation = core.anglesToRotation(yaw, pitch, roll)
-    local rotation = core.eulerToRotation(yaw, pitch, roll)
+    local rollVector, yawVector, matrix = core.eulerToRotation(yaw, pitch, roll)
     local object = blam.object(get_object(objectId))
-    object.vX = rotation[1]
-    object.vY = rotation[2]
-    object.vZ = rotation[3]
-    object.v2X = rotation[4]
-    object.v2Y = rotation[5]
-    object.v2Z = rotation[6]
+    -- Debug rotation pivots
+    if (config.forge.debugMode) then
+        if (not globalPivotId) then
+            local pivotTag = core.findTag("pivot", tagClasses.scenery)
+            globalPivotId = core.spawnObject(tagClasses.scenery, pivotTag.path, object.vX,
+                                             object.vY, object.vZ)
+            globalPivotId2 = core.spawnObject(tagClasses.scenery, pivotTag.path, object.v2X,
+                                              object.v2Y, object.v2Z)
+            globalPivotId3 = core.spawnObject(tagClasses.scenery, pivotTag.path, object.x, object.y,
+                                              object.z)
+            globalPivotId4 = core.spawnObject(tagClasses.scenery, pivotTag.path, object.x, object.y,
+                                              object.z)
+        end
+        local pivot = blam.object(get_object(globalPivotId))
+        local pivot2 = blam.object(get_object(globalPivotId2))
+        local pivot3 = blam.object(get_object(globalPivotId3))
+        local pivot4 = blam.object(get_object(globalPivotId4))
+        -- Object pivot + rotation
+        pivot.x = object.x
+        pivot.y = object.y
+        pivot.z = object.z
+        pivot.vX = rollVector.x
+        pivot.vY = rollVector.y
+        pivot.vZ = rollVector.z
+        pivot.v2X = yawVector.x
+        pivot.v2Y = yawVector.y
+        pivot.v2Z = yawVector.z
+
+        -- Roll pivot
+        pivot2.x = object.x + rollVector.x
+        pivot2.y = object.y + rollVector.y
+        pivot2.z = object.z + rollVector.z
+
+        -- Yaw pivot
+        pivot3.x = object.x + yawVector.x
+        pivot3.y = object.y + yawVector.y
+        pivot3.z = object.z + yawVector.z
+
+        -- Pitch pivot (imaginary)
+        pivot4.x = object.x + matrix[1][2]
+        pivot4.y = object.y + matrix[2][2]
+        pivot4.z = object.z + matrix[3][2]
+    end
+
+    -- Apply final rotation to desired object
+    object.vX = rollVector.x
+    object.vY = rollVector.y
+    object.vZ = rollVector.z
+    object.v2X = yawVector.x
+    object.v2Y = yawVector.y
+    object.v2Z = yawVector.z
 end
 
 --[[function core.rotatePoint(x, y, z)
@@ -322,8 +288,11 @@ function core.sendRequest(request, playerIndex)
     return false
 end
 
+---@class requestTable
+---@field requestType string
+
 --- Create a request from a request object
----@param requestTable table
+---@param requestTable requestTable
 function core.createRequest(requestTable)
     local instanceObject = glue.update({}, requestTable)
     local request
@@ -525,17 +494,24 @@ function core.loadForgeMap(mapName)
 
             console_out(string.format("\nLoading Forge objects for %s...", mapName))
             local time = os.clock()
-            local objectsList = {}
             for objectId, forgeObject in pairs(forgeMap.objects) do
                 local spawnRequest = forgeObject
                 local objectTagPath = const.objectsMigration[spawnRequest.tagPath]
-                local objectTag = blam.getTag(objectTagPath or spawnRequest.tagPath, tagClasses.scenery)
+                local objectTag = blam.getTag(objectTagPath or spawnRequest.tagPath,
+                                              tagClasses.scenery)
                 if (objectTag and objectTag.id) then
                     spawnRequest.requestType = const.requests.spawnObject.requestType
                     spawnRequest.tagPath = nil
                     spawnRequest.tagId = objectTag.id
                     spawnRequest.color = forgeObject.color or 1
                     spawnRequest.teamIndex = forgeObject.teamIndex or 0
+                    local backupRoll = spawnRequest.roll
+                    spawnRequest.roll = spawnRequest.pitch
+                    spawnRequest.pitch = 360 - backupRoll
+                    if (spawnRequest.pitch > 85 and spawnRequest.roll > 265) then
+                        spawnRequest.pitch = spawnRequest.pitch - 90
+                        spawnRequest.yaw = spawnRequest.yaw + 90
+                    end
                     eventsStore:dispatch({
                         type = const.requests.spawnObject.actionType,
                         payload = {requestObject = spawnRequest}
@@ -1285,9 +1261,9 @@ function core.getForgeObjectFromPlayerAim()
         if (projectile) then
             if (not blam.isNull(projectile.attachedToObjectId)) then
                 local object = blam.object(get_object(projectile.attachedToObjectId))
-                dprint("Found object by collision!")
-                dprint(
-                    inspect({object.vX, object.vY, object.vZ, object.v2X, object.v2Y, object.v2Z}))
+                --dprint("Found object by collision!")
+                --dprint(
+                --    inspect({object.vX, object.vY, object.vZ, object.v2X, object.v2Y, object.v2Z}))
                 local forgeObjects = eventsStore:getState().forgeObjects
                 local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
                 local selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
@@ -1312,7 +1288,7 @@ function core.getForgeObjectFromPlayerAim()
 end
 
 --- Determine if an object is out of the map
----@param coordinates any
+---@param coordinates number[]
 ---@return boolean
 function core.isObjectOutOfBounds(coordinates)
     if (coordinates) then

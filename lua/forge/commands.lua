@@ -253,14 +253,15 @@ local function forgeCommands(command)
                 local yaw = splitCommand[2]
                 local pitch = splitCommand[3]
                 local roll = splitCommand[4]
-                local _, quaternion = core.anglesToQuaternion(yaw, pitch, roll)
-                dprint("QUAT:")
-                dprint(inspect(quaternion))
-                local _, matrix = core.anglesToRotation(yaw, pitch, roll)
+                dprint(("%s: %s: %s:"):format(yaw, pitch, roll))
+                local rotation, matrix = core.eulerToRotation(yaw, pitch, roll)
+                dprint("ROTATION:")
+                dprint(inspect(rotation))
                 dprint("MATRIX:")
                 dprint(inspect(matrix[1]))
                 dprint(inspect(matrix[2]))
                 dprint(inspect(matrix[3]))
+                return false
             end
         end
     end

@@ -320,7 +320,7 @@ function OnPreFrame()
             end
             -- Settings Menu
         elseif (currentWidgetId == const.uiWidgetDefinitions.generalMenu.id) then
-            ---@type generalMenuReducer
+            ---@type generalMenuState
             local state = generalMenuStore:getState()
             -- FIXME Rename these triggers on hsc
             if (mouse.scroll > 0) then
@@ -342,6 +342,17 @@ function OnPreFrame()
                 if (pressedButton) then
                     dprint("Bipeds menu:")
                     dprint("Button " .. pressedButton .. " was pressed!", "category")
+                    -- FIXME Finish this
+                    if (blam.isGameDedicated()) then
+                        core.sendRequest(core.createRequest({
+                            requestType = const.requests.selectBiped,
+                            bipedTagId = 0
+                        }))
+                    elseif (blam.isGameHost()) then
+                        local currentBipeds = actions.getGeneralElements()
+                        local bipedTagId = const.bipedNames[currentBipeds[pressedButton]]
+                        features.swapBiped(bipedTagId)
+                    end
                     features.createBipedsMenu()
                 end
             end
@@ -529,8 +540,8 @@ function OnTick()
                     -- Get Forge object info
                     local eventsState = actions.getEventsState()
                     local forgeObject = eventsState.forgeObjects[objectIndex]
-
                     if (forgeObject) then
+                        dprint(forgeObject.yaw .. " "  .. forgeObject.pitch .. " " .. forgeObject.roll)
                         features.printHUD("NAME:  " .. objectPath,
                                           "DATA INDEX:  " .. forgeObject.teamIndex, 25)
                     else
@@ -633,6 +644,7 @@ function OnTick()
     interface.hook("forge_menu_close_hook", interface.stop, const.uiWidgetDefinitions.forgeMenu)
     interface.hook("loading_menu_close_hook", interface.stop, const.uiWidgetDefinitions.loadingMenu)
     interface.hook("settings_menu_hook", features.createSettingsMenu, true)
+    interface.hook("bipeds_menu_hook", features.createBipedsMenu, true)
     interface.hook("general_menu_forced_event_hook", interface.stop,
                    const.uiWidgetDefinitions.generalMenuList)
 

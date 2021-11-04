@@ -78,7 +78,8 @@ function features.highlightObject(objectId, transparency)
 end
 
 --- Execute a player swap between biped and monitor
-function features.swapBiped()
+---@param desiredBipedTagId number
+function features.swapBiped(desiredBipedTagId)
     features.unhighlightAll()
     if (server_type == "local") then
         -- If player is alive save his last position
@@ -113,6 +114,12 @@ function features.swapBiped()
                 else
                     local newMultiplayerInformation = globals.multiplayerInformation
                     newMultiplayerInformation[1].unit = monitorTagId
+                    -- Update globals tag data to set new biped
+                    globals.multiplayerInformation = newMultiplayerInformation
+                end
+                if (desiredBipedTagId) then
+                    local newMultiplayerInformation = globals.multiplayerInformation
+                    newMultiplayerInformation[1].unit = desiredBipedTagId
                     -- Update globals tag data to set new biped
                     globals.multiplayerInformation = newMultiplayerInformation
                 end
@@ -240,7 +247,7 @@ function features.animateDialogLoading()
         end
         bitmap.sequences = newSequences
     else
-        error("Oops!")
+        error("Error, at animating loading dialog bitmap.")
     end
 end
 
@@ -573,7 +580,7 @@ end
 function features.createBipedsMenu(open)
     generalMenuStore:dispatch({
         type = "SET_MENU",
-        payload = {title = "Bipeds Selection", elements = const.bipedNames, format = "bipeds"}
+        payload = {title = "Bipeds Selection", elements = glue.keys(const.bipedNames), format = "bipeds"}
     })
     if (open and not features.openMenu(const.uiWidgetDefinitions.generalMenu.path)) then
         dprint("Error, at trying to open general menu!")

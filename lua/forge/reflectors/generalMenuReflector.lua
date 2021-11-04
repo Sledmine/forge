@@ -4,7 +4,7 @@ local interface = require "forge.interface"
 local core = require "forge.core"
 
 local function generalMenuReflector()
-    ---@type generalMenuReducer
+    ---@type generalMenuState
     local state = generalMenuStore:getState()
     -- Update general menu header
     local generalHeaderStrings = blam.unicodeStringList(const.unicodeStrings.generalMenuHeaderTagId)

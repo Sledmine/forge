@@ -32,4 +32,10 @@ function actions.setObjectChannel(channelIndex)
     playerStore:dispatch({type = "SET_OBJECT_CHANNEL", payload = {channel = channelIndex}})
 end
 
+function actions.getGeneralElements()
+    ---@type generalMenuState
+    local generalMenuState = generalMenuStore:getState()
+    return generalMenuState.menu.currentElementsList
+end
+
 return actions

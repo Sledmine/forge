@@ -19,7 +19,7 @@ constants.localPlayerAddress = 0x815918
 -- Looks like the history/memory of the current widget loaded
 -- It appears to work different on the main menu/ui
 constants.currentWidgetIdAddress = 0x6B401C
---constants.isWidgetOpenAddress = constants.currentWidgetIdAddress + 19
+-- constants.isWidgetOpenAddress = constants.currentWidgetIdAddress + 19
 -- + 671 = New element??
 
 -- Constant Forge values
@@ -131,7 +131,8 @@ constants.requests = {
             {"votesMap4"}
         }
     },
-    flushVotes = {actionType = "FLUSH_VOTES"}
+    flushVotes = {actionType = "FLUSH_VOTES"},
+    selectBiped = {actionType = "SELECT_BIPED", requestType = "#sb", requestFormat = {"bipedTagId"}}
 }
 
 -- Tag Collections ID
@@ -149,7 +150,7 @@ for _, tag in pairs(core.findTagsList("characters", tagClasses.biped)) do
         local pathSplit = glue.string.split(tag.path, "\\")
         local tagName = pathSplit[#pathSplit]
         if (not tagName:find("monitor")) then
-            glue.append(constants.bipedNames, core.toSentenceCase(tagName))
+            constants.bipedNames[core.toSentenceCase(tagName)] = tag.id
         end
 
         local bipedName = core.toCamelCase(tagName:gsub("_mp", ""))
@@ -186,7 +187,7 @@ constants.bitmaps = {
     forgingIconFrame0TagId = core.findTag("forge_loading_progress0", tagClasses.bitmap).id,
     forgeIconFrame1TagId = core.findTag("forge_loading_progress1", tagClasses.bitmap).id,
     unitHudBackgroundTagId = core.findTag("combined\\hud_background", tagClasses.bitmap).id,
-    dialogIconsTagId = core.findTag("bitmaps\\loading_orb", tagClasses.bitmap).id,
+    dialogIconsTagId = core.findTag("bitmaps\\loading_orb", tagClasses.bitmap).id
 }
 
 -- UI Widget definitions
@@ -201,7 +202,8 @@ local uiWidgetDefinitions = {
     loadingProgress = core.findTag("loading_progress_bar", tagClasses.uiWidgetDefinition),
     mapsMenu = core.findTag("forge_options_menu\\forge_options_menu", tagClasses.uiWidgetDefinition),
     mapsList = core.findTag("maps_list", tagClasses.uiWidgetDefinition),
-    actionsMenu = core.findTag("forge_actions_menu\\forge_actions_menu", tagClasses.uiWidgetDefinition),
+    actionsMenu = core.findTag("forge_actions_menu\\forge_actions_menu",
+                               tagClasses.uiWidgetDefinition),
     generalMenu = core.findTag("general_menu\\general_menu", tagClasses.uiWidgetDefinition),
     generalMenuList = core.findTag("general_menu\\options\\options", tagClasses.uiWidgetDefinition),
     scrollBar = core.findTag("common\\scroll_bar", tagClasses.uiWidgetDefinition),
@@ -226,7 +228,8 @@ local unicodeStrings = {
                                            tagClasses.unicodeStringList).id,
     generalMenuValueStringsTagId = core.findTag("general_menu\\strings\\values",
                                                 tagClasses.unicodeStringList).id,
-    dialogStringsId = core.findTag("dialog_menu\\strings\\header_and_message", tagClasses.unicodeStringList).id
+    dialogStringsId = core.findTag("dialog_menu\\strings\\header_and_message",
+                                   tagClasses.unicodeStringList).id
 }
 constants.unicodeStrings = unicodeStrings
 

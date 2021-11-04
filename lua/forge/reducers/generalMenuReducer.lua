@@ -1,8 +1,7 @@
 -- Lua libraries
-local inspect = require "inspect"
 local glue = require "glue"
 
----@class generalMenuReducer
+---@class generalMenuState
 local defaultState = {
     menu = {
         title = "General Menu",
@@ -10,17 +9,11 @@ local defaultState = {
         elementsList = {},
         elementsValues = {},
         currentElementsList = {},
-        currentPage = 1,
-        sidebar = {
-            height = 0,
-            position = 0,
-            slice = 0,
-            overflow = 0
-        }
+        currentPage = 1
     }
 }
 
----@param state generalMenuReducer
+---@param state generalMenuState
 local function generalMenuReducer(state, action)
     -- Create default state if it does not exist
     if (not state) then
