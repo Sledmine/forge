@@ -59,7 +59,7 @@ local fixScenarioNodes = [[invader-bludgeon -t tags\ -T excessive-script-nodes "
 os.execute(fixScenarioNodes)
 -- Compile map
 local compileMapCmd =
-    [[cd tags\ & invader-build.exe -t . -P -m "D:\Program Files (x86)\Microsoft Games\Halo Custom Edition\maps" -A pc-custom -E -g pc-custom -N %s -q "[shm]\halo_4\maps\forge_island\forge_island_dev.scenario"]]
+    [[invader-build -t tags\ -m "D:\Games\Halo Custom Edition\maps" -E -g gbx-custom -N %s -q "[shm]\halo_4\maps\forge_island\forge_island_dev"]]
 
 print("Compiling project...")
 local result = os.execute(compileMapCmd:format(buildName))
