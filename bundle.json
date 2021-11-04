@@ -2,7 +2,7 @@
     "name": "Forge Island",
     "target": "lua53",
     "include": [
-        "lua\\"
+        "lua/"
     ],
     "modules": [
         "glue",
@@ -29,6 +29,6 @@
         "forge.redux.actions",
         "forge.version"
     ],
-    "main":"lua\\client\\forge_island",
-    "output": "dist\\forge_island.lua"
+    "main":"lua/client/forge_island",
+    "output": "dist/forge_island.lua"
 }
