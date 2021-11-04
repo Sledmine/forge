@@ -46,19 +46,19 @@ function core.loadForgeConfiguration(path)
 end
 
 --- Normalize any map name or snake case name to a name with sentence case
----@field name string
+---@param name string
 function core.toSentenceCase(name)
     return string.gsub(" " .. name:gsub("_", " "), "%W%l", string.upper):sub(2)
 end
 
 --- Normalize any string to a lower snake case
----@field name string
+---@param name string
 function core.toSnakeCase(name)
     return name:gsub(" ", "_"):lower()
 end
 
 --- Normalize any string to camel case
----@field mapName string
+---@param name string
 function core.toCamelCase(name)
     return string.gsub("" .. name:gsub("_", " "), "%W%l", string.upper):sub(1):gsub(" ", "")
 end
@@ -237,7 +237,7 @@ end
 ---@param yaw number
 ---@param pitch number
 ---@param roll number
----@return number[], table<number[]>[]
+---@return number[]
 function core.anglesToQuaternion(yaw, pitch, roll)
 
     local cy = cos(rad(yaw))
@@ -1312,7 +1312,7 @@ function core.getForgeObjectFromPlayerAim()
 end
 
 --- Determine if an object is out of the map
----@param coordinates table<number, number, number>
+---@param coordinates any
 ---@return boolean
 function core.isObjectOutOfBounds(coordinates)
     if (coordinates) then
