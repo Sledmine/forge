@@ -342,15 +342,15 @@ function OnPreFrame()
                 if (pressedButton) then
                     dprint("Bipeds menu:")
                     dprint("Button " .. pressedButton .. " was pressed!", "category")
+                    local currentBipeds = actions.getGeneralElements()
+                    local bipedTagId = const.bipedNames[currentBipeds[pressedButton]]
                     -- FIXME Finish this
                     if (blam.isGameDedicated()) then
                         core.sendRequest(core.createRequest({
-                            requestType = const.requests.selectBiped,
-                            bipedTagId = 0
+                            requestType = const.requests.selectBiped.requestType,
+                            bipedTagId = bipedTagId
                         }))
                     elseif (blam.isGameHost()) then
-                        local currentBipeds = actions.getGeneralElements()
-                        local bipedTagId = const.bipedNames[currentBipeds[pressedButton]]
                         features.swapBiped(bipedTagId)
                     end
                     features.createBipedsMenu()

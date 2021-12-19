@@ -132,7 +132,11 @@ constants.requests = {
         }
     },
     flushVotes = {actionType = "FLUSH_VOTES"},
-    selectBiped = {actionType = "SELECT_BIPED", requestType = "#sb", requestFormat = {"bipedTagId"}}
+    selectBiped = {
+        actionType = "SELECT_BIPED",
+        requestType = "#sb",
+        requestFormat = {{"requestType"}, {"bipedTagId"}}
+    }
 }
 
 -- Tag Collections ID

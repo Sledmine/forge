@@ -2320,18 +2320,389 @@ return {
 
 end,
 
-["chimera-lua-api"] = function()
+["maethrillian"] = function()
 --------------------
--- Module: 'chimera-lua-api'
+-- Module: 'maethrillian'
 --------------------
 ------------------------------------------------------------------------------
--- Chimera API Bindings for SAPP
+-- Maethrillian library
 -- Sledmine
--- SAPP bindings for Chimera Lua functions, also EmmyLua helper
+-- Version 4.0
+-- Encode, decode tools for data manipulation
 ------------------------------------------------------------------------------
+local glue = require "glue"
+local maethrillian = {}
+
+--- Compress table data in the given format
+---@param inputTable table
+---@param requestFormat table
+---@param noHex boolean
+---@return table
+function maethrillian.encodeTable(inputTable, requestFormat, noHex)
+    local compressedTable = {}
+    for property, value in pairs(inputTable) do
+        if (type(value) ~= "table") then
+            local expectedProperty
+            local encodeFormat
+            for formatIndex, format in pairs(requestFormat) do
+                if (glue.arrayhas(format, property)) then
+                    expectedProperty = format[1]
+                    encodeFormat = format[2]
+                end
+            end
+            if (encodeFormat) then
+                if (not noHex) then
+                    compressedTable[property] = glue.tohex(string.pack(encodeFormat, value))
+                else
+                    compressedTable[property] = string.pack(encodeFormat, value)
+                end
+            else
+                if (expectedProperty == property) then
+                    compressedTable[property] = value
+                end
+            end
+        end
+    end
+    return compressedTable
+end
+
+--- Format table into request string
+---@param inputTable table
+---@param requestFormat table
+---@return string
+function maethrillian.tableToRequest(inputTable, requestFormat, separator)
+    local requestData = {}
+    for property, value in pairs(inputTable) do
+        if (requestFormat) then
+            for formatIndex, format in pairs(requestFormat) do
+                if (glue.arrayhas(format, property)) then
+                    requestData[formatIndex] = value
+                end
+            end
+        else
+            requestData[#requestData + 1] = value
+        end
+    end
+    return table.concat(requestData, separator)
+end
+
+--- Decompress table data given expected encoding format
+---@param inputTable table
+---@param requestFormat any
+function maethrillian.decodeTable(inputTable, requestFormat)
+    local dataDecompressed = {}
+    for property, encodedValue in pairs(inputTable) do
+        -- Get encode format for current value
+        local encodeFormat
+        for formatIndex, format in pairs(requestFormat) do
+            if (glue.arrayhas(format, property)) then
+                encodeFormat = format[2]
+            end
+        end
+        if (encodeFormat) then
+            -- There is a compression format available
+            value = string.unpack(encodeFormat, glue.fromhex(tostring(encodedValue)))
+        elseif (tonumber(encodedValue)) then
+            -- Convert value into number
+            value = tonumber(encodedValue)
+        else
+            -- Value is just a string
+            value = encodedValue
+        end
+        dataDecompressed[property] = value
+    end
+    return dataDecompressed
+end
+
+--- Transform request into table given
+---@param request string
+---@param requestFormat table
+function maethrillian.requestToTable(request, requestFormat, separator)
+    local outputTable = {}
+    local splitRequest = glue.string.split(request, separator)
+    for index, value in pairs(splitRequest) do
+        local currentFormat = requestFormat[index]
+        local propertyName = currentFormat[1]
+        local encodeFormat = currentFormat[2]
+        -- Convert value into number
+        local toNumberValue = tonumber(value)
+        if (not encodeFormat and toNumberValue) then
+            value = toNumberValue
+        end
+        if (propertyName) then
+            outputTable[propertyName] = value
+        end
+    end
+    return outputTable
+end
+
+return maethrillian
+
+end,
+
+["blam"] = function()
+--------------------
+-- Module: 'blam'
+--------------------
+------------------------------------------------------------------------------
+-- Blam! library for Chimera/SAPP Lua scripting
+-- Sledmine, JerryBrick
+-- Improves memory handle and provides standard functions for scripting
+------------------------------------------------------------------------------
+local blam = {_VERSION = "1.4.0"}
+
+------------------------------------------------------------------------------
+-- Useful functions for internal usage
+------------------------------------------------------------------------------
+
+-- From legacy glue library!
+--- String or number to hex
+local function tohex(s, upper)
+    if type(s) == "number" then
+        return (upper and "%08.8X" or "%08.8x"):format(s)
+    end
+    if upper then
+        return (s:sub(".", function(c)
+            return ("%02X"):format(c:byte())
+        end))
+    else
+        return (s:gsub(".", function(c)
+            return ("%02x"):format(c:byte())
+        end))
+    end
+end
+
+--- Hex to binary string
+local function fromhex(s)
+    if #s % 2 == 1 then
+        return fromhex("0" .. s)
+    end
+    return (s:gsub("..", function(cc)
+        return string.char(tonumber(cc, 16))
+    end))
+end
+
+------------------------------------------------------------------------------
+-- Blam! engine data
+------------------------------------------------------------------------------
+
+-- Engine address list
+local addressList = {
+    tagDataHeader = 0x40440000,
+    cameraType = 0x00647498, -- from Giraffe
+    gamePaused = 0x004ACA79,
+    gameOnMenus = 0x00622058,
+    joystickInput = 0x64D998, -- from aLTis
+    firstPerson = 0x40000EB8, -- from aLTis
+    objectTable = 0x400506B4,
+    deviceGroupsTable = 0x00816110
+}
+
+-- Server side addresses adjustment
+if (api_version or server_type == "sapp") then
+    addressList.deviceGroupsTable = 0x006E1C50
+end
+
+-- Tag classes values
+local tagClasses = {
+    actorVariant = "actv",
+    actor = "actr",
+    antenna = "ant!",
+    biped = "bipd",
+    bitmap = "bitm",
+    cameraTrack = "trak",
+    colorTable = "colo",
+    continuousDamageEffect = "cdmg",
+    contrail = "cont",
+    damageEffect = "jpt!",
+    decal = "deca",
+    detailObjectCollection = "dobc",
+    deviceControl = "ctrl",
+    deviceLightFixture = "lifi",
+    deviceMachine = "mach",
+    device = "devi",
+    dialogue = "udlg",
+    effect = "effe",
+    equipment = "eqip",
+    flag = "flag",
+    fog = "fog ",
+    font = "font",
+    garbage = "garb",
+    gbxmodel = "mod2",
+    globals = "matg",
+    glow = "glw!",
+    grenadeHudInterface = "grhi",
+    hudGlobals = "hudg",
+    hudMessageText = "hmt ",
+    hudNumber = "hud#",
+    itemCollection = "itmc",
+    item = "item",
+    lensFlare = "lens",
+    lightVolume = "mgs2",
+    light = "ligh",
+    lightning = "elec",
+    materialEffects = "foot",
+    meter = "metr",
+    modelAnimations = "antr",
+    modelCollisiionGeometry = "coll",
+    model = "mode",
+    multiplayerScenarioDescription = "mply",
+    object = "obje",
+    particleSystem = "pctl",
+    particle = "part",
+    physics = "phys",
+    placeHolder = "plac",
+    pointPhysics = "pphy",
+    preferencesNetworkGame = "ngpr",
+    projectile = "proj",
+    scenarioStructureBsp = "sbsp",
+    scenario = "scnr",
+    scenery = "scen",
+    shaderEnvironment = "senv",
+    shaderModel = "soso",
+    shaderTransparentChicagoExtended = "scex",
+    shaderTransparentChicago = "schi",
+    shaderTransparentGeneric = "sotr",
+    shaderTransparentGlass = "sgla",
+    shaderTransparentMeter = "smet",
+    shaderTransparentPlasma = "spla",
+    shaderTransparentWater = "swat",
+    shader = "shdr",
+    sky = "sky ",
+    soundEnvironment = "snde",
+    soundLooping = "lsnd",
+    soundScenery = "ssce",
+    sound = "snd!",
+    spheroid = "boom",
+    stringList = "str#",
+    tagCollection = "tagc",
+    uiWidgetCollection = "Soul",
+    uiWidgetDefinition = "DeLa",
+    unicodeStringList = "ustr",
+    unitHudInterface = "unhi",
+    unit = "unit",
+    vehicle = "vehi",
+    virtualKeyboard = "vcky",
+    weaponHudInterface = "wphi",
+    weapon = "weap",
+    weatherParticleSystem = "rain",
+    wind = "wind"
+}
+
+-- Blam object classes values
+local objectClasses = {
+    biped = 0,
+    vehicle = 1,
+    weapon = 2,
+    equipment = 3,
+    garbage = 4,
+    projectile = 5,
+    scenery = 6,
+    machine = 7,
+    control = 8,
+    lightFixture = 9,
+    placeHolder = 10,
+    soundScenery = 11
+}
+
+-- Camera types
+local cameraTypes = {
+    scripted = 1, -- 22192
+    firstPerson = 2, -- 30400
+    devcam = 3, -- 30704
+    thirdPerson = 4, -- 31952
+    deadCamera = 5 -- 23776
+}
+
+-- Netgame flags type 
+local netgameFlagTypes = {
+    ctfFlag = 0,
+    ctfVehicle = 1,
+    ballSpawn = 2,
+    raceTrack = 3,
+    raceVehicle = 4,
+    vegasBank = 5,
+    teleportFrom = 6,
+    teleportTo = 7,
+    hillFlag = 8
+}
+
+-- Netgame equipment types
+local netgameEquipmentTypes = {
+    none = 0,
+    ctf = 1,
+    slayer = 2,
+    oddball = 3,
+    koth = 4,
+    race = 5,
+    terminator = 6,
+    stub = 7,
+    ignored1 = 8,
+    ignored2 = 9,
+    ignored3 = 10,
+    ignored4 = 11,
+    allGames = 12,
+    allExceptCtf = 13,
+    allExceptRaceCtf = 14
+}
+
+-- Standard console colors
+local consoleColors = {
+    success = {1, 0.235, 0.82, 0},
+    warning = {1, 0.94, 0.75, 0.098},
+    error = {1, 1, 0.2, 0.2},
+    unknown = {1, 0.66, 0.66, 0.66}
+}
+
+-- Offset input from the joystick game data
+local joystickInputs = {
+    -- No zero values also pressed time until maxmimum byte size
+    button1 = 0, -- Triangle
+    button2 = 1, -- Circle
+    button3 = 2, -- Cross
+    button4 = 3, -- Square
+    leftBumper = 4,
+    rightBumper = 5,
+    leftTrigger = 6,
+    rightTrigger = 7,
+    backButton = 8,
+    startButton = 9,
+    leftStick = 10,
+    rightStick = 11,
+    -- Multiple values on the same offset, check dPadValues table
+    dPad = 96,
+    -- Non zero values
+    dPadUp = 100,
+    dPadDown = 104,
+    dPadLeft = 106,
+    dPadRight = 102,
+    dPadUpRight = 101,
+    dPadDownRight = 103,
+    dPadUpLeft = 107,
+    dPadDownLeft = 105
+    -- TODO Add joys axis
+    -- rightJoystick = 30,
+}
+
+-- Values for the possible dPad values from the joystick inputs
+local dPadValues = {
+    noButton = 1020,
+    upRight = 766,
+    downRight = 768,
+    upLeft = 772,
+    downLeft = 770,
+    left = 771,
+    right = 767,
+    down = 769,
+    up = 765
+}
+
+------------------------------------------------------------------------------
+-- SAPP API bindings
+------------------------------------------------------------------------------
+-- All the functions at the top of the module are for EmmyLua autocompletion purposes!
+-- They do not have a real implementation and are not supossed to be imported
 if (variableThatObviouslyDoesNotExist) then
-    -- All the functions at the top of the module are for EmmyLua autocompletion purposes!
-    -- They do not have a real implementation and are not supossed to be imported
 
     --- Attempt to spawn an object given tag id and coordinates or tag type and class plus coordinates
     ---@param tagId number Optional tag id of the object to spawn
@@ -2345,7 +2716,7 @@ if (variableThatObviouslyDoesNotExist) then
 
     --- Get object address from a specific player given playerIndex
     ---@param playerIndex number
-    ---@return number
+    ---@return number Player object memory address
     function get_dynamic_player(playerIndex)
     end
 end
@@ -2505,392 +2876,6 @@ if (api_version) then
     print("Compatibility with Chimera Lua API has been loaded!")
 end
 
-end,
-
-["maethrillian"] = function()
---------------------
--- Module: 'maethrillian'
---------------------
-------------------------------------------------------------------------------
--- Maethrillian library
--- Sledmine
--- Version 4.0
--- Encode, decode tools for data manipulation
-------------------------------------------------------------------------------
-local glue = require "glue"
-local maethrillian = {}
-
---- Compress table data in the given format
----@param inputTable table
----@param requestFormat table
----@param noHex boolean
----@return table
-function maethrillian.encodeTable(inputTable, requestFormat, noHex)
-    local compressedTable = {}
-    for property, value in pairs(inputTable) do
-        if (type(value) ~= "table") then
-            local expectedProperty
-            local encodeFormat
-            for formatIndex, format in pairs(requestFormat) do
-                if (glue.arrayhas(format, property)) then
-                    expectedProperty = format[1]
-                    encodeFormat = format[2]
-                end
-            end
-            if (encodeFormat) then
-                if (not noHex) then
-                    compressedTable[property] = glue.tohex(string.pack(encodeFormat, value))
-                else
-                    compressedTable[property] = string.pack(encodeFormat, value)
-                end
-            else
-                if (expectedProperty == property) then
-                    compressedTable[property] = value
-                end
-            end
-        end
-    end
-    return compressedTable
-end
-
---- Format table into request string
----@param inputTable table
----@param requestFormat table
----@return string
-function maethrillian.tableToRequest(inputTable, requestFormat, separator)
-    local requestData = {}
-    for property, value in pairs(inputTable) do
-        if (requestFormat) then
-            for formatIndex, format in pairs(requestFormat) do
-                if (glue.arrayhas(format, property)) then
-                    requestData[formatIndex] = value
-                end
-            end
-        else
-            requestData[#requestData + 1] = value
-        end
-    end
-    return table.concat(requestData, separator)
-end
-
---- Decompress table data given expected encoding format
----@param inputTable table
----@param requestFormat any
-function maethrillian.decodeTable(inputTable, requestFormat)
-    local dataDecompressed = {}
-    for property, encodedValue in pairs(inputTable) do
-        -- Get encode format for current value
-        local encodeFormat
-        for formatIndex, format in pairs(requestFormat) do
-            if (glue.arrayhas(format, property)) then
-                encodeFormat = format[2]
-            end
-        end
-        if (encodeFormat) then
-            -- There is a compression format available
-            value = string.unpack(encodeFormat, glue.fromhex(tostring(encodedValue)))
-        elseif (tonumber(encodedValue)) then
-            -- Convert value into number
-            value = tonumber(encodedValue)
-        else
-            -- Value is just a string
-            value = encodedValue
-        end
-        dataDecompressed[property] = value
-    end
-    return dataDecompressed
-end
-
---- Transform request into table given
----@param request string
----@param requestFormat table
-function maethrillian.requestToTable(request, requestFormat, separator)
-    local outputTable = {}
-    local splitRequest = glue.string.split(request, separator)
-    for index, value in pairs(splitRequest) do
-        local currentFormat = requestFormat[index]
-        local propertyName = currentFormat[1]
-        local encodeFormat = currentFormat[2]
-        -- Convert value into number
-        local toNumberValue = tonumber(value)
-        if (not encodeFormat and toNumberValue) then
-            value = toNumberValue
-        end
-        if (propertyName) then
-            outputTable[propertyName] = value
-        end
-    end
-    return outputTable
-end
-
-return maethrillian
-
-end,
-
-["blam"] = function()
---------------------
--- Module: 'blam'
---------------------
-------------------------------------------------------------------------------
--- Blam! library for Chimera/SAPP Lua scripting
--- Sledmine, JerryBrick
--- Improves memory handle and provides standard functions for scripting
-------------------------------------------------------------------------------
-local blam = {_VERSION = "1.3.0-beta"}
-
-------------------------------------------------------------------------------
--- Useful functions for internal usage
-------------------------------------------------------------------------------
-
--- From legacy glue library!
---- String or number to hex
-local function tohex(s, upper)
-    if type(s) == "number" then
-        return (upper and "%08.8X" or "%08.8x"):format(s)
-    end
-    if upper then
-        return (s:sub(".", function(c)
-            return ("%02X"):format(c:byte())
-        end))
-    else
-        return (s:gsub(".", function(c)
-            return ("%02x"):format(c:byte())
-        end))
-    end
-end
-
---- Hex to binary string
-local function fromhex(s)
-    if #s % 2 == 1 then
-        return fromhex("0" .. s)
-    end
-    return (s:gsub("..", function(cc)
-        return string.char(tonumber(cc, 16))
-    end))
-end
-
-------------------------------------------------------------------------------
--- Blam! engine data
-------------------------------------------------------------------------------
-
--- Engine address list
-local addressList = {
-    tagDataHeader = 0x40440000,
-    cameraType = 0x00647498, -- from Giraffe
-    gamePaused = 0x004ACA79,
-    gameOnMenus = 0x00622058
-}
-
--- Tag classes values
-local tagClasses = {
-    actorVariant = "actv",
-    actor = "actr",
-    antenna = "ant!",
-    biped = "bipd",
-    bitmap = "bitm",
-    cameraTrack = "trak",
-    colorTable = "colo",
-    continuousDamageEffect = "cdmg",
-    contrail = "cont",
-    damageEffect = "jpt!",
-    decal = "deca",
-    detailObjectCollection = "dobc",
-    deviceControl = "ctrl",
-    deviceLightFixture = "lifi",
-    deviceMachine = "mach",
-    device = "devi",
-    dialogue = "udlg",
-    effect = "effe",
-    equipment = "eqip",
-    flag = "flag",
-    fog = "fog ",
-    font = "font",
-    garbage = "garb",
-    gbxmodel = "mod2",
-    globals = "matg",
-    glow = "glw!",
-    grenadeHudInterface = "grhi",
-    hudGlobals = "hudg",
-    hudMessageText = "hmt ",
-    hudNumber = "hud#",
-    itemCollection = "itmc",
-    item = "item",
-    lensFlare = "lens",
-    lightVolume = "mgs2",
-    light = "ligh",
-    lightning = "elec",
-    materialEffects = "foot",
-    meter = "metr",
-    modelAnimations = "antr",
-    modelCollisiionGeometry = "coll",
-    model = "mode",
-    multiplayerScenarioDescription = "mply",
-    object = "obje",
-    particleSystem = "pctl",
-    particle = "part",
-    physics = "phys",
-    placeHolder = "plac",
-    pointPhysics = "pphy",
-    preferencesNetworkGame = "ngpr",
-    projectile = "proj",
-    scenarioStructureBsp = "sbsp",
-    scenario = "scnr",
-    scenery = "scen",
-    shaderEnvironment = "senv",
-    shaderModel = "soso",
-    shaderTransparentChicagoExtended = "scex",
-    shaderTransparentChicago = "schi",
-    shaderTransparentGeneric = "sotr",
-    shaderTransparentGlass = "sgla",
-    shaderTransparentMeter = "smet",
-    shaderTransparentPlasma = "spla",
-    shaderTransparentWater = "swat",
-    shader = "shdr",
-    sky = "sky ",
-    soundEnvironment = "snde",
-    soundLooping = "lsnd",
-    soundScenery = "ssce",
-    sound = "snd!",
-    spheroid = "boom",
-    stringList = "str#",
-    tagCollection = "tagc",
-    uiWidgetCollection = "Soul",
-    uiWidgetDefinition = "DeLa",
-    unicodeStringList = "ustr",
-    unitHudInterface = "unhi",
-    unit = "unit",
-    vehicle = "vehi",
-    virtualKeyboard = "vcky",
-    weaponHudInterface = "wphi",
-    weapon = "weap",
-    weatherParticleSystem = "rain",
-    wind = "wind"
-}
-
--- Blam object classes values
-local objectClasses = {
-    biped = 0,
-    vehicle = 1,
-    weapon = 2,
-    equipment = 3,
-    garbage = 4,
-    projectile = 5,
-    scenery = 6,
-    machine = 7,
-    control = 8,
-    lightFixture = 9,
-    placeHolder = 10,
-    soundScenery = 11
-}
-
--- Camera types
-local cameraTypes = {
-    scripted = 1, -- 22192
-    firstPerson = 2, -- 30400
-    devcam = 3, -- 30704
-    thirdPerson = 4, -- 31952
-    deadCamera = 5 -- 23776
-}
-
-local netgameFlagTypes = {
-    ctfFlag = 0,
-    ctfVehicle = 1,
-    ballSpawn = 2,
-    raceTrack = 3,
-    raceVehicle = 4,
-    vegasBank = 5,
-    teleportFrom = 6,
-    teleportTo = 7,
-    hillFlag = 8
-}
-
-local netgameEquipmentTypes = {
-    none = 0,
-    ctf = 1,
-    slayer = 2,
-    oddball = 3,
-    koth = 4,
-    race = 5,
-    terminator = 6,
-    stub = 7,
-    ignored1 = 8,
-    ignored2 = 9,
-    ignored3 = 10,
-    ignored4 = 11,
-    allGames = 12,
-    allExceptCtf = 13,
-    allExceptRaceCtf = 14
-}
-
--- Console colors
-local consoleColors = {
-    success = {1, 0.235, 0.82, 0},
-    warning = {1, 0.94, 0.75, 0.098},
-    error = {1, 1, 0.2, 0.2},
-    unknown = {1, 0.66, 0.66, 0.66}
-}
-
-------------------------------------------------------------------------------
--- SAPP API bindings
-------------------------------------------------------------------------------
-
--- Create and bind Chimera functions to the ones in SAPP
-if (api_version) then
-    --- Return the memory address of a tag given tagId or tagClass and tagPath
-    ---@param tagIdOrTagType string | number
-    ---@param tagPath string
-    ---@return number
-    function get_tag(tagIdOrTagType, tagPath)
-        if (not tagPath) then
-            return lookup_tag(tagIdOrTagType)
-        else
-            return lookup_tag(tagIdOrTagType, tagPath)
-        end
-    end
-
-    --- Execute a game command or script block
-    ---@param command string
-    function execute_script(command)
-        return execute_command(command)
-    end
-
-    --- Return the address of the object memory given object id
-    ---@param objectId number
-    ---@return number
-    function get_object(objectId)
-        if (objectId) then
-            local object_memory = get_object_memory(objectId)
-            if (object_memory ~= 0) then
-                return object_memory
-            end
-        end
-        return nil
-    end
-
-    --- Delete an object given object id
-    ---@param objectId number
-    function delete_object(objectId)
-        destroy_object(objectId)
-    end
-
-    --- Print text into console
-    ---@param message string
-    -- TODO Add color printing to this function
-    function console_out(message)
-        cprint(message)
-    end
-
-    local sapp_get_dynamic_player = get_dynamic_player
-    --- Get object address from a specific player given playerIndex
-    ---@param playerIndex number
-    ---@return number
-    function get_dynamic_player(playerIndex)
-        return sapp_get_dynamic_player(playerIndex)
-    end
-
-    print("Chimera API functions are available now with LuaBlam!")
-end
-
 ------------------------------------------------------------------------------
 -- Generic functions
 ------------------------------------------------------------------------------
@@ -2985,8 +2970,7 @@ local function consoleOutput(message, ...)
     local args = {...}
 
     if (message == nil or #args > 5) then
-        consoleOutput(debug.traceback(
-                          "Wrong number of arguments on console output function", 2),
+        consoleOutput(debug.traceback("Wrong number of arguments on console output function", 2),
                       consoleColors.error)
     end
 
@@ -3032,9 +3016,8 @@ local function b2b(bitOrBool)
     elseif (bitOrBool == false) then
         return 0
     end
-    error(
-        "B2B error, expected boolean or bit value, got " .. tostring(bitOrBool) .. " " ..
-            type(bitOrBool))
+    error("B2B error, expected boolean or bit value, got " .. tostring(bitOrBool) .. " " ..
+              type(bitOrBool))
 end
 
 ------------------------------------------------------------------------------
@@ -3115,7 +3098,7 @@ local function writeString(address, propertyData, propertyValue)
     return write_string(address, propertyValue)
 end
 
--- //TODO Refactor this tu support full unicode char size
+-- //TODO Refactor this to support full unicode char size
 --- Return the string of a unicode string given address
 ---@param address number
 ---@param rawRead boolean
@@ -3184,16 +3167,15 @@ local function readList(address, propertyData)
     end
     local list = {}
     for currentElement = 1, elementCount do
-        list[currentElement] = operation.read(
-                                   addressList +
-                                       (propertyData.jump * (currentElement - 1)))
+        list[currentElement] = operation.read(addressList +
+                                                  (propertyData.jump * (currentElement - 1)))
     end
     return list
 end
 
 local function writeList(address, propertyData, propertyValue)
     local operation = typesOperations[propertyData.elementsType]
-    local elementCount = read_byte(address - 0x4)
+    local elementCount = read_word(address - 0x4)
     local addressList
     if (propertyData.noOffset) then
         addressList = read_dword(address)
@@ -3204,8 +3186,8 @@ local function writeList(address, propertyData, propertyValue)
         local elementValue = propertyValue[currentElement]
         if (elementValue) then
             -- Check if there are problems at sending property data here due to missing property data
-            operation.write(addressList + (propertyData.jump * (currentElement - 1)),
-                            propertyData, elementValue)
+            operation.write(addressList + (propertyData.jump * (currentElement - 1)), propertyData,
+                            elementValue)
         else
             if (currentElement > #propertyValue) then
                 break
@@ -3223,8 +3205,9 @@ local function readTable(address, propertyData)
         table[elementPosition] = {}
         for subProperty, subPropertyData in pairs(propertyData.rows) do
             local operation = typesOperations[subPropertyData.type]
-            table[elementPosition][subProperty] =
-                operation.read(elementAddress + subPropertyData.offset, subPropertyData)
+            table[elementPosition][subProperty] = operation.read(elementAddress +
+                                                                     subPropertyData.offset,
+                                                                 subPropertyData)
         end
     end
     return table
@@ -3240,8 +3223,8 @@ local function writeTable(address, propertyData, propertyValue)
                 local subPropertyData = propertyData.rows[subProperty]
                 if (subPropertyData) then
                     local operation = typesOperations[subPropertyData.type]
-                    operation.write(elementAddress + subPropertyData.offset,
-                                    subPropertyData, subPropertyValue)
+                    operation.write(elementAddress + subPropertyData.offset, subPropertyData,
+                                    subPropertyValue)
                 end
             end
         else
@@ -3280,9 +3263,8 @@ local dataBindingMetaTable = {
             local propertyAddress = object.address + propertyData.offset
             operation.write(propertyAddress, propertyData, propertyValue)
         else
-            local errorMessage = "Unable to write an invalid property ('" .. property ..
-                                     "')"
-            consoleOutput(debug.traceback(errorMessage, 2), consoleColors.error)
+            local errorMessage = "Unable to write an invalid property ('" .. property .. "')"
+            error(debug.traceback(errorMessage, 2))
         end
     end,
     __index = function(object, property)
@@ -3293,9 +3275,8 @@ local dataBindingMetaTable = {
             local propertyAddress = object.address + propertyData.offset
             return operation.read(propertyAddress, propertyData)
         else
-            local errorMessage = "Unable to read an invalid property ('" .. property ..
-                                     "')"
-            consoleOutput(debug.traceback(errorMessage, 2), consoleColors.error)
+            local errorMessage = "Unable to read an invalid property ('" .. property .. "')"
+            error(debug.traceback(errorMessage, 2))
         end
     end
 }
@@ -3304,7 +3285,7 @@ local dataBindingMetaTable = {
 -- Object functions
 ------------------------------------------------------------------------------
 
---- Create a LuaBlam object
+--- Create a blam object
 ---@param address number
 ---@param struct table
 ---@return table
@@ -3352,6 +3333,32 @@ end
 -- Object structures
 ------------------------------------------------------------------------------
 
+---@class dataTable
+---@field name string
+---@field maxElements number
+---@field elementSize number
+---@field capacity number
+---@field size number
+---@field nextElementId number
+---@field firstElementAddress number
+local dataTableStructure = {
+    name = {type = "string", offset = 0},
+    maxElements = {type = "word", offset = 0x20},
+    elementSize = {type = "word", offset = 0x22},
+    -- padding1 = {size = 0x0A, offset = 0x24},
+    capacity = {type = "word", offset = 0x2E},
+    size = {type = "word", offset = 0x30},
+    nextElementId = {type = "word", offset = 0x32},
+    firstElementAddress = {type = "dword", offset = 0x34}
+}
+
+local deviceGroupsTableStructure = {
+    name = {type = "string", offset = 0},
+    maxElements = {type = "word", offset = 0x20},
+    elementSize = {type = "word", offset = 0x22},
+    firstElementAddress = {type = "dword", offset = 0x34}
+}
+
 ---@class blamObject
 ---@field address number
 ---@field tagId number Object tag ID
@@ -3363,7 +3370,8 @@ end
 ---@field isNotCastingShadow boolean Enable/disable object shadow casting
 ---@field isFrozen boolean Freeze/unfreeze object existence
 ---@field isOutSideMap boolean Is object outside/inside bsp
----@field isCollideable boolean Enable/disable object shadow casting
+---@field isCollideable boolean Enable/disable object collision, does not work with bipeds or vehicles
+---@field hasNoCollision boolean Enable/disable object collision, causes animation problems
 ---@field model number Gbxmodel tag ID
 ---@field health number Current health of the object
 ---@field shield number Current shield of the object
@@ -3389,6 +3397,7 @@ end
 ---@field boundingRadius number Radius amount of the object in radians
 ---@field type number Object type
 ---@field team number Object multiplayer team
+---@field nameIndex number Index of object name in the scenario tag
 ---@field playerId number Current player id if the object
 ---@field parentId number Current parent id of the object
 ---@field isHealthEmpty boolean Is the object health deploeted, also marked as "dead"
@@ -3396,7 +3405,6 @@ end
 ---@field animation number Current animation index
 ---@field animationFrame number Current animation frame
 ---@field isNotDamageable boolean Make the object undamageable
----@field vehicleObjectId number Current vehicle objectId of this object
 ---@field regionPermutation1 number
 ---@field regionPermutation2 number
 ---@field regionPermutation3 number
@@ -3414,12 +3422,13 @@ local objectStructure = {
     ignoreGravity = {type = "bit", offset = 0x10, bitLevel = 2},
     isInWater = {type = "bit", offset = 0x10, bitLevel = 3},
     isStationary = {type = "bit", offset = 0x10, bitLevel = 5},
+    hasNoCollision = {type = "bit", offset = 0x10, bitLevel = 7},
     dynamicShading = {type = "bit", offset = 0x10, bitLevel = 14},
     isNotCastingShadow = {type = "bit", offset = 0x10, bitLevel = 18},
     isFrozen = {type = "bit", offset = 0x10, bitLevel = 20},
     -- FIXME Deprecated property, should be erased at a major release later
     frozen = {type = "bit", offset = 0x10, bitLevel = 20},
-    isOutSideMap = {type = "bit", offset = 0x10, bitLevel = 21},
+    isOutSideMap = {type = "bit", offset = 0x12, bitLevel = 5},
     isCollideable = {type = "bit", offset = 0x10, bitLevel = 24},
     model = {type = "dword", offset = 0x34},
     health = {type = "float", offset = 0xE0},
@@ -3447,15 +3456,14 @@ local objectStructure = {
     boundingRadius = {type = "float", offset = 0xAC},
     type = {type = "word", offset = 0xB4},
     team = {type = "word", offset = 0xB8},
+    nameIndex = {type = "word", offset = 0xBA},
     playerId = {type = "dword", offset = 0xC0},
     parentId = {type = "dword", offset = 0xC4},
-    -- Experimental name properties
     isHealthEmpty = {type = "bit", offset = 0x106, bitLevel = 2},
     animationTagId = {type = "dword", offset = 0xCC},
     animation = {type = "word", offset = 0xD0},
     animationFrame = {type = "word", offset = 0xD2},
     isNotDamageable = {type = "bit", offset = 0x106, bitLevel = 11},
-    vehicleObjectId = {type = "dword", offset = 0x11C},
     regionPermutation1 = {type = "byte", offset = 0x180},
     regionPermutation2 = {type = "byte", offset = 0x181},
     regionPermutation3 = {type = "byte", offset = 0x182},
@@ -3494,6 +3502,10 @@ local objectStructure = {
 ---@field landing number Biped landing state, 0 when landing, stays on 0 when landing hard, null otherwise
 ---@field bumpedObjectId number Object ID that the biped is bumping, vehicles, bipeds, etc, keeps the previous value if not bumping a new object
 ---@field vehicleSeatIndex number Current vehicle seat index of this biped
+---@field vehicleObjectId number Current vehicle objectId of this object
+---@field walkingState number Biped walking state, 0 = not walking, 1 = walking, 2 = stoping walking, 3 = stationary
+---@field motionState number Biped motion state, 0 = standing , 1 = walking , 2 = jumping/falling
+---@field mostRecentDamagerPlayer number Id of the player that caused the most recent damage to this biped
 
 -- Biped structure (extends object structure)
 local bipedStructure = extendStructure(objectStructure, {
@@ -3523,7 +3535,11 @@ local bipedStructure = extendStructure(objectStructure, {
     secondaryNades = {type = "byte", offset = 0x31F},
     landing = {type = "byte", offset = 0x508},
     bumpedObjectId = {type = "dword", offset = 0x4FC},
-    vehicleSeatIndex = {type = "word", offset = 0x2F0}
+    vehicleObjectId = {type = "dword", offset = 0x11C},
+    vehicleSeatIndex = {type = "word", offset = 0x2F0},
+    walkingState = {type = "char", offset = 0x503},
+    motionState = {type = "byte", offset = 0x4D2},
+    mostRecentDamagerPlayer = {type = "dword", offset = 0x43C}
 })
 
 -- Tag data header structure
@@ -3574,6 +3590,11 @@ local unicodeStringListStructure = {
     stringList = {type = "list", offset = 0x4, elementsType = "pustring", jump = 0x14}
 }
 
+---@class bitmapSequence
+---@field name string
+---@field firtBitmapIndex number
+---@field bitmapCount number
+
 ---@class bitmap
 ---@field type number
 ---@field format number
@@ -3594,7 +3615,7 @@ local unicodeStringListStructure = {
 ---@field spriteUsage number
 ---@field spriteSpacing number
 ---@field sequencesCount number
----@field sequences table
+---@field sequences bitmapSequence[]
 ---@field bitmapsCount number
 ---@field bitmaps table
 
@@ -3623,8 +3644,7 @@ local bitmapStructure = {
     sequences = {
         type = "table",
         offset = 0x58,
-        -- //FIXME Check if the jump field is correctly being used
-        jump = 0,
+        jump = 0x40,
         rows = {
             name = {type = "string", offset = 0x0},
             firstBitmapIndex = {type = "word", offset = 0x20},
@@ -3703,12 +3723,7 @@ local uiWidgetDefinitionStructure = {
     eventType = {type = "byte", offset = 0x03F0},
     tagReference = {type = "word", offset = 0x400},
     childWidgetsCount = {type = "dword", offset = 0x03E0},
-    childWidgetsList = {
-        type = "list",
-        offset = 0x03E4,
-        elementsType = "dword",
-        jump = 0x50
-    }
+    childWidgetsList = {type = "list", offset = 0x03E4, elementsType = "dword", jump = 0x50}
 }
 
 ---@class uiWidgetCollection
@@ -3790,27 +3805,32 @@ local weaponHudInterfaceStructure = {
     }
 }
 
+---@class spawnLocation
+---@field x number
+---@field y number
+---@field z number
+---@field rotation number
+---@field type number
+---@field teamIndex number
+
 ---@class scenario
 ---@field sceneryPaletteCount number Number of sceneries in the scenery palette
 ---@field sceneryPaletteList table Tag ID list of scenerys in the scenery palette
 ---@field spawnLocationCount number Number of spawns in the scenario
----@field spawnLocationList table List of spawns in the scenario
+---@field spawnLocationList spawnLocation[] List of spawns in the scenario
 ---@field vehicleLocationCount number Number of vehicles locations in the scenario
 ---@field vehicleLocationList table List of vehicles locations in the scenario
 ---@field netgameEquipmentCount number Number of netgame equipments
 ---@field netgameEquipmentList table List of netgame equipments
 ---@field netgameFlagsCount number Number of netgame equipments
 ---@field netgameFlagsList table List of netgame equipments
+---@field objectNamesCount number Count of the object names in the scenario
+---@field objectNames string[] List of all the object names in the scenario
 
 -- Scenario structure
 local scenarioStructure = {
     sceneryPaletteCount = {type = "byte", offset = 0x021C},
-    sceneryPaletteList = {
-        type = "list",
-        offset = 0x0220,
-        elementsType = "dword",
-        jump = 0x30
-    },
+    sceneryPaletteList = {type = "list", offset = 0x0220, elementsType = "dword", jump = 0x30},
     spawnLocationCount = {type = "byte", offset = 0x354},
     spawnLocationList = {
         type = "table",
@@ -3875,6 +3895,14 @@ local scenarioStructure = {
             facing = {type = "float", offset = 0x4C},
             itemCollection = {type = "dword", offset = 0x5C}
         }
+    },
+    objectNamesCount = {type = "dword", offset = 0x204},
+    objectNames = {
+        type = "list",
+        offset = 0x208,
+        elementsType = "string",
+        jump = 36,
+        noOffset = true
     }
 }
 
@@ -3944,6 +3972,15 @@ local modelAnimationsStructure = {
         }
     }
 }
+
+---@class weapon : blamObject
+---@field pressedReloadKey boolean Is weapon trying to reload
+---@field isWeaponPunching boolean Is weapon playing melee or grenade animation
+
+local weaponStructure = extendStructure(objectStructure, {
+    pressedReloadKey = {type = "bit", offset = 0x230, bitLevel = 3},
+    isWeaponPunching = {type = "bit", offset = 0x230, bitLevel = 4}
+})
 
 ---@class weaponTag
 ---@field model number Tag ID of the weapon model
@@ -4049,6 +4086,7 @@ local projectileStructure = extendStructure(objectStructure, {
 ---@field index number Local index of this player (0-15
 ---@field speed number Current speed of this player
 ---@field ping number Ping amount from server of this player in milliseconds
+---@field kills number Kills quantity done by this player
 
 local playerStructure = {
     id = {type = "word", offset = 0x0},
@@ -4059,8 +4097,12 @@ local playerStructure = {
     color = {type = "word", offset = 0x60},
     index = {type = "byte", offset = 0x67},
     speed = {type = "float", offset = 0x6C},
-    ping = {type = "dword", offset = 0xDC}
+    ping = {type = "dword", offset = 0xDC},
+    kills = {type = "word", offset = 0x9C}
 }
+
+---@class firstPersonInterface
+---@field firstPersonHands number
 
 ---@class multiplayerInformation
 ---@field flag number Tag ID of the flag object used for multiplayer games
@@ -4068,34 +4110,94 @@ local playerStructure = {
 
 ---@class globalsTag
 ---@field multiplayerInformation multiplayerInformation[]
+---@field firstPersonInterface firstPersonInterface[]
 
 local globalsTagStructure = {
-    -- WARNING Separeted properties for easier accesibility, structure is an array of properties
     multiplayerInformation = {
         type = "table",
         jump = 0x0,
         offset = 0x168,
-        rows = {
-            flag = {type = "dword", offset = 0xC},
-            unit = {type = "dword", offset = 0x1C}
-        }
+        rows = {flag = {type = "dword", offset = 0xC}, unit = {type = "dword", offset = 0x1C}}
+    },
+    firstPersonInterface = {
+        type = "table",
+        jump = 0x0,
+        offset = 0x180,
+        rows = {firstPersonHands = {type = "dword", offset = 0xC}}
     }
+}
+
+---@class firstPerson
+---@field weaponObjectId number Weapon Id from the first person view
+
+local firstPersonStructure = {weaponObjectId = {type = "dword", offset = 0x10}}
+
+---@class bipedTag
+---@field disableCollision number Disable collision of this biped tag
+local bipedTagStructure = {disableCollision = {type = "bit", offset = 0x2F4, bitLevel = 5}}
+
+---@class  deviceMachine : blamObject
+---@field powerGroupIndex number Power index from the device groups table
+---@field power number Position amount of this device machine
+---@field powerChange number Power change of this device machine
+---@field positonGroupIndex number Power index from the device groups table
+---@field position number Position amount of this device machine
+---@field positionChange number Position change of this device machine
+local deviceMachineStructure = extendStructure(objectStructure, {
+    powerGroupIndex = {type = "word", offset = 0x1F8},
+    power = {type = "float", offset = 0x1FC},
+    powerChange = {type = "float", offset = 0x200},
+    positonGroupIndex = {type = "word", offset = 0x204},
+    position = {type = "float", offset = 0x208},
+    positionChange = {type = "float", offset = 0x20C}
+})
+
+---@class hudGlobals
+---@field anchor number
+---@field x number
+---@field y number
+---@field width number
+---@field height number
+---@field upTime number
+---@field fadeTime number
+---@field iconColorA number
+---@field iconColorR number
+---@field iconColorG number
+---@field iconColorB number
+---@field textSpacing number
+local hudGlobalsStructure = {
+    anchor = {type = "word", offset = 0x0},
+    x = {type = "word", offset = 0x24},
+    y = {type = "word", offset = 0x26},
+    width = {type = "float", offset = 0x28},
+    height = {type = "float", offset = 0x2C},
+    upTime = {type = "float", offset = 0x68},
+    fadeTime = {type = "float", offset = 0x6C},
+    iconColorA = {type = "float", offset = 0x70},
+    iconColorR = {type = "float", offset = 0x74},
+    iconColorG = {type = "float", offset = 0x78},
+    iconColorB = {type = "float", offset = 0x7C},
+    textColorA = {type = "float", offset = 0x80},
+    textColorR = {type = "float", offset = 0x84},
+    textColorG = {type = "float", offset = 0x88},
+    textColorB = {type = "float", offset = 0x8C},
+    textSpacing = {type = "float", offset = 0x90}
 }
 
 ------------------------------------------------------------------------------
 -- LuaBlam globals
 ------------------------------------------------------------------------------
 
--- Add blam! data tables to library
+-- Provide with public blam! data tables
 blam.addressList = addressList
 blam.tagClasses = tagClasses
 blam.objectClasses = objectClasses
+blam.joystickInputs = joystickInputs
+blam.dPadValues = dPadValues
 blam.cameraTypes = cameraTypes
 blam.netgameFlagTypes = netgameFlagTypes
 blam.netgameEquipmentTypes = netgameEquipmentTypes
 blam.consoleColors = consoleColors
-
--- LuaBlam globals
 
 ---@class tagDataHeader
 ---@field array any
@@ -4122,6 +4224,22 @@ function blam.isNull(value)
     return false
 end
 
+function blam.isGameHost()
+    return server_type == "local"
+end
+
+function blam.isGameSinglePlayer()
+    return server_type == "none"
+end
+
+function blam.isGameDedicated()
+    return server_type == "dedicated"
+end
+
+function blam.isGameSAPP()
+    return server_type == "sapp"
+end
+
 --- Get the current game camera type
 ---@return number
 function blam.getCameraType()
@@ -4133,7 +4251,7 @@ function blam.getCameraType()
             return cameraTypes.firstPerson
         elseif (camera == 30704) then
             return cameraTypes.devcam
-            -- //FIXME Validate this value, it seems to be wrong!
+            -- FIXME Validate this value, it seems to be wrong!
         elseif (camera == 21952) then
             return cameraTypes.thirdPerson
         elseif (camera == 23776) then
@@ -4141,6 +4259,34 @@ function blam.getCameraType()
         end
     end
     return nil
+end
+
+--- Get input from the joystick in the game
+-- Based on aLTis controller method
+-- TODO Check if it is better to return an entire table with all input values 
+---@param joystickOffset number Offset input from the joystick data, use blam.joystickInputs
+---@return boolean | number Value of the joystick input
+function blam.getJoystickInput(joystickOffset)
+    joystickOffset = joystickOffset or 0
+    -- Nothing is pressed by default
+    local inputValue = false
+    -- Look for every input from every joystick available
+    for controllerId = 0, 3 do
+        local inputAddress = addressList.joystickInput + controllerId * 0xA0
+        if (joystickOffset >= 30 and joystickOffset <= 38) then
+            -- Sticks
+            inputValue = inputValue + read_long(inputAddress + joystickOffset)
+        elseif (joystickOffset > 96) then
+            -- D-pad related
+            local tempValue = read_word(inputAddress + 96)
+            if (tempValue == joystickOffset - 100) then
+                inputValue = true
+            end
+        else
+            inputValue = inputValue + read_byte(inputAddress + joystickOffset)
+        end
+    end
+    return inputValue
 end
 
 --- Create a tag object from a given address, this object can't write data to game memory
@@ -4203,6 +4349,7 @@ function blam.getTag(tagIdOrTagPath, tagClass, ...)
 end
 
 --- Create a player object given player entry table address
+---@return player
 function blam.player(address)
     if (isValid(address)) then
         return createObject(address, playerStructure)
@@ -4236,6 +4383,17 @@ end
 function blam.biped(address)
     if (isValid(address)) then
         return createObject(address, bipedStructure)
+    end
+    return nil
+end
+
+--- Create a biped tag from a tag path or id
+---@param tag string | number
+---@return bipedTag
+function blam.bipedTag(tag)
+    if (isValid(tag)) then
+        local bipedTag = blam.getTag(tag, tagClasses.biped)
+        return createObject(bipedTag.data, bipedTagStructure)
     end
     return nil
 end
@@ -4335,7 +4493,7 @@ function blam.collisionGeometry(tag)
     return nil
 end
 
---- Create a Model Animation object from a tag path or id
+--- Create a Model Animations object from a tag path or id
 ---@param tag string | number
 ---@return modelAnimations
 function blam.modelAnimations(tag)
@@ -4346,7 +4504,17 @@ function blam.modelAnimations(tag)
     return nil
 end
 
---- Create a Model Animation object from a tag path or id
+--- Create a Weapon object from the given object address
+---@param address number
+---@return weapon
+function blam.weapon(address)
+    if (isValid(address)) then
+        return createObject(address, weaponStructure)
+    end
+    return nil
+end
+
+--- Create a Weapon tag object from a tag path or id
 ---@param tag string | number
 ---@return weaponTag
 function blam.weaponTag(tag)
@@ -4357,7 +4525,7 @@ function blam.weaponTag(tag)
     return nil
 end
 
---- Create a Model Animation object from a tag path or id
+--- Create a model (gbxmodel) object from a tag path or id
 ---@param tag string | number
 ---@return gbxModel
 function blam.model(tag)
@@ -4367,8 +4535,10 @@ function blam.model(tag)
     end
     return nil
 end
+-- Alias
+blam.gbxmodel = blam.model
 
---- Create a Globals tag table from a tag path or id
+--- Create a Globals tag object from a tag path or id
 ---@param tag string | number
 ---@return globalsTag
 function blam.globalsTag(tag)
@@ -4376,6 +4546,83 @@ function blam.globalsTag(tag)
     if (isValid(tag)) then
         local globalsTag = blam.getTag(tag, tagClasses.globals)
         return createObject(globalsTag.data, globalsTagStructure)
+    end
+    return nil
+end
+
+--- Create a First person object from a given address, game known address by default
+---@param address number
+---@return firstPerson
+function blam.firstPerson(address)
+    return createObject(address or addressList.firstPerson, firstPersonStructure)
+end
+
+--- Create a Device Machine object from a given address
+---@param address number
+---@return deviceMachine
+function blam.deviceMachine(address)
+    if (isValid(address)) then
+        return createObject(address, deviceMachineStructure)
+    end
+    return nil
+end
+
+--- Create a HUD Globals tag object from a given address
+---@param tag string | number
+---@return hudGlobals
+function blam.hudGlobals(tag)
+    if (isValid(tag)) then
+        local hudGlobals = blam.getTag(tag, tagClasses.hudGlobals)
+        return createObject(hudGlobals.data, hudGlobalsStructure)
+    end
+    return nil
+end
+
+--- Return a blam object given object index or id
+---@param idOrIndex number
+---@return blamObject, number
+function blam.getObject(idOrIndex)
+    local objectId
+    local objectAddress
+
+    -- Get object address
+    if (idOrIndex) then
+        -- Get object ID
+        if (idOrIndex < 0xFFFF) then
+            local index = idOrIndex
+
+            -- Get objects table
+            local table = createObject(addressList.objectTable, dataTableStructure)
+            if (index > table.capacity) then
+                return nil
+            end
+
+            -- Calculate object ID (this may be invalid, be careful)
+            objectId =
+                (read_word(table.firstElementAddress + index * table.elementSize) * 0x10000) + index
+        else
+            objectId = idOrIndex
+        end
+
+        objectAddress = get_object(objectId)
+
+        return blam.object(objectAddress), objectId
+    end
+    return nil
+end
+
+--- Return an element from the device machines table
+---@param index number
+---@return number
+function blam.getDeviceGroup(index)
+    -- Get object address
+    if (index) then
+        -- Get objects table
+        local table = createObject(read_dword(addressList.deviceGroupsTable), deviceGroupsTableStructure)
+        -- Calculate object ID (this may be invalid, be careful)
+        local itemOffset = table.elementSize * index 
+        local item = read_float(table.firstElementAddress + itemOffset + 0x4)
+        return item
     end
     return nil
 end
@@ -4732,6 +4979,8 @@ local function forgeCommands(command)
     if (command == "fdebug") then
         debugBuffer = nil
         config.forge.debugMode = not config.forge.debugMode
+        features.hideReflectionObjects()
+        -- Force settings menu update
         console_out("Debug mode: " .. tostring(config.forge.debugMode))
         return false
     else
@@ -4747,15 +4996,10 @@ local function forgeCommands(command)
                 features.printHUD("Rotation step now is " .. newRotationStep .. " degrees.")
                 playerStore:dispatch({
                     type = "SET_ROTATION_STEP",
-                    payload = {
-                        step = newRotationStep
-                    }
+                    payload = {step = newRotationStep}
                 })
             else
-                playerStore:dispatch({
-                    type = "SET_ROTATION_STEP",
-                    payload = {step = 3}
-                })
+                playerStore:dispatch({type = "SET_ROTATION_STEP", payload = {step = 3}})
             end
             return false
         elseif (forgeCommand == "fdis" or forgeCommand == "fdistance") then
@@ -4764,27 +5008,12 @@ local function forgeCommands(command)
                 features.printHUD("Distance from object has been set to " .. newDistance ..
                                       " units.")
                 -- Force distance object update
-                playerStore:dispatch({
-                    type = "SET_LOCK_DISTANCE",
-                    payload = {
-                        lockDistance = true
-                    }
-                })
+                playerStore:dispatch({type = "SET_LOCK_DISTANCE", payload = {lockDistance = true}})
                 local distance = glue.round(newDistance)
-                playerStore:dispatch({
-                    type = "SET_DISTANCE",
-                    payload = {
-                        distance = distance
-                    }
-                })
+                playerStore:dispatch({type = "SET_DISTANCE", payload = {distance = distance}})
             else
                 local distance = 3
-                playerStore:dispatch({
-                    type = "SET_DISTANCE",
-                    payload = {
-                        distance = distance
-                    }
-                })
+                playerStore:dispatch({type = "SET_DISTANCE", payload = {distance = distance}})
             end
             return false
         elseif (forgeCommand == "fsave") then
@@ -4793,10 +5022,12 @@ local function forgeCommands(command)
         elseif (forgeCommand == "fsnap") then
             config.forge.snapMode = not config.forge.snapMode
             console_out("Snap Mode: " .. tostring(config.forge.snapMode))
+            -- Force settings menu update
             return false
         elseif (forgeCommand == "fauto") then
             config.forge.autoSave = not config.forge.autoSave
             console_out("Auto Save: " .. tostring(config.forge.autoSave))
+            -- Force settings menu update
             return false
         elseif (forgeCommand == "fcast") then
             config.forge.objectsCastShadow = not config.forge.objectsCastShadow
@@ -4806,13 +5037,14 @@ local function forgeCommands(command)
             for objectIndex, forgeObject in pairs(eventsState.forgeObjects) do
                 local object = blam.object(get_object(objectIndex))
                 if (object) then
-                    if (objectsCastShadow) then                    
+                    if (objectsCastShadow) then
                         core.forceShadowCasting(object)
                     else
                         object.isNotCastingShadow = true
                     end
                 end
             end
+            -- Force settings menu update
             console_out("Objects Cast Shadow: " .. tostring(config.forge.objectsCastShadow))
             return false
         elseif (forgeCommand == "fload") then
@@ -4831,18 +5063,13 @@ local function forgeCommands(command)
             return false
         elseif (forgeCommand == "fname") then
             local mapName = table.concat(glue.shift(splitCommand, 1, -1), " "):gsub(",", " ")
-            forgeStore:dispatch({
-                type = "SET_MAP_NAME",
-                payload = {mapName = mapName}
-            })
+            forgeStore:dispatch({type = "SET_MAP_NAME", payload = {mapName = mapName}})
             return false
         elseif (forgeCommand == "fdesc") then
             local mapDescription = table.concat(glue.shift(splitCommand, 1, -1), " "):gsub(",", " ")
             forgeStore:dispatch({
                 type = "SET_MAP_DESCRIPTION",
-                payload = {
-                    mapDescription = mapDescription
-                }
+                payload = {mapDescription = mapDescription}
             })
             return false
         elseif (forgeCommand == "fspawn" and server_type == "local") then
@@ -4906,33 +5133,44 @@ local function forgeCommands(command)
                 console_out(get_player())
                 return false
             elseif (forgeCommand == "fbiped") then
-                local tagsList = {}
-                for tagId = 0, blam.tagDataHeader.count - 1 do
-                    local tempTag = blam.getTag(tagId)
-                    if (tempTag and tempTag.class == tagClasses.biped) then
-                        local tagPath = tempTag.path
-                        local splitPath = glue.string.split(tagPath, "\\")
-                        local tagPathName = splitPath[#splitPath]
-                        tagsList[tagPathName] = tagPath
+                local player = blam.player(get_player())
+                if (player) then
+                    local playerBiped = blam.object(get_object(player.objectId))
+                    if (playerBiped) then
+                        local bipedName = table.concat(glue.shift(splitCommand, 1, -1), " ")
+                        for tagIndex = 0, blam.tagDataHeader.count - 1 do
+                            local tag = blam.getTag(tagIndex)
+                            if (tag.class == tagClasses.biped) then
+                                local pathSplit = glue.string.split(tag.path, "\\")
+                                local tagName = pathSplit[#pathSplit]
+                                if (tagName == bipedName) then
+                                    console_out("Changing biped...")
+                                    local globals = blam.globalsTag()
+                                    if (globals) then
+                                        local newMpInfo = globals.multiplayerInformation
+                                        newMpInfo[1].unit = tag.id
+                                        -- Update globals tag data to set new biped
+                                        globals.multiplayerInformation = newMpInfo
+                                        -- Erase player object to force biped respawn
+                                        delete_object(player.objectId)
+                                        return false
+                                    end
+                                end
+                            end
+                        end
                     end
                 end
-
-                local bipedTagName = table.concat(glue.shift(splitCommand, 1, -1), " ")
-                local player = blam.biped(get_dynamic_player())
-                local tagPathResult = tagsList[bipedTagName]
-                if (tagPathResult) then
-                    local objectId = core.spawnObject(tagClasses.biped, tagPathResult, player.x,
-                                                      player.y, player.z + 0.5)
-                    local player = blam.biped(get_object(objectId))
-                end
+                dprint("Error, biped tag was not found on the map!")
                 return false
             elseif (forgeCommand == "fdump") then
                 write_file("player_dump.lua", inspect(playerStore:getState()))
                 write_file("forge_dump.lua", inspect(forgeStore:getState()))
                 write_file("events_dump.lua", inspect(eventsStore:getState()))
                 write_file("voting_dump.lua", inspect(votingStore:getState()))
+                write_file("general_menu_dump.lua", inspect(generalMenuStore:getState()))
                 write_file("constants.lua", inspect(const))
                 write_file("debug_dump.txt", debugBuffer or "No debug messages to print.")
+                dprint("Done, dumped forge reducers to files.")
                 return false
             elseif (forgeCommand == "fixmaps") then
                 --[[local mapsFiles = list_directory(defaultMapsPath)
@@ -4971,6 +5209,25 @@ local function forgeCommands(command)
                     write_float(player + 0x6C, newSpeed)
                 end
                 return false
+            elseif (forgeCommand == "fpos") then
+                local playerBiped = blam.object(get_dynamic_player())
+                if (playerBiped) then
+                    console_out(("%s,%s,%s"):format(playerBiped.x, playerBiped.y, playerBiped.z))
+                end
+                return false
+            elseif (forgeCommand == "frot") then
+                local yaw = splitCommand[2]
+                local pitch = splitCommand[3]
+                local roll = splitCommand[4]
+                dprint(("%s: %s: %s:"):format(yaw, pitch, roll))
+                local rotation, matrix = core.eulerToRotation(yaw, pitch, roll)
+                dprint("ROTATION:")
+                dprint(inspect(rotation))
+                dprint("MATRIX:")
+                dprint(inspect(matrix[1]))
+                dprint(inspect(matrix[2]))
+                dprint(inspect(matrix[3]))
+                return false
             end
         end
     end
@@ -5003,12 +5260,18 @@ local constants = {}
 -- constants.myGamesFolder = read_string(0x00647830)
 constants.mouseInputAddress = 0x64C73C
 constants.localPlayerAddress = 0x815918
+-- Looks like the history/memory of the current widget loaded
+-- It appears to work different on the main menu/ui
+constants.currentWidgetIdAddress = 0x6B401C
+-- constants.isWidgetOpenAddress = constants.currentWidgetIdAddress + 19
+-- + 671 = New element??
 
 -- Constant Forge values
 constants.requestSeparator = "&"
 constants.maximumObjectsBudget = 1024
 constants.minimumZSpawnPoint = -18.69
 constants.maximumZRenderShadow = -14.12
+constants.minimumZMapLimit = -69.9
 constants.maximumRenderShadowRadius = 7
 constants.forgeSelectorOffset = 0.33
 constants.forgeSelectorVelocity = 15
@@ -5017,8 +5280,6 @@ constants.forgeSelectorVelocity = 15
 constants.absoluteMapName = map:gsub("_dev", ""):gsub("_beta", "")
 
 -- Constant UI widget definition values
-constants.maximumSidebarSize = 249
-constants.minimumSidebarSize = 40
 constants.maximumProgressBarSize = 171
 constants.maxLoadingBarSize = 422
 
@@ -5030,8 +5291,7 @@ local forgeProjectile = core.findTag("forge", tagClasses.projectile)
 constants.forgeProjectilePath = forgeProjectile.path
 constants.forgeProjectileTagId = forgeProjectile.id
 constants.forgeProjectileTagIndex = forgeProjectile.index
-constants.fragGrenadeProjectileTagIndex = core.findTag("frag", tagClasses.projectile)
-                                              .index
+constants.fragGrenadeProjectileTagIndex = core.findTag("frag", tagClasses.projectile).index
 
 -- Constant Forge requests data
 constants.requests = {
@@ -5115,7 +5375,12 @@ constants.requests = {
             {"votesMap4"}
         }
     },
-    flushVotes = {actionType = "FLUSH_VOTES"}
+    flushVotes = {actionType = "FLUSH_VOTES"},
+    selectBiped = {
+        actionType = "SELECT_BIPED",
+        requestType = "#sb",
+        requestFormat = {{"requestType"}, {"bipedTagId"}}
+    }
 }
 
 -- Tag Collections ID
@@ -5124,15 +5389,41 @@ constants.tagCollections = {
                                      tagClasses.tagCollection).id
 }
 
+-- Biped Names
+constants.bipedNames = {}
 -- Biped Tags ID
 constants.bipeds = {}
-for tagNumber, tag in pairs(core.findTagsList("characters", tagClasses.biped)) do
+for _, tag in pairs(core.findTagsList("characters", tagClasses.biped)) do
     if (tag) then
         local pathSplit = glue.string.split(tag.path, "\\")
-        local tagName = core.toCamelCase(pathSplit[#pathSplit]:gsub("_mp", ""))
-        constants.bipeds[tagName .. "TagId"] = tag.id
+        local tagName = pathSplit[#pathSplit]
+        if (not tagName:find("monitor")) then
+            constants.bipedNames[core.toSentenceCase(tagName)] = tag.id
+        end
+
+        local bipedName = core.toCamelCase(tagName:gsub("_mp", ""))
+        constants.bipeds[bipedName .. "TagId"] = tag.id
     end
 end
+
+-- First Person Model Tags ID
+constants.firstPersonHands = {}
+for _, tag in pairs(core.findTagsList("characters", tagClasses.biped)) do
+    if (tag) then
+        local pathSplit = glue.string.split(tag.path, "\\")
+        local tagName = pathSplit[#pathSplit]
+        local tagNameFixed = core.toCamelCase(tagName):gsub("_mp", "")
+        constants.bipeds[tagNameFixed .. "TagId"] = tag.id
+        local pathToBiped = table.concat(glue.shift(pathSplit, #pathSplit, -1), "\\")
+        local fpTagPath = pathToBiped .. "\\fp\\" .. tagName .. " fp"
+        local fpTag = blam.getTag(fpTagPath, tagClasses.gbxmodel)
+        if (fpTag) then
+            constants.firstPersonHands[tagName] = fpTag.id
+        end
+    end
+end
+-- Hardcode specific sets of armours with a resusable fp
+constants.firstPersonHands["mark vii"] = constants.firstPersonHands["mark vi"]
 
 -- Weapon HUD Interface Tags ID
 constants.weaponHudInterfaces = {
@@ -5143,44 +5434,54 @@ constants.weaponHudInterfaces = {
 constants.bitmaps = {
     forgingIconFrame0TagId = core.findTag("forge_loading_progress0", tagClasses.bitmap).id,
     forgeIconFrame1TagId = core.findTag("forge_loading_progress1", tagClasses.bitmap).id,
-    unitHudBackgroundTagId = core.findTag("combined\\visor", tagClasses.bitmap).id
+    unitHudBackgroundTagId = core.findTag("combined\\hud_background", tagClasses.bitmap).id,
+    dialogIconsTagId = core.findTag("bitmaps\\loading_orb", tagClasses.bitmap).id
 }
 
--- UI widget definitions
-constants.uiWidgetDefinitions = {
-    forgeMenu = core.findTag("forge_menu", tagClasses.uiWidgetDefinition),
+-- UI Widget definitions
+local uiWidgetDefinitions = {
+    forgeMenu = core.findTag("forge_menu\\forge_menu", tagClasses.uiWidgetDefinition),
+    objectsList = core.findTag("category_list", tagClasses.uiWidgetDefinition),
     voteMenu = core.findTag("map_vote_menu", tagClasses.uiWidgetDefinition),
     voteMenuList = core.findTag("vote_menu_list", tagClasses.uiWidgetDefinition),
-    objectsList = core.findTag("category_list", tagClasses.uiWidgetDefinition),
     amountBar = core.findTag("budget_progress_bar", tagClasses.uiWidgetDefinition),
     loadingMenu = core.findTag("loading_menu", tagClasses.uiWidgetDefinition),
-    loadingAnimation = core.findTag("loading_menu_progress_animation",
-                                    tagClasses.uiWidgetDefinition),
+    loadingAnimation = core.findTag("loading_menu_progress_animation", tagClasses.uiWidgetDefinition),
     loadingProgress = core.findTag("loading_progress_bar", tagClasses.uiWidgetDefinition),
-    -- TODO An implementation of this should be possible on the future
-    -- loadoutMenu = "[shm]\\halo_4\\ui\\shell\\loadout_menu\\loadout_menu_no_background",
+    mapsMenu = core.findTag("forge_options_menu\\forge_options_menu", tagClasses.uiWidgetDefinition),
     mapsList = core.findTag("maps_list", tagClasses.uiWidgetDefinition),
-    sidebar = core.findTag("forge_map_list_sidebar_bar", tagClasses.uiWidgetDefinition)
+    actionsMenu = core.findTag("forge_actions_menu\\forge_actions_menu",
+                               tagClasses.uiWidgetDefinition),
+    generalMenu = core.findTag("general_menu\\general_menu", tagClasses.uiWidgetDefinition),
+    generalMenuList = core.findTag("general_menu\\options\\options", tagClasses.uiWidgetDefinition),
+    scrollBar = core.findTag("common\\scroll_bar", tagClasses.uiWidgetDefinition),
+    scrollPosition = core.findTag("common\\scroll_position", tagClasses.uiWidgetDefinition),
+    warningDialog = core.findTag("warning_dialog", tagClasses.uiWidgetDefinition)
 }
--- TODO Migrate all the references to these strings, ensure the correct properties are being used
+constants.uiWidgetDefinitions = uiWidgetDefinitions
+
 -- Unicode string definitions
-constants.unicodeStrings = {
+local unicodeStrings = {
     budgetCountTagId = core.findTag("budget_count", tagClasses.unicodeStringList).id,
-    forgeMenuElementsTagId = core.findTag("elements_text", tagClasses.unicodeStringList)
-        .id,
+    forgeMenuElementsTagId = core.findTag("elements_text", tagClasses.unicodeStringList).id,
     votingMapsListTagId = core.findTag("vote_maps_names", tagClasses.unicodeStringList).id,
-    votingCountListTagId = core.findTag("vote_maps_count", tagClasses.unicodeStringList)
-        .id,
+    votingCountListTagId = core.findTag("vote_maps_count", tagClasses.unicodeStringList).id,
     paginationTagId = core.findTag("pagination", tagClasses.unicodeStringList).id,
     mapsListTagId = core.findTag("maps_name", tagClasses.unicodeStringList).id,
-    pauseGameStringsTagId = core.findTag("titles_and_headers",
-                                         tagClasses.unicodeStringList).id,
-    forgeControlsTagId = core.findTag("forge_controls", tagClasses.unicodeStringList).id
+    pauseGameStringsTagId = core.findTag("titles_and_headers", tagClasses.unicodeStringList).id,
+    forgeControlsTagId = core.findTag("forge_controls", tagClasses.unicodeStringList).id,
+    generalMenuHeaderTagId = core.findTag("general_menu\\strings\\header",
+                                          tagClasses.unicodeStringList).id,
+    generalMenuStringsTagId = core.findTag("general_menu\\strings\\options",
+                                           tagClasses.unicodeStringList).id,
+    generalMenuValueStringsTagId = core.findTag("general_menu\\strings\\values",
+                                                tagClasses.unicodeStringList).id,
+    dialogStringsId = core.findTag("dialog_menu\\strings\\header_and_message",
+                                   tagClasses.unicodeStringList).id
 }
+constants.unicodeStrings = unicodeStrings
 
-constants.hsc = {
-    playSound = [[(begin (sound_impulse_start "%s" (list_get (players) %s) %s))]]
-}
+constants.hsc = {playSound = [[(begin (sound_impulse_start "%s" (list_get (players) %s) %s))]]}
 
 constants.sounds = {
     landHardPlayerDamagePath = core.findTag("land_hard_plyr_dmg", tagClasses.sound).path,
@@ -5235,8 +5536,25 @@ constants.colorsNumber = {
 
 -- Name to search in some tags that are ignored at hidding objects as spartan
 constants.hideObjectsExceptions = {"stand", "teleporters"}
+constants.objectsMigration = {
+    ["[shm]\\halo_4\\scenery\\spawning\\vehicles\\warthog spawn\\warthog spawn"] = "[shm]\\halo_4\\scenery\\spawning\\vehicles\\warthogs\\warthog spawn\\warthog spawn",
+    ["[shm]\\halo_4\\scenery\\spawning\\vehicles\\rocket warthog spawn\\rocket warthog spawn"] = "[shm]\\halo_4\\scenery\\spawning\\vehicles\\warthogs\\rocket warthog spawn\\rocket warthog spawn"
+}
 
-constants.teleportersChannels = {alpha = 0, bravo = 1, charly = 2}
+-- constants.teleportersChannels = {alpha = 0, bravo = 1, charly = 2, delta = 3, echo = }
+constants.teleportersChannels = {
+    "alpha",
+    "bravo",
+    "charly",
+    "delta",
+    "echo",
+    "foxtrot",
+    "golf",
+    "hotel",
+    "india",
+    "juliett",
+    "kilo"
+}
 
 dprint(string.format("Constants gathered, elapsed time: %.6f\n", os.clock() - time))
 
@@ -5295,24 +5613,22 @@ function core.loadForgeConfiguration(path)
     end
 end
 
---- Normalize any map name from snake case to a map name with sentence case
----@field mapName string
-function core.toSentenceCase(mapName)
-    return string.gsub(" " .. mapName:gsub(".fmap", ""):gsub("_", " "),
-    "%W%l", string.upper):sub(2)
+--- Normalize any map name or snake case name to sentence case
+---@param name string
+function core.toSentenceCase(name)
+    return string.gsub(" " .. name:gsub("_", " "), "%W%l", string.upper):sub(2)
 end
 
---- Normalize any string to a lower snake case
----@field name string
+--- Normalize any string to lower snake case
+---@param name string
 function core.toSnakeCase(name)
     return name:gsub(" ", "_"):lower()
 end
 
 --- Normalize any string to camel case
----@field mapName string
+---@param name string
 function core.toCamelCase(name)
-    return string.gsub("" .. name:gsub("_", " "),
-    "%W%l", string.upper):sub(1):gsub(" ", "")
+    return string.gsub("" .. name:gsub("_", " "), "%W%l", string.upper):sub(1):gsub(" ", "")
 end
 
 --- Load previous Forge maps
@@ -5333,7 +5649,8 @@ function core.loadForgeMaps(path)
             -- Only load files with extension .fmap
             if (fileExtension == "fmap") then
                 -- Normalize map name
-                local mapName = core.toSentenceCase(file)
+                local fileName = file:gsub(".fmap", "")
+                local mapName = core.toSentenceCase(fileName)
                 glue.append(mapsList, mapName)
             end
         end
@@ -5369,7 +5686,7 @@ function core.playerIsAimingAt(target, sensitivity, zOffset, maximumDistance)
                                   (targetZ - playerZ) ^ 2)
         local localX = targetX - playerX
         local localY = targetY - playerY
-        local localZ = (targetZ + zOffset) - playerZ
+        local localZ = (targetZ + (zOffset or 0)) - playerZ
         local pointX = 1 / distance * localX
         local pointY = 1 / distance * localY
         local pointZ = 1 / distance * localZ
@@ -5392,63 +5709,44 @@ function core.playerIsAimingAt(target, sensitivity, zOffset, maximumDistance)
     return false
 end
 
--- Old internal functions for rotation calculation
-local function deprecatedRotate(x, y, alpha)
-    local cosAlpha = cos(rad(alpha))
-    local sinAlpha = sin(rad(alpha))
-    local t1 = x[1] * sinAlpha
-    local t2 = x[2] * sinAlpha
-    local t3 = x[3] * sinAlpha
-    x[1] = x[1] * cosAlpha + y[1] * sinAlpha
-    x[2] = x[2] * cosAlpha + y[2] * sinAlpha
-    x[3] = x[3] * cosAlpha + y[3] * sinAlpha
-    y[1] = y[1] * cosAlpha - t1
-    y[2] = y[2] * cosAlpha - t2
-    y[3] = y[3] * cosAlpha - t3
-end
-
-function core.deprecatedEulerToRotation(yaw, pitch, roll)
-    local F = {1, 0, 0}
-    local L = {0, 1, 0}
-    local T = {0, 0, 1}
-    deprecatedRotate(F, L, yaw)
-    deprecatedRotate(F, T, pitch)
-    deprecatedRotate(T, L, roll)
-    return {F[1], -L[1], -T[1], -F[3], L[3], T[3]}, {F, L, T}
-end
+---@class vector3D
+---@field x number
+---@field y number
+---@field z number
 
 --- Covert euler into game rotation array, optional rotation matrix
----@param yaw number
----@param pitch number
----@param roll number
----@return table<number, number>, table<number, table<number, number>>
+-- Based on https://www.mecademic.com/en/how-is-orientation-in-space-represented-with-euler-angles
+--- @param yaw number
+--- @param pitch number
+--- @param roll number
+--- @return vector3D, vector3D
 function core.eulerToRotation(yaw, pitch, roll)
+    local yaw = math.rad(yaw)
+    local pitch = math.rad(-pitch) -- Negative pitch due to Sapien handling anticlockwise pitch
+    local roll = math.rad(roll)
     local matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
 
-    local cosRoll = cos(rad(roll))
-    local sinRoll = sin(rad(roll))
-    local cosYaw = cos(rad(yaw))
-    local sinYaw = sin(rad(yaw))
-    local cosPitch = cos(rad(pitch))
-    local sinPitch = sin(rad(pitch))
-    matrix[1][1] = cosRoll * cosYaw
-    matrix[1][2] = sinRoll * sinPitch - cosRoll * sinYaw * cosPitch
-    matrix[1][3] = cosRoll * sinYaw * sinPitch + sinRoll * cosPitch
-    matrix[2][1] = sinYaw
-    matrix[2][2] = cosYaw * cosPitch
-    matrix[2][3] = -cosYaw * sinPitch
-    matrix[3][1] = -sinRoll * cosYaw
-    matrix[3][2] = sinRoll * sinYaw * cosPitch + cosRoll * sinPitch
-    matrix[3][3] = -sinRoll * sinYaw * sinPitch + cosRoll * cosPitch
-    local array = {
-        matrix[1][1],
-        matrix[2][1],
-        matrix[3][1],
-        matrix[1][3],
-        matrix[2][3],
-        matrix[3][3]
-    }
-    return array, matrix
+    -- Roll, Pitch, Yaw = a, b, y
+    local cosA = math.cos(roll)
+    local sinA = math.sin(roll)
+    local cosB = math.cos(pitch)
+    local sinB = math.sin(pitch)
+    local cosY = math.cos(yaw)
+    local sinY = math.sin(yaw)
+
+    matrix[1][1] = cosB * cosY
+    matrix[1][2] = -cosB * sinY
+    matrix[1][3] = sinB
+    matrix[2][1] = cosA * sinY + sinA * sinB * cosY
+    matrix[2][2] = cosA * cosY - sinA * sinB * sinY
+    matrix[2][3] = -sinA * cosB
+    matrix[3][1] = sinA * sinY - cosA * sinB * cosY
+    matrix[3][2] = sinA * cosY + cosA * sinB * sinY
+    matrix[3][3] = cosA * cosB
+
+    local rollVector = {x = matrix[1][1], y = matrix[2][1], z = matrix[3][1]}
+    local yawVector = {x = matrix[1][3], y = matrix[2][3], z = matrix[3][3]}
+    return rollVector, yawVector, matrix
 end
 
 --- Rotate object into desired angles
@@ -5457,14 +5755,59 @@ end
 ---@param pitch number
 ---@param roll number
 function core.rotateObject(objectId, yaw, pitch, roll)
-    local rotation = core.eulerToRotation(yaw, pitch, roll)
-    local tempObject = blam.object(get_object(objectId))
-    tempObject.vX = rotation[1]
-    tempObject.vY = rotation[2]
-    tempObject.vZ = rotation[3]
-    tempObject.v2X = rotation[4]
-    tempObject.v2Y = rotation[5]
-    tempObject.v2Z = rotation[6]
+    local rollVector, yawVector, matrix = core.eulerToRotation(yaw, pitch, roll)
+    local object = blam.object(get_object(objectId))
+    -- Debug rotation pivots
+    --[[if (config.forge.debugMode) then
+        if (not globalPivotId) then
+            local pivotTag = core.findTag("pivot", tagClasses.scenery)
+            globalPivotId = core.spawnObject(tagClasses.scenery, pivotTag.path, object.vX,
+                                             object.vY, object.vZ)
+            globalPivotId2 = core.spawnObject(tagClasses.scenery, pivotTag.path, object.v2X,
+                                              object.v2Y, object.v2Z)
+            globalPivotId3 = core.spawnObject(tagClasses.scenery, pivotTag.path, object.x, object.y,
+                                              object.z)
+            globalPivotId4 = core.spawnObject(tagClasses.scenery, pivotTag.path, object.x, object.y,
+                                              object.z)
+        end
+        local pivot = blam.object(get_object(globalPivotId))
+        local pivot2 = blam.object(get_object(globalPivotId2))
+        local pivot3 = blam.object(get_object(globalPivotId3))
+        local pivot4 = blam.object(get_object(globalPivotId4))
+        -- Object pivot + rotation
+        pivot.x = object.x
+        pivot.y = object.y
+        pivot.z = object.z
+        pivot.vX = rollVector.x
+        pivot.vY = rollVector.y
+        pivot.vZ = rollVector.z
+        pivot.v2X = yawVector.x
+        pivot.v2Y = yawVector.y
+        pivot.v2Z = yawVector.z
+
+        -- Roll pivot
+        pivot2.x = object.x + rollVector.x
+        pivot2.y = object.y + rollVector.y
+        pivot2.z = object.z + rollVector.z
+
+        -- Yaw pivot
+        pivot3.x = object.x + yawVector.x
+        pivot3.y = object.y + yawVector.y
+        pivot3.z = object.z + yawVector.z
+
+        -- Pitch pivot (imaginary)
+        pivot4.x = object.x + matrix[1][2]
+        pivot4.y = object.y + matrix[2][2]
+        pivot4.z = object.z + matrix[3][2]
+    end]]
+
+    -- Apply final rotation to desired object
+    object.vX = rollVector.x
+    object.vY = rollVector.y
+    object.vZ = rollVector.z
+    object.v2X = yawVector.x
+    object.v2Y = yawVector.y
+    object.v2Z = yawVector.z
 end
 
 --[[function core.rotatePoint(x, y, z)
@@ -5477,6 +5820,9 @@ function core.isPlayerMonitor(playerIndex)
     if (playerIndex) then
         tempObject = blam.object(get_dynamic_player(playerIndex))
     else
+        if (blam.isGameSAPP()) then
+            return false
+        end
         tempObject = blam.object(get_dynamic_player())
     end
     if (tempObject and tempObject.tagId == const.bipeds.monitorTagId) then
@@ -5513,8 +5859,11 @@ function core.sendRequest(request, playerIndex)
     return false
 end
 
+---@class requestTable
+---@field requestType string
+
 --- Create a request from a request object
----@param requestTable table
+---@param requestTable requestTable
 function core.createRequest(requestTable)
     local instanceObject = glue.update({}, requestTable)
     local request
@@ -5546,8 +5895,7 @@ function core.createRequest(requestTable)
             local encodedTable = maeth.encodeTable(instanceObject, requestFormat)
             --[[print(inspect(requestFormat))
             print(inspect(requestTable))]]
-            request = maeth.tableToRequest(encodedTable, requestFormat,
-                                           const.requestSeparator)
+            request = maeth.tableToRequest(encodedTable, requestFormat, const.requestSeparator)
             -- TODO Add size validation for requests
             dprint("Request size: " .. #request)
         else
@@ -5717,16 +6065,24 @@ function core.loadForgeMap(mapName)
 
             console_out(string.format("\nLoading Forge objects for %s...", mapName))
             local time = os.clock()
-            local objectsList = {}
             for objectId, forgeObject in pairs(forgeMap.objects) do
                 local spawnRequest = forgeObject
-                local objectTag = blam.getTag(spawnRequest.tagPath, tagClasses.scenery)
+                local objectTagPath = const.objectsMigration[spawnRequest.tagPath]
+                local objectTag = blam.getTag(objectTagPath or spawnRequest.tagPath,
+                                              tagClasses.scenery)
                 if (objectTag and objectTag.id) then
                     spawnRequest.requestType = const.requests.spawnObject.requestType
                     spawnRequest.tagPath = nil
                     spawnRequest.tagId = objectTag.id
                     spawnRequest.color = forgeObject.color or 1
                     spawnRequest.teamIndex = forgeObject.teamIndex or 0
+                    local backupRoll = spawnRequest.roll
+                    spawnRequest.roll = spawnRequest.pitch
+                    spawnRequest.pitch = 360 - backupRoll
+                    if (spawnRequest.pitch > 85 and spawnRequest.roll > 265) then
+                        spawnRequest.pitch = spawnRequest.pitch - 90
+                        spawnRequest.yaw = spawnRequest.yaw + 90
+                    end
                     eventsStore:dispatch({
                         type = const.requests.spawnObject.actionType,
                         payload = {requestObject = spawnRequest}
@@ -5734,6 +6090,7 @@ function core.loadForgeMap(mapName)
                 else
                     dprint("Warning, object with path \"" .. spawnRequest.tagPath ..
                                "\" can not be spawned...", "warning")
+                    -- error(debug.traceback("An object tag can't be spawned"), 2)
                 end
             end
             forgeMapFinishedLoading = true
@@ -5855,14 +6212,15 @@ function core.saveForgeMap()
 end
 
 --- Force object shadow casting if available
+-- TODO Move this into features module
 ---@param object blamObject
 function core.forceShadowCasting(object)
     -- Force the object to render shadow
-    if (object.tagId ~= const.forgeProjectileTagId ) then
+    if (object.tagId ~= const.forgeProjectileTagId) then
         dprint("Bounding Radius: " .. object.boundingRadius)
-        if (config.forge.objectsCastShadow and object.boundingRadius <= const.maximumRenderShadowRadius and
-            object.z < const.maximumZRenderShadow) then
-                object.boundingRadius = object.boundingRadius * 1.2
+        if (config.forge.objectsCastShadow and object.boundingRadius <=
+            const.maximumRenderShadowRadius and object.z < const.maximumZRenderShadow) then
+            object.boundingRadius = object.boundingRadius * 1.2
             object.isNotCastingShadow = false
         end
     end
@@ -5897,7 +6255,7 @@ function core.spawnObject(type, tagPath, x, y, z, noLog)
         end
         -- Force the object to render shadow
         core.forceShadowCasting(object)
-        
+
         -- FIXME Object inside bsp detection is not working in SAPP, use minimumZSpawnPoint instead!
         if (server_type == "sapp") then
             -- SAPP for some reason can not detect if an object was spawned inside the map
@@ -6124,28 +6482,23 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
         if (disable) then
             if (flagType == netgameFlagsTypes.teleportTo or flagType ==
                 netgameFlagsTypes.teleportFrom) then
-                dprint("Erasing netgame flag teleport with index: " ..
-                           forgeObject.reflectionId)
+                dprint("Erasing netgame flag teleport with index: " .. forgeObject.reflectionId)
                 -- Vegas bank is a unused gametype, so this is basically the same as disabling it
-                mapNetgameFlagsPoints[forgeObject.reflectionId].type =
-                    netgameFlagsTypes.vegasBank
+                mapNetgameFlagsPoints[forgeObject.reflectionId].type = netgameFlagsTypes.vegasBank
             end
         else
             -- Replace spawn point values
             mapNetgameFlagsPoints[forgeObject.reflectionId].x = forgeObject.x
             mapNetgameFlagsPoints[forgeObject.reflectionId].y = forgeObject.y
             mapNetgameFlagsPoints[forgeObject.reflectionId].z = forgeObject.z
-            mapNetgameFlagsPoints[forgeObject.reflectionId].rotation =
-                rad(forgeObject.yaw)
+            mapNetgameFlagsPoints[forgeObject.reflectionId].rotation = rad(forgeObject.yaw)
             if (flagType == netgameFlagsTypes.teleportFrom or flagType ==
                 netgameFlagsTypes.teleportTo) then
                 dprint("Update teamIndex: " .. forgeObject.teamIndex)
-                mapNetgameFlagsPoints[forgeObject.reflectionId].teamIndex =
-                    forgeObject.teamIndex
+                mapNetgameFlagsPoints[forgeObject.reflectionId].teamIndex = forgeObject.teamIndex
             end
             -- Debug spawn index
-            dprint("Updating flag replacing index: " .. forgeObject.reflectionId,
-                   "warning")
+            dprint("Updating flag replacing index: " .. forgeObject.reflectionId, "warning")
         end
     end
     -- Update spawn point list
@@ -6167,8 +6520,7 @@ function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
     end
     if (not itemCollectionTagId) then
         -- TODO This needs more review
-        error("Could not find item collection tag id for desired weapon spawn: " ..
-                  tagPath)
+        error("Could not find item collection tag id for desired weapon spawn: " .. tagPath)
         return false
     end
 
@@ -6235,6 +6587,9 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
     elseif (tagPath:find("rocket warthog")) then
         dprint("rocket warthog")
         vehicleType = 5
+    elseif (tagPath:find("civ warthog")) then
+        dprint("civ warthog")
+        vehicleType = 6
     elseif (tagPath:find("warthog")) then
         dprint("normal warthog")
         vehicleType = 1
@@ -6279,8 +6634,7 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
                 scenario.vehicleLocationList = vehicleSpawnPoints
 
                 dprint("object_create_anew v" .. vehicleSpawnPoints[spawnId].nameIndex)
-                execute_script("object_create_anew v" ..
-                                   vehicleSpawnPoints[spawnId].nameIndex)
+                execute_script("object_create_anew v" .. vehicleSpawnPoints[spawnId].nameIndex)
                 -- Stop looking for "available" spawn slots
                 break
             end
@@ -6292,8 +6646,7 @@ function core.updateVehicleSpawn(tagPath, forgeObject, disable)
             vehicleSpawnPoints[forgeObject.reflectionId].type = 65535
             -- Update spawn point list
             scenario.vehicleLocationList = vehicleSpawnPoints
-            dprint("object_create_anew v" ..
-                       vehicleSpawnPoints[forgeObject.reflectionId].nameIndex)
+            dprint("object_create_anew v" .. vehicleSpawnPoints[forgeObject.reflectionId].nameIndex)
             execute_script("object_destroy v" ..
                                vehicleSpawnPoints[forgeObject.reflectionId].nameIndex)
             return true
@@ -6414,9 +6767,8 @@ local function createProjectileSelector()
             y = player.y + player.yVel + player.cameraY * const.forgeSelectorOffset,
             z = player.z + player.zVel + player.cameraZ * const.forgeSelectorOffset
         }
-        local projectileId = core.spawnObject(tagClasses.projectile,
-                                              const.forgeProjectilePath, selector.x,
-                                              selector.y, selector.z, true)
+        local projectileId = core.spawnObject(tagClasses.projectile, const.forgeProjectilePath,
+                                              selector.x, selector.y, selector.z, true)
         if (projectileId) then
             local projectile = blam.projectile(get_object(projectileId))
             if (projectile) then
@@ -6446,8 +6798,7 @@ function core.oldGetForgeObjectFromPlayerAim()
             local projectileTag = blam.getTag(projectile.tagId)
             if (projectileTag and projectileTag.index == const.forgeProjectileTagIndex) then
                 if (projectile.attachedToObjectId) then
-                    local selectedObject = blam.object(
-                                               get_object(projectile.attachedToObjectId))
+                    local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
                     selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
                     forgeObject = forgeObjects[selectedObjIndex]
                     -- Player is looking at this object
@@ -6462,11 +6813,11 @@ function core.oldGetForgeObjectFromPlayerAim()
                 delete_object(projectileObjectIndex)
                 return nil, nil, dumpedProjectile or nil
             end
-        --elseif (forgeObjects[projectileObjectIndex]) then
-        --    if (core.playerIsAimingAt(projectileObjectIndex, 0.03, 0)) then
-        --        return projectileObjectIndex, forgeObjects[projectileObjectIndex],
-        --               dumpedProjectile or nil
-        --    end
+            -- elseif (forgeObjects[projectileObjectIndex]) then
+            --    if (core.playerIsAimingAt(projectileObjectIndex, 0.03, 0)) then
+            --        return projectileObjectIndex, forgeObjects[projectileObjectIndex],
+            --               dumpedProjectile or nil
+            --    end
         end
     end
     -- No object was found from player view, create a new selector
@@ -6480,7 +6831,10 @@ function core.getForgeObjectFromPlayerAim()
         local projectile = blam.projectile(get_object(lastProjectileId))
         if (projectile) then
             if (not blam.isNull(projectile.attachedToObjectId)) then
-                dprint("Found object by collision!")
+                local object = blam.object(get_object(projectile.attachedToObjectId))
+                --dprint("Found object by collision!")
+                --dprint(
+                --    inspect({object.vX, object.vY, object.vZ, object.v2X, object.v2Y, object.v2Z}))
                 local forgeObjects = eventsStore:getState().forgeObjects
                 local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
                 local selectedObjIndex = core.getIndexById(projectile.attachedToObjectId)
@@ -6493,8 +6847,8 @@ function core.getForgeObjectFromPlayerAim()
                     -- Create a new one
                     return selectedObjIndex, forgeObject
                 end
-            else
-                dprint("Searching for objects on view!")
+                -- else
+                --    dprint("Searching for objects on view!")
             end
             delete_object(lastProjectileId)
         end
@@ -6504,20 +6858,20 @@ function core.getForgeObjectFromPlayerAim()
     end
 end
 
---- Return data about object that the player is looking at
----@param object blamObject
+--- Determine if an object is out of the map
+---@param coordinates number[]
 ---@return boolean
-function core.isObjectOutOfBounds(object)
-    if (object) then
-        local projectileId = spawn_object(tagClasses.projectile,
-                                          const.forgeProjectilePath, object.x,
-                                          object.y, object.z)
+function core.isObjectOutOfBounds(coordinates)
+    if (coordinates) then
+        local projectileId = spawn_object(tagClasses.projectile, const.forgeProjectilePath,
+                                          coordinates[1], coordinates[2], coordinates[3])
         if (projectileId) then
-            local blamObject = blam.object(get_object(projectileId))
-            if (blamObject) then
-                local isObjectOutOfBounds = blamObject.isOutSideMap
+            local testerObject = blam.object(get_object(projectileId))
+            if (testerObject) then
+                -- dprint(object.x .. " " .. object.y .. " " .. object.z)
+                local isOutSideMap = testerObject.isOutSideMap
                 delete_object(projectileId)
-                return isObjectOutOfBounds
+                return isOutSideMap
             end
         end
     end
@@ -6639,18 +6993,21 @@ function features.highlightObject(objectId, transparency)
 end
 
 --- Execute a player swap between biped and monitor
-function features.swapBiped()
+---@param desiredBipedTagId number
+function features.swapBiped(desiredBipedTagId)
     features.unhighlightAll()
     if (server_type == "local") then
-        local player = blam.biped(get_dynamic_player())
-        if (player) then
+        -- If player is alive save his last position
+        local playerBiped = blam.biped(get_dynamic_player())
+        if (playerBiped) then
             playerStore:dispatch({type = "SAVE_POSITION"})
         end
 
         -- Avoid annoying low health/shield bug after swaping bipeds
-        player.health = 1
-        player.shield = 1
+        playerBiped.health = 1
+        playerBiped.shield = 1
 
+        -- Find monitor and alternative spartan biped
         local monitorTagId = const.bipeds.monitorTagId
         local spartanTagId
         for bipedPropertyName, bipedTagId in pairs(const.bipeds) do
@@ -6661,34 +7018,58 @@ function features.swapBiped()
         end
         local globals = blam.globalsTag()
         if (globals) then
-            for objectNumber, objectIndex in pairs(blam.getObjects()) do
-                local object = blam.object(get_object(objectIndex))
-                if (object) then
-                    if (object.address == get_dynamic_player()) then
-                        if (object.tagId == monitorTagId) then
-                            local newMultiplayerInformation =
-                                globals.multiplayerInformation
-                            newMultiplayerInformation[1].unit = spartanTagId
-                            -- Update globals tag data to force respawn as new biped
-                            globals.multiplayerInformation = newMultiplayerInformation
-
-                        else
-                            local newMultiplayerInformation =
-                                globals.multiplayerInformation
-                            newMultiplayerInformation[1].unit = monitorTagId
-                            -- Update globals tag data to force respawn as new biped
-                            globals.multiplayerInformation = newMultiplayerInformation
-                        end
-                        delete_object(objectIndex)
-                    end
+            local player = blam.player(get_player())
+            local playerObject = blam.object(get_object(player.objectId))
+            if (player and playerObject) then
+                if (playerObject.tagId == monitorTagId) then
+                    local newMultiplayerInformation = globals.multiplayerInformation
+                    newMultiplayerInformation[1].unit = spartanTagId
+                    -- Update globals tag data to set new biped
+                    globals.multiplayerInformation = newMultiplayerInformation
+                else
+                    local newMultiplayerInformation = globals.multiplayerInformation
+                    newMultiplayerInformation[1].unit = monitorTagId
+                    -- Update globals tag data to set new biped
+                    globals.multiplayerInformation = newMultiplayerInformation
                 end
+                if (desiredBipedTagId) then
+                    local newMultiplayerInformation = globals.multiplayerInformation
+                    newMultiplayerInformation[1].unit = desiredBipedTagId
+                    -- Update globals tag data to set new biped
+                    globals.multiplayerInformation = newMultiplayerInformation
+                end
+                -- Erase player object to force biped respawn
+                delete_object(player.objectId)
             end
         end
+    end
+end
 
-        -- else
-        -- dprint("Requesting monitor biped...")
-        -- TODO Replace this with a send request function
-        -- execute_script("rcon forge #b")
+local defaultFirstPersonHands = nil
+function features.swapFirstPerson()
+    local player = blam.player(get_player())
+    local playerObject = blam.object(get_object(player.objectId))
+    local globals = blam.globalsTag()
+    if (player and playerObject and globals) then
+        local bipedTag = blam.getTag(playerObject.tagId)
+        if (bipedTag) then
+            local tagPathSplit = glue.string.split(bipedTag.path, "\\")
+            local bipedName = tagPathSplit[#tagPathSplit]
+            local fpModelTagId = const.firstPersonHands[bipedName]
+            if (fpModelTagId) then
+                -- Save default first person hands model
+                if (not defaultFirstPersonHands) then
+                    defaultFirstPersonHands = fpModelTagId
+                end
+                local newFirstPersonInterface = globals.firstPersonInterface
+                newFirstPersonInterface[1].firstPersonHands = fpModelTagId
+                globals.firstPersonInterface = newFirstPersonInterface
+            elseif (defaultFirstPersonHands) then
+                local newFirstPersonInterface = globals.firstPersonInterface
+                newFirstPersonInterface[1].firstPersonHands = defaultFirstPersonHands
+                globals.firstPersonInterface = newFirstPersonInterface
+            end
+        end
     end
 end
 
@@ -6698,8 +7079,7 @@ end
 function features.openMenu(tagPath, prevent)
     local uiWidgetTagId = blam.getTag(tagPath, tagClasses.uiWidgetDefinition).id
     if (uiWidgetTagId) then
-        load_ui_widget(tagPath)
-        return true
+        return load_ui_widget(tagPath)
     end
     return false
 end
@@ -6766,10 +7146,24 @@ function features.animateForgeLoading()
     end
 
     -- Animate Forge loading image
-    local uiWidget =
-        blam.uiWidgetDefinition(const.uiWidgetDefinitions.loadingAnimation.id)
+    local uiWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions.loadingAnimation.id)
     uiWidget.backgroundBitmap = bitmapFrameTagId
     return true
+end
+
+function features.animateDialogLoading()
+    local bitmap = blam.bitmap(const.bitmaps.dialogIconsTagId)
+    if (bitmap) then
+        local newSequences = bitmap.sequences
+        if (newSequences[1].firstBitmapIndex < 5) then
+            newSequences[1].firstBitmapIndex = newSequences[1].firstBitmapIndex + 1
+        else
+            newSequences[1].firstBitmapIndex = 0
+        end
+        bitmap.sequences = newSequences
+    else
+        error("Error, at animating loading dialog bitmap.")
+    end
 end
 
 --- Get information from the mouse input in the game
@@ -6791,8 +7185,7 @@ function features.setObjectColor(hexColor, blamObject)
 end
 
 function features.openForgeObjectPropertiesMenu()
-    ---@type forgeState
-    local forgeState = forgeStore:getState()
+    local forgeState = actions.getForgeState()
     forgeState.forgeMenu.currentPage = 1
     forgeState.forgeMenu.desiredElement = "root"
     forgeState.forgeMenu.elementsList = {
@@ -6817,13 +7210,16 @@ function features.openForgeObjectPropertiesMenu()
                 maroon = {},
                 salmon = {}
             },
-            ["channel"] = {alpha = {}, bravo = {}, charly = {}},
+            ["channel"] = {},
             ["reset rotation"] = {},
             ["rotate 45"] = {},
             ["rotate 90"] = {},
             ["snap mode"] = {}
         }
     }
+    for channelIndex, channelName in pairs(const.teleportersChannels) do
+        forgeState.forgeMenu.elementsList.root["channel"][channelName] = {}
+    end
     forgeStore:dispatch({
         type = "UPDATE_FORGE_ELEMENTS_LIST",
         payload = {forgeMenu = forgeState.forgeMenu}
@@ -6836,19 +7232,13 @@ function features.getObjectMenuFunctions()
     local elementFunctions = {
         ["rotate 45"] = function()
             local newRotationStep = 45
-            playerStore:dispatch({
-                type = "SET_ROTATION_STEP",
-                payload = {step = newRotationStep}
-            })
+            playerStore:dispatch({type = "SET_ROTATION_STEP", payload = {step = newRotationStep}})
             playerStore:dispatch({type = "STEP_ROTATION_DEGREE"})
             playerStore:dispatch({type = "ROTATE_OBJECT"})
         end,
         ["rotate 90"] = function()
             local newRotationStep = 90
-            playerStore:dispatch({
-                type = "SET_ROTATION_STEP",
-                payload = {step = newRotationStep}
-            })
+            playerStore:dispatch({type = "SET_ROTATION_STEP", payload = {step = newRotationStep}})
             playerStore:dispatch({type = "STEP_ROTATION_DEGREE"})
             playerStore:dispatch({type = "ROTATE_OBJECT"})
         end,
@@ -6858,134 +7248,22 @@ function features.getObjectMenuFunctions()
         end,
         ["snap mode"] = function()
             config.forge.snapMode = not config.forge.snapMode
-        end,
-        ["alpha"] = function()
-            playerStore:dispatch({
-                type = "SET_OBJECT_CHANNEL",
-                payload = {channel = const.teleportersChannels.alpha}
-            })
-        end,
-        ["bravo"] = function()
-            playerStore:dispatch({
-                type = "SET_OBJECT_CHANNEL",
-                payload = {channel = const.teleportersChannels.bravo}
-            })
-        end,
-        ["charly"] = function()
-            playerStore:dispatch({
-                type = "SET_OBJECT_CHANNEL",
-                payload = {channel = const.teleportersChannels.charly}
-            })
-        end,
-        ["white (default)"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.white, tempObject)
-            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.white})
-        end,
-        ["black"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.black, tempObject)
-            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.black})
-        end,
-        ["red"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.red, tempObject)
-            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.red})
-        end,
-        ["blue"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.blue, tempObject)
-            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.blue})
-        end,
-        ["gray"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.gray, tempObject)
-            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.gray})
-        end,
-        ["yellow"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.yellow, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.yellow
-            })
-        end,
-        ["green"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.green, tempObject)
-            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.green})
-        end,
-        ["pink"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.pink, tempObject)
-            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.pink})
-        end,
-        ["purple"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.purple, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.purple
-            })
-        end,
-        ["cyan"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.cyan, tempObject)
-            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.cyan})
-        end,
-        ["cobalt"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.cobalt, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.cobalt
-            })
-        end,
-        ["orange"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.orange, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.orange
-            })
-        end,
-        ["teal"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.teal, tempObject)
-            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.teal})
-        end,
-        ["sage"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.sage, tempObject)
-            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.sage})
-        end,
-        ["brown"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.brown, tempObject)
-            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.brown})
-        end,
-        ["tan"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.tan, tempObject)
-            playerStore:dispatch({type = "SET_OBJECT_COLOR", payload = const.colors.tan})
-        end,
-        ["maroon"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.maroon, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.maroon
-            })
-        end,
-        ["salmon"] = function()
-            local tempObject = blam.object(get_object(playerState.attachedObjectId))
-            features.setObjectColor(const.colors.salmon, tempObject)
-            playerStore:dispatch({
-                type = "SET_OBJECT_COLOR",
-                payload = const.colors.salmon
-            })
         end
     }
+    for colorName, colorValue in pairs(const.colors) do
+        -- Hardcode button white label
+        if (colorName == "white") then
+            colorName = "white (default)"
+        end
+        elementFunctions[colorName] = function()
+            actions.setObjectColor(colorValue)
+        end
+    end
+    for channelIndex, channelName in pairs(const.teleportersChannels) do
+        elementFunctions[channelName] = function()
+            actions.setObjectChannel(channelIndex)
+        end
+    end
     return elementFunctions
 end
 
@@ -7000,8 +7278,7 @@ local function stringHas(str, list)
 end
 
 --- Hide or unhide forge reflection objects for gameplay purposes
----@param hide boolean
-function features.hideReflectionObjects(hide)
+function features.hideReflectionObjects()
     if (not config.forge.debugMode) then
         ---@type eventsState
         local eventsStore = eventsStore:getState()
@@ -7009,15 +7286,15 @@ function features.hideReflectionObjects(hide)
             if (forgeObject and forgeObject.reflectionId) then
                 local object = blam.object(get_object(objectIndex))
                 if (object) then
-                    local tempTag = blam.getTag(object.tagId)
-                    if (not stringHas(tempTag.path, const.hideObjectsExceptions)) then
-                        if (hide) then
-                            -- Hide objects by setting different properties
-                            object.isGhost = true
-                            object.z = const.minimumZSpawnPoint * 4
-                        else
+                    local tag = blam.getTag(object.tagId)
+                    if (not stringHas(tag.path, const.hideObjectsExceptions)) then
+                        -- Hide objects by setting different properties
+                        if (core.isPlayerMonitor()) then
                             object.isGhost = false
                             object.z = forgeObject.z
+                        else
+                            object.isGhost = true
+                            object.z = const.minimumZSpawnPoint * 4
                         end
                     end
                 end
@@ -7026,21 +7303,18 @@ function features.hideReflectionObjects(hide)
     end
 end
 
--- Attempt to play a sound given tag path
+--- Attempt to play a sound given tag path and optionally a gain number
 function features.playSound(tagPath, gain)
     local player = blam.player(get_player())
     if (player) then
-        local playSoundCommand = const.hsc.playSound:format(tagPath, player.index,
-                                                            gain or 1.0)
+        local playSoundCommand = const.hsc.playSound:format(tagPath, player.index, gain or 1.0)
         execute_script(playSoundCommand)
     end
 end
 
--- TODO Move these variables to a better place
 local landedRecently = false
 local healthDepletedRecently = false
 local lastGrenadeType = nil
-
 --- Apply some special effects to the HUD like sounds, blips, etc
 function features.hudUpgrades()
     local player = blam.biped(get_dynamic_player())
@@ -7063,7 +7337,7 @@ function features.hudUpgrades()
                     end
                 end
             end
-            -- When player is on critical health, low health sound is triggered also
+            -- When player is on critical health show blur effect
             if (player.health < 0.25 and blam.isNull(player.vehicleObjectId)) then
                 if (not healthDepletedRecently) then
                     healthDepletedRecently = true
@@ -7113,6 +7387,8 @@ function features.hudUpgrades()
     end
 end
 
+--- Regenerate players health on low shield using game ticks
+---@param playerIndex number
 function features.regenerateHealth(playerIndex)
     if (server_type == "sapp" or server_type == "local") then
         local player
@@ -7140,7 +7416,121 @@ function features.regenerateHealth(playerIndex)
     end
 end
 
---[[unction core.getPlayerFragGrenade()
+--- Update forge keys text on pause menu
+function features.showForgeKeys()
+    local controlsStrings = blam.unicodeStringList(const.unicodeStrings.forgeControlsTagId)
+    if (controlsStrings) then
+        if (core.isPlayerMonitor()) then
+            local newStrings = controlsStrings.stringList
+            -- E key
+            newStrings[1] = "Change rotation angle"
+            -- Q key
+            newStrings[2] = "Open Forge objects menu"
+            -- F key
+            newStrings[3] = "Swap Push N Pull mode"
+            -- Control key
+            newStrings[4] = "Get back into spartan mode"
+            controlsStrings.stringList = newStrings
+        else
+            local newStrings = controlsStrings.stringList
+            -- E key
+            newStrings[1] = "No Forge action"
+            -- Q key
+            newStrings[2] = "Get into monitor mode"
+            -- F key
+            newStrings[3] = "No Forge action"
+            -- Control key
+            newStrings[4] = "No Forge action"
+            controlsStrings.stringList = newStrings
+        end
+    end
+end
+
+--- Prevent players from getting out of map limits
+---@param playerIndex number
+function features.mapLimit(playerIndex)
+    local playerBiped
+    if (playerIndex) then
+        playerBiped = blam.biped(get_dynamic_player(playerIndex))
+    else
+        playerBiped = blam.biped(get_dynamic_player())
+    end
+    if (playerBiped and playerBiped.z < const.minimumZMapLimit) then
+        if (server_type == "local") then
+            local player = blam.player(get_player())
+            delete_object(player.objectId)
+        elseif (server_type == "sapp") then
+            kill(playerIndex)
+        end
+    end
+end
+
+--- Dynamically modify the general menu to reflect Forge settings
+function features.createSettingsMenu(open)
+    generalMenuStore:dispatch({
+        type = "SET_MENU",
+        payload = {
+            title = "Forge Settings",
+            elements = {
+                "Enable debug mode",
+                "Constantly save current map",
+                "Enable object snap mode",
+                "Cast dynamic shadows on objects"
+            },
+            values = {
+                config.forge.debugMode,
+                config.forge.autoSave,
+                config.forge.snapMode,
+                config.forge.objectsCastShadow,
+            },
+            format = "settings"
+        }
+    })
+    if (open and not features.openMenu(const.uiWidgetDefinitions.generalMenu.path)) then
+        dprint("Error, at trying to open general menu!")
+    end
+end
+
+--- Dynamically modify the general menu to reflect biped selection
+function features.createBipedsMenu(open)
+    generalMenuStore:dispatch({
+        type = "SET_MENU",
+        payload = {title = "Bipeds Selection", elements = glue.keys(const.bipedNames), format = "bipeds"}
+    })
+    if (open and not features.openMenu(const.uiWidgetDefinitions.generalMenu.path)) then
+        dprint("Error, at trying to open general menu!")
+    end
+end
+
+--- Get the widget id of the current ui open in the game
+---@return number
+function features.getCurrentWidget()
+    local widgetIdAddress = read_dword(const.currentWidgetIdAddress)
+    if (widgetIdAddress and widgetIdAddress ~= 0) then
+        local widgetId = read_dword(widgetIdAddress)
+        local tag = blam.getTag(widgetId)
+        if (tag) then
+            local isPlayerOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
+            if (isPlayerOnMenu) then
+                --dprint("Current widget: " .. tag.path)
+            end
+            return tag.id
+        end
+    end
+    return nil
+end
+
+function features.overrideDialog(title, message, type)
+    local dialogStrings = blam.unicodeStringList(const.unicodeStrings.dialogStringsId)
+    local newStrings = dialogStrings.stringList
+    newStrings[1] = title
+    newStrings[2] = message
+    dialogStrings.stringList = newStrings
+    -- TODO Refactor this method to allow ids instead of path strings
+    features.openMenu(const.uiWidgetDefinitions.warningDialog.path)
+end
+
+--[[function core.getPlayerFragGrenade()
     for objectNumber, objectIndex in pairs(blam.getObjects()) do
         local projectile = blam.projectile(get_object(objectIndex))
         local selectedObjIndex
@@ -7204,7 +7594,7 @@ function interface.triggers(triggerName, triggersNumber)
     local restoreTriggersState = (function()
         for triggerIndex = 1, triggersNumber do
             -- TODO Replace this function with set global
-            execute_script("set " .. triggerName .. "_trigger_" .. triggerIndex .. " false")
+            set_global(triggerName .. "_trigger_" .. triggerIndex, false)
         end
     end)
     for i = 1, triggersNumber do
@@ -7266,7 +7656,9 @@ end
 -- Every hook executes a callback
 function interface.hook(variable, callback, ...)
     if (get_global(variable)) then
-        execute_script("set " .. variable .. " false")
+        dprint("Hooking " .. variable .. "...")
+        --execute_script("set " .. variable .. " false")
+        set_global(variable, false)
         callback(...)
     end
 end
@@ -7291,13 +7683,7 @@ local defaultState = {
     mapsMenu = {
         mapsList = {},
         currentMapsList = {},
-        currentPage = 1,
-        sidebar = {
-            height = 0, -- constants.maximumSidebarSize,
-            position = 0,
-            slice = 0,
-            overflow = 0
-        }
+        currentPage = 1
     },
     forgeMenu = {
         -- //TODO Implement a way to use this field for menu navigation purposes 
@@ -7325,7 +7711,6 @@ local function forgeReducer(state, action)
     if (not state) then
         -- Create default state if it does not exist
         state = glue.deepcopy(defaultState)
-        state.mapsMenu.sidebar.height = const.maximumSidebarSize
     end
     if (action.type) then
         dprint("[Forge Reducer]:")
@@ -7341,51 +7726,16 @@ local function forgeReducer(state, action)
 
         state.mapsMenu.currentMapsList = glue.chunks(state.mapsMenu.mapsList, 8)
         local totalPages = #state.mapsMenu.currentMapsList
-        if (totalPages > 1) then
-            local sidebarHeight = glue.floor(const.maximumSidebarSize / totalPages)
-            if (sidebarHeight < const.minimumSidebarSize) then
-                sidebarHeight = const.minimumSidebarSize
-            end
-            local spaceLeft = const.maximumSidebarSize - sidebarHeight
-            state.mapsMenu.sidebar.slice = glue.round(spaceLeft / (totalPages - 1))
-            local fullSize = sidebarHeight +
-                                 (state.mapsMenu.sidebar.slice * (totalPages - 1))
-            state.mapsMenu.sidebar.overflow = fullSize - const.maximumSidebarSize
-            state.mapsMenu.sidebar.height = sidebarHeight -
-                                                state.mapsMenu.sidebar.overflow
-        end
         return state
     elseif (action.type == "INCREMENT_MAPS_MENU_PAGE") then
         if (state.mapsMenu.currentPage < #state.mapsMenu.currentMapsList) then
             state.mapsMenu.currentPage = state.mapsMenu.currentPage + 1
-            local newHeight = state.mapsMenu.sidebar.height + state.mapsMenu.sidebar.slice
-            local newPosition = state.mapsMenu.sidebar.position +
-                                    state.mapsMenu.sidebar.slice
-            if (state.mapsMenu.currentPage == 3) then
-                newHeight = newHeight + state.mapsMenu.sidebar.overflow
-            end
-            if (state.mapsMenu.currentPage == #state.mapsMenu.currentMapsList - 1) then
-                newHeight = newHeight - state.mapsMenu.sidebar.overflow
-            end
-            state.mapsMenu.sidebar.height = newHeight
-            state.mapsMenu.sidebar.position = newPosition
         end
         dprint(state.mapsMenu.currentPage)
         return state
     elseif (action.type == "DECREMENT_MAPS_MENU_PAGE") then
         if (state.mapsMenu.currentPage > 1) then
             state.mapsMenu.currentPage = state.mapsMenu.currentPage - 1
-            local newHeight = state.mapsMenu.sidebar.height - state.mapsMenu.sidebar.slice
-            local newPosition = state.mapsMenu.sidebar.position -
-                                    state.mapsMenu.sidebar.slice
-            if (state.mapsMenu.currentPage == 2) then
-                newHeight = newHeight - state.mapsMenu.sidebar.overflow
-            end
-            if (state.mapsMenu.currentPage == #state.mapsMenu.currentMapsList - 2) then
-                newHeight = newHeight + state.mapsMenu.sidebar.overflow
-            end
-            state.mapsMenu.sidebar.height = newHeight
-            state.mapsMenu.sidebar.position = newPosition
         end
         dprint(state.mapsMenu.currentPage)
         return state
@@ -7485,7 +7835,7 @@ local function forgeReducer(state, action)
         -- FIXME This should be separated from this reducer in order to prevent menu blinking
         -- Set current budget bar data
         local objectState = eventsStore:getState().forgeObjects
-        local currentObjects = #glue.keys(objectState)
+        local currentObjects = #glue.keys(objectState) or 0
         local newBarSize = currentObjects * const.maximumProgressBarSize /
                                const.maximumObjectsBudget
         state.forgeMenu.currentBarSize = glue.floor(newBarSize)
@@ -7522,6 +7872,8 @@ local function forgeReducer(state, action)
 
                     -- Set loading map bar data
                     local expectedObjects = state.loadingMenu.expectedObjects
+                    local objectState = eventsStore:getState().forgeObjects
+                    local currentObjects = #glue.keys(objectState) or 0
                     local newBarSize = currentObjects * const.maxLoadingBarSize /
                                            expectedObjects
                     state.loadingMenu.currentBarSize = glue.floor(newBarSize)
@@ -7548,7 +7900,7 @@ local function forgeReducer(state, action)
         if (action.type == "@@lua-redux/INIT") then
             dprint("Default state has been created!")
         else
-            dprint("ERROR!!! The dispatched event does not exist:", "error")
+            dprint(("Warning, Dispatched event \"%s\" does not exist:"):format(tostring(action.type)), "warning")
         end
         return state
     end
@@ -7633,6 +7985,7 @@ local function eventsReducer(state, action)
             -- SAPP functions can't handle object indexes
             -- TODO This requires some refactor and testing to use ids instead of indexes on the client side
             objectIndex = objectId
+            features.hideReflectionObjects()
         end
 
         -- Set object rotation after creating the object
@@ -7679,6 +8032,7 @@ local function eventsReducer(state, action)
             if (forgeMapFinishedLoading) then
                 core.sendRequest(response)
             end
+            features.hideReflectionObjects()
         end
 
         -- Clean and prepare object to store it
@@ -8029,6 +8383,12 @@ local function eventsReducer(state, action)
         return state
     elseif (action.type == const.requests.flushVotes.actionType) then
         state.playerVotes = {}
+        return state
+    elseif (action.type == const.requests.selectBiped.actionType) then
+        if (blam.isGameSAPP()) then
+            local bipedTagId = action.payload.requestObject.bipedTagId
+            PlayersBiped[action.playerIndex] = bipedTagId
+        end
         return state
     else
         if (action.type == "@@lua-redux/INIT") then
@@ -8431,19 +8791,20 @@ end,
 -- Sledmine
 -- Function reflector for store
 ------------------------------------------------------------------------------
+local glue = require "glue"
+
 local interface = require "forge.interface"
+local features = require "forge.features"
 local core = require "forge.core"
 local forgeVersion = require "forge.version"
-
-local inspect = require "inspect"
 
 local function forgeReflector()
     -- Get current forge state
     ---@type forgeState
-    local forgeState = forgeStore:getState()
+    local state = forgeStore:getState()
 
-    local currentMenuPage = forgeState.forgeMenu.currentPage
-    local currentElements = forgeState.forgeMenu.currentElementsList[currentMenuPage]
+    local currentMenuPage = state.forgeMenu.currentPage
+    local currentElements = state.forgeMenu.currentElementsList[currentMenuPage]
 
     -- Prevent errors objects does not exist
     if (not currentElements) then
@@ -8452,16 +8813,20 @@ local function forgeReflector()
     end
 
     -- Forge Menu
-    local forgeMenuElementsStrings = blam.unicodeStringList(
-                                         const.unicodeStrings.forgeMenuElementsTagId)
+    local forgeMenuElementsStrings = blam.unicodeStringList(const.unicodeStrings
+                                                                .forgeMenuElementsTagId)
     forgeMenuElementsStrings.stringList = currentElements
-    interface.update(const.uiWidgetDefinitions.objectsList, #currentElements + 2)
+    local newElementsCount = #currentElements + 2
+    local elementsList = blam.uiWidgetDefinition(const.uiWidgetDefinitions.objectsList.id)
+    if (elementsList and elementsList.childWidgetsCount ~= newElementsCount) then
+        interface.update(const.uiWidgetDefinitions.objectsList, newElementsCount)
+    end
 
     local pagination = blam.unicodeStringList(const.unicodeStrings.paginationTagId)
     if (pagination) then
         local paginationStringList = pagination.stringList
         paginationStringList[2] = tostring(currentMenuPage)
-        paginationStringList[4] = tostring(#forgeState.forgeMenu.currentElementsList)
+        paginationStringList[4] = tostring(#state.forgeMenu.currentElementsList)
         pagination.stringList = paginationStringList
     end
 
@@ -8471,40 +8836,64 @@ local function forgeReflector()
 
     -- Refresh budget count
     currentBudget.stringList = {
-        forgeState.forgeMenu.currentBudget,
+        state.forgeMenu.currentBudget,
         "/ " .. tostring(const.maximumObjectsBudget)
     }
 
     -- Refresh budget bar status
     local amountBarWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions.amountBar.id)
-    amountBarWidget.width = forgeState.forgeMenu.currentBarSize
+    amountBarWidget.width = state.forgeMenu.currentBarSize
 
     -- Refresh loading bar size
     local loadingProgressWidget = blam.uiWidgetDefinition(
                                       const.uiWidgetDefinitions.loadingProgress.id)
-    loadingProgressWidget.width = forgeState.loadingMenu.currentBarSize
+    loadingProgressWidget.width = state.loadingMenu.currentBarSize
 
-    local currentMapsMenuPage = forgeState.mapsMenu.currentPage
-    local currentMapsList = forgeState.mapsMenu.currentMapsList[currentMapsMenuPage]
+    local currentMapsMenuPage = state.mapsMenu.currentPage
+    local mapsListPage = state.mapsMenu.currentMapsList[currentMapsMenuPage]
 
     -- Prevent errors when maps does not exist
-    if (not currentMapsList) then
+    if (not mapsListPage) then
         dprint("Current maps list is empty.")
-        currentMapsList = {}
+        mapsListPage = {}
     end
 
     -- Refresh available forge maps list
     -- //TODO Merge unicode string updating with menus updating?
 
     local mapsListStrings = blam.unicodeStringList(const.unicodeStrings.mapsListTagId)
-    mapsListStrings.stringList = currentMapsList
-    -- Wich ui widget will be updated and how many items it will show
-    interface.update(const.uiWidgetDefinitions.mapsList, #currentMapsList + 3)
+    mapsListStrings.stringList = mapsListPage
 
-    -- Refresh fake sidebar in maps menu
-    local sidebarWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions.sidebar.id)
-    sidebarWidget.height = forgeState.mapsMenu.sidebar.height
-    sidebarWidget.boundsY = forgeState.mapsMenu.sidebar.position
+    local mapsListWidget = blam.uiWidgetDefinition(const.uiWidgetDefinitions.mapsList.id)
+    local newElementsCount = #mapsListPage + 3
+    if (mapsListWidget and mapsListWidget.childWidgetsCount ~= newElementsCount) then
+        -- Wich ui widget will be updated and how many items it will show
+        interface.update(const.uiWidgetDefinitions.mapsList, newElementsCount)
+    end
+
+    -- Refresh scroll bar
+    -- TODO Move this into a new reducer to avoid reflector conflicts, or a better implementation
+    local scrollBar = blam.uiWidgetDefinition(const.uiWidgetDefinitions.scrollBar.id)
+    local scrollBarPosition = blam.uiWidgetDefinition(const.uiWidgetDefinitions.scrollPosition.id)
+    if (scrollBar and scrollBarPosition) then
+        if (features.getCurrentWidget() == const.uiWidgetDefinitions.mapsMenu.id) then
+            local elementsCount = #state.mapsMenu.currentMapsList
+            if (elementsCount > 0) then
+                local barSizePerElement = glue.round(scrollBar.height / elementsCount)
+                scrollBarPosition.height = barSizePerElement * state.mapsMenu.currentPage
+                scrollBarPosition.boundsY = -barSizePerElement +
+                                                (barSizePerElement * state.mapsMenu.currentPage)
+            end
+        else
+            local elementsCount = #state.forgeMenu.currentElementsList
+            if (elementsCount > 0) then
+                local barSizePerElement = glue.round(scrollBar.height / elementsCount)
+                scrollBarPosition.height = barSizePerElement * state.forgeMenu.currentPage
+                scrollBarPosition.boundsY = -barSizePerElement +
+                                                (barSizePerElement * state.forgeMenu.currentPage)
+            end
+        end
+    end
 
     -- Refresh current forge map information
     local pauseGameStrings = blam.unicodeStringList(const.unicodeStrings.pauseGameStringsTagId)
@@ -8514,17 +8903,17 @@ local function forgeReflector()
         "",
         "",
         -- Forge maps menu 
-        forgeState.currentMap.name,
-        "Author: " .. forgeState.currentMap.author,
-        forgeState.currentMap.version,
-        forgeState.currentMap.description,
+        state.currentMap.name,
+        "Author: " .. state.currentMap.author,
+        state.currentMap.version,
+        state.currentMap.description,
         -- Forge loading objects screen
-        "Loading " .. forgeState.currentMap.name .. "...",
-        forgeState.loadingMenu.loadingObjectPath,
+        "Loading " .. state.currentMap.name .. "...",
+        state.loadingMenu.loadingObjectPath,
         "",
         "",
         "",
-        "v".. forgeVersion
+        "v" .. forgeVersion
     }
 end
 
@@ -8633,8 +9022,6 @@ print("Server is running " .. _VERSION)
 -- Bring compatibility with Lua 5.3
 require "compat53"
 print("Compatibility with Lua 5.3 has been loaded!")
--- Bring compatibility with Chimera Lua API
-require "chimera-lua-api"
 
 -- Lua modules
 local inspect = require "inspect"
@@ -8711,9 +9098,9 @@ function grprint(message)
     end
 end
 
-local playersObjectId = {}
-local playersBiped = {}
-local playersTempPosition = {}
+PlayersBiped = {}
+local monitorPlayers = {}
+local tempPosition = {}
 local playerSyncThread = {}
 local ticksTimer = {}
 
@@ -8736,46 +9123,20 @@ function OnTick()
                         playerSyncThread[playerIndex] = nil
                     end
                 end
-                local playerObjectId = playersObjectId[playerIndex]
+                local playerObjectId = blam.player(get_player(playerIndex)).objectId
                 if (playerObjectId) then
                     local player = blam.biped(get_object(playerObjectId))
                     if (player) then
-                        -- Armor abilities test
-                        --[[if (ticksTimer[playerIndex]) then
-                            ticksTimer[playerIndex] = ticksTimer[playerIndex] + 1
-                            cprint(ticksTimer[playerIndex])
-                        end
-                        if (not player.invisible and player.flashlightKey and
-                            not ticksTimer[playerIndex]) then
-                            ticksTimer[playerIndex] = 0
-                        end
-                        -- TODO Add isPlayerMoving validation
-                        if (player.crouch == 3 and ticksTimer[playerIndex]) then
-                            if (ticksTimer[playerIndex] <= core.secondsToTicks(9)) then
-                                camo(playerIndex, 1)
-                            else
-                                ticksTimer[playerIndex] = nil
-                            end
-                        end]]
                         if (forgingEnabled) then
+                            -- Save player position before swap
+                            tempPosition[playerIndex] = {player.x, player.y, player.z}
                             if (const.bipeds.monitorTagId) then
-                                if (player.crouchHold and player.tagId ==
-                                    const.bipeds.monitorTagId) then
-                                    dprint("playerObjectId: " .. tostring(playerObjectId))
-                                    dprint("Trying to process a biped swap request...")
-                                    -- FIXME Biped name should be parsed to remove tagId pattern
-                                    playersBiped[playerIndex] = "spartan"
-                                    playersTempPosition[playerIndex] =
-                                        {player.x, player.y, player.z}
+                                if (player.crouchHold and player.tagId == const.bipeds.monitorTagId) then
+                                    monitorPlayers[playerIndex] = false
                                     delete_object(playerObjectId)
                                 elseif (player.flashlightKey and player.tagId ~=
                                     const.bipeds.monitorTagId) then
-                                    dprint("playerObjectId: " .. tostring(playerObjectId))
-                                    dprint("Trying to process a biped swap request...")
-                                    -- FIXME Biped name should be parsed to remove tagId pattern
-                                    playersBiped[playerIndex] = "monitor"
-                                    playersTempPosition[playerIndex] =
-                                        {player.x, player.y, player.z}
+                                    monitorPlayers[playerIndex] = true
                                     delete_object(playerObjectId)
                                 end
                             end
@@ -8834,7 +9195,7 @@ function rcon.commandInterceptor(playerIndex, message, environment, rconPassword
                 for playerIndex = 1, 16 do
                     if (player_present(playerIndex)) then
                         -- FIXME Tag id string should be added here
-                        playersBiped[playerIndex] = bipedName
+                        PlayersBiped[playerIndex] = bipedName
                     end
                 end
                 execute_script("sv_map_reset")
@@ -8842,6 +9203,7 @@ function rcon.commandInterceptor(playerIndex, message, environment, rconPassword
                 rprint(playerIndex, "You must specify a biped name.")
             end
         elseif (forgeCommand == "fforge") then
+            forgeMapFinishedLoading = true
             forgingEnabled = not forgingEnabled
             if (forgingEnabled) then
                 grprint("Admin ENABLED :D Forge mode!")
@@ -8892,7 +9254,8 @@ function OnGameStart()
         const.requests.spawnObject.requestType,
         const.requests.updateObject.requestType,
         const.requests.deleteObject.requestType,
-        const.requests.sendMapVote.requestType
+        const.requests.sendMapVote.requestType,
+        const.requests.selectBiped.requestType
     }
     for _, command in pairs(publicCommands) do
         rcon.submitCommand(command)
@@ -8927,7 +9290,6 @@ function OnGameStart()
     core.loadForgeMaps()
 
     if (forgeMapName) then
-        forgeMapFinishedLoading = false
         core.loadForgeMap(forgeMapName)
     end
 
@@ -8945,16 +9307,14 @@ function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
     if (playerIndex) then
         for index, bipedTagId in pairs(const.bipeds) do
             if (tagId == bipedTagId) then
-                -- Track objectId of every player
-                playersObjectId[playerIndex] = objectId
-                local requestedBiped = playersBiped[playerIndex]
-                -- There is a requested biped by a player
-                if (requestedBiped) then
-                    requestedBiped = requestedBiped .. "TagId"
-                    local requestedBipedTagPath = const.bipeds[requestedBiped]
-                    local bipedTag = blam.getTag(requestedBipedTagPath, tagClasses.biped)
-                    if (bipedTag and bipedTag.id) then
-                        return true, bipedTag.id
+                if (monitorPlayers[playerIndex]) then
+                    return true, const.bipeds.monitorTagId
+                else
+                    local customBipedTagId = PlayersBiped[playerIndex]
+                    if (customBipedTagId) then
+                        return true, customBipedTagId
+                    else
+                        return true
                     end
                 end
             end
@@ -8969,14 +9329,14 @@ function OnPlayerSpawn(playerIndex)
     if (player) then
         -- Provide better movement to monitors
         if (core.isPlayerMonitor(playerIndex)) then
-            player.ignoreCollision = true
+            -- player.ignoreCollision = true
         end
-        local playerPosition = playersTempPosition[playerIndex]
+        local playerPosition = tempPosition[playerIndex]
         if (playerPosition) then
             player.x = playerPosition[1]
             player.y = playerPosition[2]
             player.z = playerPosition[3]
-            playersTempPosition[playerIndex] = nil
+            tempPosition[playerIndex] = nil
         end
     end
 end
@@ -9036,12 +9396,11 @@ function OnGameEnd()
     -- local dumpedState = forgeStore:getState()
     -- dumpedState.currentMap.name = forgeMapName
     -- write_file("forgeState.json", json.encode(dumpedState))
-    playersObjectId = {}
     collectgarbage("collect")
 end
 
 function OnError()
-    print(debug.traceback())
+    cprint(debug.traceback())
 end
 
 function OnScriptUnload()

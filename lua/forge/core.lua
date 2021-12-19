@@ -190,7 +190,7 @@ function core.rotateObject(objectId, yaw, pitch, roll)
     local rollVector, yawVector, matrix = core.eulerToRotation(yaw, pitch, roll)
     local object = blam.object(get_object(objectId))
     -- Debug rotation pivots
-    if (config.forge.debugMode) then
+    --[[if (config.forge.debugMode) then
         if (not globalPivotId) then
             local pivotTag = core.findTag("pivot", tagClasses.scenery)
             globalPivotId = core.spawnObject(tagClasses.scenery, pivotTag.path, object.vX,
@@ -231,7 +231,7 @@ function core.rotateObject(objectId, yaw, pitch, roll)
         pivot4.x = object.x + matrix[1][2]
         pivot4.y = object.y + matrix[2][2]
         pivot4.z = object.z + matrix[3][2]
-    end
+    end]]
 
     -- Apply final rotation to desired object
     object.vX = rollVector.x
@@ -252,6 +252,9 @@ function core.isPlayerMonitor(playerIndex)
     if (playerIndex) then
         tempObject = blam.object(get_dynamic_player(playerIndex))
     else
+        if (blam.isGameSAPP()) then
+            return false
+        end
         tempObject = blam.object(get_dynamic_player())
     end
     if (tempObject and tempObject.tagId == const.bipeds.monitorTagId) then

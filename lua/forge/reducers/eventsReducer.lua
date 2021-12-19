@@ -68,6 +68,7 @@ local function eventsReducer(state, action)
             -- SAPP functions can't handle object indexes
             -- TODO This requires some refactor and testing to use ids instead of indexes on the client side
             objectIndex = objectId
+            features.hideReflectionObjects()
         end
 
         -- Set object rotation after creating the object
@@ -114,6 +115,7 @@ local function eventsReducer(state, action)
             if (forgeMapFinishedLoading) then
                 core.sendRequest(response)
             end
+            features.hideReflectionObjects()
         end
 
         -- Clean and prepare object to store it
@@ -464,6 +466,12 @@ local function eventsReducer(state, action)
         return state
     elseif (action.type == const.requests.flushVotes.actionType) then
         state.playerVotes = {}
+        return state
+    elseif (action.type == const.requests.selectBiped.actionType) then
+        if (blam.isGameSAPP()) then
+            local bipedTagId = action.payload.requestObject.bipedTagId
+            PlayersBiped[action.playerIndex] = bipedTagId
+        end
         return state
     else
         if (action.type == "@@lua-redux/INIT") then

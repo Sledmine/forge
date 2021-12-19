@@ -95,9 +95,9 @@ function grprint(message)
     end
 end
 
-local playersObjectId = {}
-local playersBiped = {}
-local playersTempPosition = {}
+PlayersBiped = {}
+local monitorPlayers = {}
+local tempPosition = {}
 local playerSyncThread = {}
 local ticksTimer = {}
 
@@ -120,46 +120,20 @@ function OnTick()
                         playerSyncThread[playerIndex] = nil
                     end
                 end
-                local playerObjectId = playersObjectId[playerIndex]
+                local playerObjectId = blam.player(get_player(playerIndex)).objectId
                 if (playerObjectId) then
                     local player = blam.biped(get_object(playerObjectId))
                     if (player) then
-                        -- Armor abilities test
-                        --[[if (ticksTimer[playerIndex]) then
-                            ticksTimer[playerIndex] = ticksTimer[playerIndex] + 1
-                            cprint(ticksTimer[playerIndex])
-                        end
-                        if (not player.invisible and player.flashlightKey and
-                            not ticksTimer[playerIndex]) then
-                            ticksTimer[playerIndex] = 0
-                        end
-                        -- TODO Add isPlayerMoving validation
-                        if (player.crouch == 3 and ticksTimer[playerIndex]) then
-                            if (ticksTimer[playerIndex] <= core.secondsToTicks(9)) then
-                                camo(playerIndex, 1)
-                            else
-                                ticksTimer[playerIndex] = nil
-                            end
-                        end]]
                         if (forgingEnabled) then
+                            -- Save player position before swap
+                            tempPosition[playerIndex] = {player.x, player.y, player.z}
                             if (const.bipeds.monitorTagId) then
-                                if (player.crouchHold and player.tagId ==
-                                    const.bipeds.monitorTagId) then
-                                    dprint("playerObjectId: " .. tostring(playerObjectId))
-                                    dprint("Trying to process a biped swap request...")
-                                    -- FIXME Biped name should be parsed to remove tagId pattern
-                                    playersBiped[playerIndex] = "spartan"
-                                    playersTempPosition[playerIndex] =
-                                        {player.x, player.y, player.z}
+                                if (player.crouchHold and player.tagId == const.bipeds.monitorTagId) then
+                                    monitorPlayers[playerIndex] = false
                                     delete_object(playerObjectId)
                                 elseif (player.flashlightKey and player.tagId ~=
                                     const.bipeds.monitorTagId) then
-                                    dprint("playerObjectId: " .. tostring(playerObjectId))
-                                    dprint("Trying to process a biped swap request...")
-                                    -- FIXME Biped name should be parsed to remove tagId pattern
-                                    playersBiped[playerIndex] = "monitor"
-                                    playersTempPosition[playerIndex] =
-                                        {player.x, player.y, player.z}
+                                    monitorPlayers[playerIndex] = true
                                     delete_object(playerObjectId)
                                 end
                             end
@@ -218,7 +192,7 @@ function rcon.commandInterceptor(playerIndex, message, environment, rconPassword
                 for playerIndex = 1, 16 do
                     if (player_present(playerIndex)) then
                         -- FIXME Tag id string should be added here
-                        playersBiped[playerIndex] = bipedName
+                        PlayersBiped[playerIndex] = bipedName
                     end
                 end
                 execute_script("sv_map_reset")
@@ -226,6 +200,7 @@ function rcon.commandInterceptor(playerIndex, message, environment, rconPassword
                 rprint(playerIndex, "You must specify a biped name.")
             end
         elseif (forgeCommand == "fforge") then
+            forgeMapFinishedLoading = true
             forgingEnabled = not forgingEnabled
             if (forgingEnabled) then
                 grprint("Admin ENABLED :D Forge mode!")
@@ -276,7 +251,8 @@ function OnGameStart()
         const.requests.spawnObject.requestType,
         const.requests.updateObject.requestType,
         const.requests.deleteObject.requestType,
-        const.requests.sendMapVote.requestType
+        const.requests.sendMapVote.requestType,
+        const.requests.selectBiped.requestType
     }
     for _, command in pairs(publicCommands) do
         rcon.submitCommand(command)
@@ -311,7 +287,6 @@ function OnGameStart()
     core.loadForgeMaps()
 
     if (forgeMapName) then
-        forgeMapFinishedLoading = false
         core.loadForgeMap(forgeMapName)
     end
 
@@ -329,16 +304,14 @@ function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
     if (playerIndex) then
         for index, bipedTagId in pairs(const.bipeds) do
             if (tagId == bipedTagId) then
-                -- Track objectId of every player
-                playersObjectId[playerIndex] = objectId
-                local requestedBiped = playersBiped[playerIndex]
-                -- There is a requested biped by a player
-                if (requestedBiped) then
-                    requestedBiped = requestedBiped .. "TagId"
-                    local requestedBipedTagPath = const.bipeds[requestedBiped]
-                    local bipedTag = blam.getTag(requestedBipedTagPath, tagClasses.biped)
-                    if (bipedTag and bipedTag.id) then
-                        return true, bipedTag.id
+                if (monitorPlayers[playerIndex]) then
+                    return true, const.bipeds.monitorTagId
+                else
+                    local customBipedTagId = PlayersBiped[playerIndex]
+                    if (customBipedTagId) then
+                        return true, customBipedTagId
+                    else
+                        return true
                     end
                 end
             end
@@ -353,14 +326,14 @@ function OnPlayerSpawn(playerIndex)
     if (player) then
         -- Provide better movement to monitors
         if (core.isPlayerMonitor(playerIndex)) then
-            player.ignoreCollision = true
+            -- player.ignoreCollision = true
         end
-        local playerPosition = playersTempPosition[playerIndex]
+        local playerPosition = tempPosition[playerIndex]
         if (playerPosition) then
             player.x = playerPosition[1]
             player.y = playerPosition[2]
             player.z = playerPosition[3]
-            playersTempPosition[playerIndex] = nil
+            tempPosition[playerIndex] = nil
         end
     end
 end
@@ -420,7 +393,6 @@ function OnGameEnd()
     -- local dumpedState = forgeStore:getState()
     -- dumpedState.currentMap.name = forgeMapName
     -- write_file("forgeState.json", json.encode(dumpedState))
-    playersObjectId = {}
     collectgarbage("collect")
 end
 

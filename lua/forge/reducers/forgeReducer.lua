@@ -162,7 +162,7 @@ local function forgeReducer(state, action)
         -- FIXME This should be separated from this reducer in order to prevent menu blinking
         -- Set current budget bar data
         local objectState = eventsStore:getState().forgeObjects
-        local currentObjects = #glue.keys(objectState)
+        local currentObjects = #glue.keys(objectState) or 0
         local newBarSize = currentObjects * const.maximumProgressBarSize /
                                const.maximumObjectsBudget
         state.forgeMenu.currentBarSize = glue.floor(newBarSize)
@@ -199,6 +199,8 @@ local function forgeReducer(state, action)
 
                     -- Set loading map bar data
                     local expectedObjects = state.loadingMenu.expectedObjects
+                    local objectState = eventsStore:getState().forgeObjects
+                    local currentObjects = #glue.keys(objectState) or 0
                     local newBarSize = currentObjects * const.maxLoadingBarSize /
                                            expectedObjects
                     state.loadingMenu.currentBarSize = glue.floor(newBarSize)

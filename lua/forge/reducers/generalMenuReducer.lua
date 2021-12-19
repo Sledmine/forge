@@ -28,6 +28,12 @@ local function generalMenuReducer(state, action)
         state.menu.title = action.payload.title
         --state.menu.elementsList = action.payload.elements
         --state.menu.currentPage = 1
+        
+        -- Sort list by alphabetical order
+        table.sort(action.payload.elements, function(a, b)
+            return a:lower() < b:lower()
+        end)
+
         state.menu.elementsList = glue.chunks(action.payload.elements, 8)
         if (#state.menu.elementsList >= state.menu.currentPage) then
             state.menu.currentElementsList = state.menu.elementsList[state.menu.currentPage]
