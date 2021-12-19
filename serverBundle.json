@@ -2,7 +2,7 @@
     "name": "Forge Island Server",
     "target": "lua53",
     "include": [
-        "lua\\"
+        "lua/"
     ],
     "modules": [
         "struct",
@@ -10,7 +10,6 @@
         "inspect",
         "json",
         "lua-redux",
-        "chimera-lua-api",
         "maethrillian",
         "blam",
         "lua-ini",
@@ -29,6 +28,6 @@
         "forge.reflectors.votingReflector",
         "forge.version"
     ],
-    "main":"lua\\server\\forge_island_server",
-    "output": "dist\\forge_island_server.lua"
+    "main":"lua/server/forge_island_server",
+    "output": "dist/forge_island_server.lua"
 }
