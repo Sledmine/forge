@@ -5086,7 +5086,7 @@ local function forgeCommands(command)
             -------------- DEBUGGING COMMANDS ONLY ---------------
         elseif (config.forge.debugMode) then
             if (forgeCommand == "fmenu") then
-                --[[votingStore:dispatch({
+                votingStore:dispatch({
                     type = "APPEND_MAP_VOTE",
                     payload = {
                         map = {
@@ -5094,8 +5094,8 @@ local function forgeCommands(command)
                             gametype = "Slayer"
                         }
                     }
-                })]]
-                features.openMenu(const.uiWidgetDefinitions.loadingMenu.path)
+                })
+                features.openMenu(const.uiWidgetDefinitions.voteMenu.path)
                 return false
             elseif (forgeCommand == "fsize") then
                 dprint(collectgarbage("count") / 1024)
@@ -5128,10 +5128,6 @@ local function forgeCommands(command)
                     tests.run(true)
                     return false
                 end
-            elseif (forgeCommand == "ftable") then
-                console_out(blam.readUnicodeString(get_player() + 0x4), true)
-                console_out(get_player())
-                return false
             elseif (forgeCommand == "fbiped") then
                 local player = blam.player(get_player())
                 if (player) then
@@ -6076,13 +6072,14 @@ function core.loadForgeMap(mapName)
                     spawnRequest.tagId = objectTag.id
                     spawnRequest.color = forgeObject.color or 1
                     spawnRequest.teamIndex = forgeObject.teamIndex or 0
-                    local backupRoll = spawnRequest.roll
-                    spawnRequest.roll = spawnRequest.pitch
-                    spawnRequest.pitch = 360 - backupRoll
-                    if (spawnRequest.pitch > 85 and spawnRequest.roll > 265) then
-                        spawnRequest.pitch = spawnRequest.pitch - 90
-                        spawnRequest.yaw = spawnRequest.yaw + 90
-                    end
+                    -- Old Forge migration from bad rotation function
+                    --local backupRoll = spawnRequest.roll
+                    --spawnRequest.roll = spawnRequest.pitch
+                    --spawnRequest.pitch = 360 - backupRoll
+                    --if (spawnRequest.pitch > 85 and spawnRequest.roll > 265) then
+                    --    spawnRequest.pitch = spawnRequest.pitch - 90
+                    --    spawnRequest.yaw = spawnRequest.yaw + 90
+                    --end
                     eventsStore:dispatch({
                         type = const.requests.spawnObject.actionType,
                         payload = {requestObject = spawnRequest}
@@ -7570,6 +7567,31 @@ end]]
     end
 end]]
 
+--[[
+                -- local projectile, projectileIndex = core.getPlayerAimingSword()
+            -- Melee magnetisim concept
+            for _, objectIndex in pairs(blam.getObjects()) do
+                local object = blam.object(get_object(objectIndex))
+                if (object and object.type == objectClasses.biped and not object.isHealthEmpty) then
+                    local isPlayerOnAim = core.playerIsAimingAt(objectIndex, 0.11, 0.2, 1.4)
+                    if (isPlayerOnAim) then
+                        if (player.meleeKey) then
+                            dprint(player.cameraX .. " " .. player.cameraY .. " " .. player.cameraZ)
+                            -- Add velocity to current velocity
+                            player.yVel = player.yVel + player.cameraY * 0.13
+                            player.xVel = player.xVel + player.cameraX * 0.13
+                            player.zVel = player.zVel + player.cameraZ * 0.04
+
+                            -- Replace velocity with camera position
+                            -- player.yVel = player.cameraY * 0.15
+                            -- player.xVel = player.cameraX * 0.15
+                            -- player.zVel = player.cameraZ * 0.06
+                        end
+                    end
+                end
+            end
+]]
+
 return features
 
 end,
@@ -7986,6 +8008,8 @@ local function eventsReducer(state, action)
             -- TODO This requires some refactor and testing to use ids instead of indexes on the client side
             objectIndex = objectId
             features.hideReflectionObjects()
+        elseif (blam.isGameDedicated()) then
+            features.hideReflectionObjects()
         end
 
         -- Set object rotation after creating the object
@@ -8256,7 +8280,7 @@ local function eventsReducer(state, action)
                 for index, mapName in pairs(currentGroup) do
                     local availableGametypes = {}
                     ---@type forgeMap
-                    local mapPath = ("fmaps\\%s.fmap"):format(mapName):gsub(" ", "_")
+                    local mapPath = (defaultMapsPath .. "\\%s.fmap"):format(mapName):gsub(" ", "_")
                                         :lower()
                     local mapData = json.decode(read_file(mapPath))
                     for _, forgeObject in pairs(mapData.objects) do
@@ -9015,7 +9039,7 @@ server_type = "sapp"
 -- Script name must be the base script name, without variants or extensions
 scriptName = "forge_island_server" -- script_name:gsub(".lua", ""):gsub("_dev", ""):gsub("_beta", "")
 defaultConfigurationPath = "config"
-defaultMapsPath = "fmaps"
+defaultMapsPath = "fmaps\\forge_island"
 
 -- Print server current Lua version
 print("Server is running " .. _VERSION)
@@ -9177,7 +9201,7 @@ function rcon.commandInterceptor(playerIndex, message, environment, rconPassword
             local mapName = data[2]
             local gameType = data[3]
             if (mapName and gameType) then
-                if (read_file("fmaps\\" .. mapName .. ".fmap")) then
+                if (read_file(defaultMapsPath .. "\\" .. mapName .. ".fmap")) then
                     cprint("Loading map " .. mapName .. " on " .. gameType .. "...")
                     forgeMapName = mapName
                     mapVotingEnabled = false

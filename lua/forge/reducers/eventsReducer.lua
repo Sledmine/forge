@@ -69,6 +69,8 @@ local function eventsReducer(state, action)
             -- TODO This requires some refactor and testing to use ids instead of indexes on the client side
             objectIndex = objectId
             features.hideReflectionObjects()
+        elseif (blam.isGameDedicated()) then
+            features.hideReflectionObjects()
         end
 
         -- Set object rotation after creating the object
@@ -339,7 +341,7 @@ local function eventsReducer(state, action)
                 for index, mapName in pairs(currentGroup) do
                     local availableGametypes = {}
                     ---@type forgeMap
-                    local mapPath = ("fmaps\\%s.fmap"):format(mapName):gsub(" ", "_")
+                    local mapPath = (defaultMapsPath .. "\\%s.fmap"):format(mapName):gsub(" ", "_")
                                         :lower()
                     local mapData = json.decode(read_file(mapPath))
                     for _, forgeObject in pairs(mapData.objects) do

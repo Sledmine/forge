@@ -120,7 +120,7 @@ local function forgeCommands(command)
             -------------- DEBUGGING COMMANDS ONLY ---------------
         elseif (config.forge.debugMode) then
             if (forgeCommand == "fmenu") then
-                --[[votingStore:dispatch({
+                votingStore:dispatch({
                     type = "APPEND_MAP_VOTE",
                     payload = {
                         map = {
@@ -128,8 +128,8 @@ local function forgeCommands(command)
                             gametype = "Slayer"
                         }
                     }
-                })]]
-                features.openMenu(const.uiWidgetDefinitions.loadingMenu.path)
+                })
+                features.openMenu(const.uiWidgetDefinitions.voteMenu.path)
                 return false
             elseif (forgeCommand == "fsize") then
                 dprint(collectgarbage("count") / 1024)
@@ -162,10 +162,6 @@ local function forgeCommands(command)
                     tests.run(true)
                     return false
                 end
-            elseif (forgeCommand == "ftable") then
-                console_out(blam.readUnicodeString(get_player() + 0x4), true)
-                console_out(get_player())
-                return false
             elseif (forgeCommand == "fbiped") then
                 local player = blam.player(get_player())
                 if (player) then

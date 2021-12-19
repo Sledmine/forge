@@ -655,4 +655,29 @@ end]]
     end
 end]]
 
+--[[
+                -- local projectile, projectileIndex = core.getPlayerAimingSword()
+            -- Melee magnetisim concept
+            for _, objectIndex in pairs(blam.getObjects()) do
+                local object = blam.object(get_object(objectIndex))
+                if (object and object.type == objectClasses.biped and not object.isHealthEmpty) then
+                    local isPlayerOnAim = core.playerIsAimingAt(objectIndex, 0.11, 0.2, 1.4)
+                    if (isPlayerOnAim) then
+                        if (player.meleeKey) then
+                            dprint(player.cameraX .. " " .. player.cameraY .. " " .. player.cameraZ)
+                            -- Add velocity to current velocity
+                            player.yVel = player.yVel + player.cameraY * 0.13
+                            player.xVel = player.xVel + player.cameraX * 0.13
+                            player.zVel = player.zVel + player.cameraZ * 0.04
+
+                            -- Replace velocity with camera position
+                            -- player.yVel = player.cameraY * 0.15
+                            -- player.xVel = player.cameraX * 0.15
+                            -- player.zVel = player.cameraZ * 0.06
+                        end
+                    end
+                end
+            end
+]]
+
 return features

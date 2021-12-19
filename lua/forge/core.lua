@@ -508,13 +508,14 @@ function core.loadForgeMap(mapName)
                     spawnRequest.tagId = objectTag.id
                     spawnRequest.color = forgeObject.color or 1
                     spawnRequest.teamIndex = forgeObject.teamIndex or 0
-                    local backupRoll = spawnRequest.roll
-                    spawnRequest.roll = spawnRequest.pitch
-                    spawnRequest.pitch = 360 - backupRoll
-                    if (spawnRequest.pitch > 85 and spawnRequest.roll > 265) then
-                        spawnRequest.pitch = spawnRequest.pitch - 90
-                        spawnRequest.yaw = spawnRequest.yaw + 90
-                    end
+                    -- Old Forge migration from bad rotation function
+                    --local backupRoll = spawnRequest.roll
+                    --spawnRequest.roll = spawnRequest.pitch
+                    --spawnRequest.pitch = 360 - backupRoll
+                    --if (spawnRequest.pitch > 85 and spawnRequest.roll > 265) then
+                    --    spawnRequest.pitch = spawnRequest.pitch - 90
+                    --    spawnRequest.yaw = spawnRequest.yaw + 90
+                    --end
                     eventsStore:dispatch({
                         type = const.requests.spawnObject.actionType,
                         payload = {requestObject = spawnRequest}

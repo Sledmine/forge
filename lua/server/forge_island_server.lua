@@ -12,7 +12,7 @@ server_type = "sapp"
 -- Script name must be the base script name, without variants or extensions
 scriptName = "forge_island_server" -- script_name:gsub(".lua", ""):gsub("_dev", ""):gsub("_beta", "")
 defaultConfigurationPath = "config"
-defaultMapsPath = "fmaps"
+defaultMapsPath = "fmaps\\forge_island"
 
 -- Print server current Lua version
 print("Server is running " .. _VERSION)
@@ -174,7 +174,7 @@ function rcon.commandInterceptor(playerIndex, message, environment, rconPassword
             local mapName = data[2]
             local gameType = data[3]
             if (mapName and gameType) then
-                if (read_file("fmaps\\" .. mapName .. ".fmap")) then
+                if (read_file(defaultMapsPath .. "\\" .. mapName .. ".fmap")) then
                     cprint("Loading map " .. mapName .. " on " .. gameType .. "...")
                     forgeMapName = mapName
                     mapVotingEnabled = false
