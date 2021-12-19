@@ -5,7 +5,7 @@ engine: gbx-custom
 tagsize: 23M
 extendlimits: true
 scenarios:
-  - "[shm]\\halo_4\\maps\\forge_island\\forge_island_dev"
+  - "[shm]/halo_4/maps/forge_island/forge_island_dev"
 outputpath: package/game-maps
 packagelabel: forgeisland
 postbuild:
