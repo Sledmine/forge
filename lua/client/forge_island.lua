@@ -393,10 +393,6 @@ function OnTick()
     ---@type playerState
     local playerState = playerStore:getState()
     if (player) then
-        --if (player.flashlightKey) then
-        --    features.overrideDialog("Kono giorno giovanna niwa yume ga aru",
-        --                            "Sexy... isn't?\rOH YEAH BOI")
-        --end
         -- Prevent players from getting outside map limits
         features.mapLimit()
         if (lastPlayerBiped ~= player.tagId) then
@@ -542,7 +538,6 @@ function OnTick()
                     local eventsState = actions.getEventsState()
                     local forgeObject = eventsState.forgeObjects[objectIndex]
                     if (forgeObject) then
-                        dprint(forgeObject.yaw .. " "  .. forgeObject.pitch .. " " .. forgeObject.roll)
                         features.printHUD("NAME:  " .. objectPath,
                                           "DATA INDEX:  " .. forgeObject.teamIndex, 25)
                     else
@@ -614,6 +609,14 @@ function OnTick()
                                                player.z)
             end
         end
+
+    elseif (features.state.playerCriticalHealth) then
+        execute_script([[(begin
+                    (cinematic_screen_effect_set_convolution 2 1 1 0 1)
+                    (cinematic_screen_effect_start false)
+                    (cinematic_stop)
+                )]])
+        features.state.playerCriticalHealth = false
     end
 
     -- Attach respective hooks for menus

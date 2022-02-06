@@ -8,7 +8,9 @@ local color = require "color"
 
 local core = require "forge.core"
 
-local features = {}
+local features = {
+    state = {}
+}
 
 --- Changes default crosshair values
 ---@param state number
@@ -398,7 +400,7 @@ function features.playSound(tagPath, gain)
 end
 
 local landedRecently = false
-local healthDepletedRecently = false
+features.state.playerCriticalHealth = false
 local lastGrenadeType = nil
 --- Apply some special effects to the HUD like sounds, blips, etc
 function features.hudUpgrades()
@@ -423,9 +425,9 @@ function features.hudUpgrades()
                 end
             end
             -- When player is on critical health show blur effect
-            if (player.health < 0.25 and blam.isNull(player.vehicleObjectId)) then
-                if (not healthDepletedRecently) then
-                    healthDepletedRecently = true
+            if (player.health <= 0.25 and player.shield <= 0 and blam.isNull(player.vehicleObjectId)) then
+                if (not features.state.playerCriticalHealth) then
+                    features.state.playerCriticalHealth = true
                     execute_script([[(begin
                         (cinematic_screen_effect_start true)
                         (cinematic_screen_effect_set_convolution 2 1 1 1 5)
@@ -433,14 +435,14 @@ function features.hudUpgrades()
                     )]])
                 end
             else
-                if (healthDepletedRecently) then
+                if (features.state.playerCriticalHealth) then
                     execute_script([[(begin
                     (cinematic_screen_effect_set_convolution 2 1 1 0 1)(cinematic_screen_effect_start false)
                     (sleep 45)
                     (cinematic_stop)
                 )]])
                 end
-                healthDepletedRecently = false
+                features.state.playerCriticalHealth = false
             end
             -- Get hud background bitmap
             local visorBitmap = blam.bitmap(const.bitmaps.unitHudBackgroundTagId)

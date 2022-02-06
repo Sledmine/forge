@@ -509,13 +509,13 @@ function core.loadForgeMap(mapName)
                     spawnRequest.color = forgeObject.color or 1
                     spawnRequest.teamIndex = forgeObject.teamIndex or 0
                     -- Old Forge migration from bad rotation function
-                    --local backupRoll = spawnRequest.roll
-                    --spawnRequest.roll = spawnRequest.pitch
-                    --spawnRequest.pitch = 360 - backupRoll
-                    --if (spawnRequest.pitch > 85 and spawnRequest.roll > 265) then
+                    -- local backupRoll = spawnRequest.roll
+                    -- spawnRequest.roll = spawnRequest.pitch
+                    -- spawnRequest.pitch = 360 - backupRoll
+                    -- if (spawnRequest.pitch > 85 and spawnRequest.roll > 265) then
                     --    spawnRequest.pitch = spawnRequest.pitch - 90
                     --    spawnRequest.yaw = spawnRequest.yaw + 90
-                    --end
+                    -- end
                     eventsStore:dispatch({
                         type = const.requests.spawnObject.actionType,
                         payload = {requestObject = spawnRequest}
@@ -1007,35 +1007,29 @@ end
 
 --- Enable, update and disable vehicle spawns
 -- Must be called after adding scenery object to the store!!
----@return true if found an available spawn
+---@return boolean result return true if found an available spawn
 function core.updateVehicleSpawn(tagPath, forgeObject, disable)
     if (server_type == "dedicated") then
         return true
     end
-    local vehicleType = 0
+
+    local vehicleMatch = {
+        banshee = 0,
+        ["warthog"] = 1,
+        ghost = 2,
+        scorpion = 3,
+        ["shade turret"] = 4,
+        ["rocket warthog"] = 5,
+        ["civ warthog"] = 6,
+        ["gauss warthog"] = 7,
+        ["transport warthog"] = 8,
+        wraith = 9,
+        ["heretic banshee"] = 10
+    }
+
     -- Get spawn info from tag name
-    if (tagPath:find("banshee")) then
-        dprint("banshee")
-        vehicleType = 0
-    elseif (tagPath:find("rocket warthog")) then
-        dprint("rocket warthog")
-        vehicleType = 5
-    elseif (tagPath:find("civ warthog")) then
-        dprint("civ warthog")
-        vehicleType = 6
-    elseif (tagPath:find("warthog")) then
-        dprint("normal warthog")
-        vehicleType = 1
-    elseif (tagPath:find("ghost")) then
-        dprint("ghost")
-        vehicleType = 2
-    elseif (tagPath:find("scorpion")) then
-        dprint("scorpion")
-        vehicleType = 3
-    elseif (tagPath:find("turret spawn")) then
-        dprint("turret")
-        vehicleType = 4
-    end
+    local tagName = core.getTagName(tagPath):gsub(" spawn", "")
+    local vehicleType = vehicleMatch[tagName] or 0
 
     -- Get scenario data
     local scenario = blam.scenario(0)
@@ -1265,8 +1259,8 @@ function core.getForgeObjectFromPlayerAim()
         if (projectile) then
             if (not blam.isNull(projectile.attachedToObjectId)) then
                 local object = blam.object(get_object(projectile.attachedToObjectId))
-                --dprint("Found object by collision!")
-                --dprint(
+                -- dprint("Found object by collision!")
+                -- dprint(
                 --    inspect({object.vX, object.vY, object.vZ, object.v2X, object.v2Y, object.v2Z}))
                 local forgeObjects = eventsStore:getState().forgeObjects
                 local selectedObject = blam.object(get_object(projectile.attachedToObjectId))
@@ -1336,6 +1330,14 @@ end
 
 function core.ticksToSeconds(ticks)
     return glue.round(ticks / 30)
+end
+
+--- Return the file name of a tag file path
+---@param tagPath string
+function core.getTagName(tagPath)
+    local tagSplit = glue.string.split(tagPath, "\\")
+    local tagName = tagSplit[#tagSplit]
+    return tagName
 end
 
 return core
