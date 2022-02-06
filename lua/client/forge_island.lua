@@ -335,7 +335,7 @@ function OnPreFrame()
                     dprint("Settings menu:")
                     dprint("Button " .. pressedButton .. " was pressed!", "category")
 
-                    local configOptions = {"fdebug", "fauto", "fsnap", "fcast"}
+                    local configOptions = {"fcast", "fsave", "fdebug", "fsnap"}
                     commands(configOptions[pressedButton])
                     features.createSettingsMenu()
                 end

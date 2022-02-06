@@ -122,12 +122,7 @@ local function forgeCommands(command)
             if (forgeCommand == "fmenu") then
                 votingStore:dispatch({
                     type = "APPEND_MAP_VOTE",
-                    payload = {
-                        map = {
-                            name = "Forge",
-                            gametype = "Slayer"
-                        }
-                    }
+                    payload = {map = {name = "Forge", gametype = "Slayer"}}
                 })
                 features.openMenu(const.uiWidgetDefinitions.voteMenu.path)
                 return false
@@ -258,6 +253,9 @@ local function forgeCommands(command)
                 dprint(inspect(matrix[2]))
                 dprint(inspect(matrix[3]))
                 return false
+            elseif (forgeCommand == "fdialog") then
+                features.overrideDialog("Kono giorno giovanna niwa yume ga aru",
+                                        "Sexy... isn't?\rOH YEAH BOI")
             end
         end
     end

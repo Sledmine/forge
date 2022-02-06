@@ -28,7 +28,7 @@ local defaultState = {
     currentMap = {
         name = "Unsaved",
         author = "Unknown",
-        version = "1.0",
+        version = "v1",
         description = "No description given for this map."
     }
 }

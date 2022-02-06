@@ -565,10 +565,10 @@ function features.createSettingsMenu(open)
                 "Cast dynamic shadows on objects"
             },
             values = {
-                config.forge.debugMode,
-                config.forge.autoSave,
-                config.forge.snapMode,
                 config.forge.objectsCastShadow,
+                config.forge.autoSave,
+                config.forge.debugMode,
+                config.forge.snapMode,
             },
             format = "settings"
         }
