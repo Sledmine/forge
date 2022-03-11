@@ -146,8 +146,8 @@ end
 ---@field y number
 ---@field z number
 
---- Covert euler into game rotation array, optional rotation matrix
--- Based on https://www.mecademic.com/en/how-is-orientation-in-space-represented-with-euler-angles
+--- Covert euler into game rotation array, optional rotation matrix, based on this
+---[source.](https://www.mecademic.com/en/how-is-orientation-in-space-represented-with-euler-angles)
 --- @param yaw number
 --- @param pitch number
 --- @param roll number
@@ -241,9 +241,6 @@ function core.rotateObject(objectId, yaw, pitch, roll)
     object.v2Y = yawVector.y
     object.v2Z = yawVector.z
 end
-
---[[function core.rotatePoint(x, y, z)
-end]]
 
 --- Check if current player is using a monitor biped
 ---@return boolean

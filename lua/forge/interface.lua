@@ -73,7 +73,7 @@ function interface.get(triggersName, triggersCount, unicodeStringList)
     return elementsList.stringList[menuPressedButton]
 end
 
--- Every hook executes a callback
+-- Hook to an hsc variable that executes a callback when the variable changes
 function interface.hook(variable, callback, ...)
     if (get_global(variable)) then
         dprint("Hooking " .. variable .. "...")

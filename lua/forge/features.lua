@@ -8,9 +8,7 @@ local color = require "color"
 
 local core = require "forge.core"
 
-local features = {
-    state = {}
-}
+local features = {state = {}}
 
 --- Changes default crosshair values
 ---@param state number
@@ -402,11 +400,46 @@ end
 local landedRecently = false
 features.state.playerCriticalHealth = false
 local lastGrenadeType = nil
---- Apply some special effects to the HUD like sounds, blips, etc
+--- Apply some special effects to the HUD like: sounds, effects, etc
 function features.hudUpgrades()
     local player = blam.biped(get_dynamic_player())
-    -- Player must exist
-    if (player) then
+    local playerData = blam.player(get_player())
+    -- Player must exist and not be a monitor
+    if (player and not core.isPlayerMonitor()) then
+        -- Display near grenade indicator on HUD
+        execute_script(
+            [[(deactivate_nav_point_flag (unit (list_get (players) 0)) grenade_indicator)]])
+        for objectIndex = 0, 2047 do
+            local object, objectId = blam.getObject(objectIndex)
+            if (object and object.type == blam.objectClasses.projectile and
+                core.calculateDistanceFromObject(object, player) <= 2 and
+                not core.playerIsAimingAt(objectId, 0.4)) then
+                local projectile = blam.projectile(get_object(objectId))
+                local tag = blam.getTag(object.tagId)
+                if (projectile.attachedToObjectId ~= playerData.objectId and
+                    tag.path:find("grenade")) then
+                    execute_script(
+                        [[(begin (activate_nav_point_flag grenade_red (unit (list_get (players) 0)) grenade_indicator 0.6))]])
+                    local scenario = blam.scenario(0)
+                    local flags = scenario.cutsceneFlags
+                    for cutsceneFlagIndex, cutsceneFlag in pairs(flags) do
+                        cutsceneFlag.x = object.x
+                        cutsceneFlag.y = object.y
+                        cutsceneFlag.z = object.z
+                        if (not blam.isNull(projectile.attachedToObjectId)) then
+                            local attachedObject = blam.object(get_object(
+                                                                   projectile.attachedToObjectId))
+                            cutsceneFlag.x = object.x + attachedObject.x
+                            cutsceneFlag.y = object.y + attachedObject.y
+                            cutsceneFlag.z = object.z + attachedObject.z
+                        end
+                        flags[cutsceneFlagIndex] = cutsceneFlag
+                    end
+                    scenario.cutsceneFlags = flags
+                end
+            end
+        end
+        -- Verify player is not on menus
         local isPlayerOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
         if (not isPlayerOnMenu) then
             local localPlayer = read_dword(const.localPlayerAddress)
@@ -424,23 +457,15 @@ function features.hudUpgrades()
                     end
                 end
             end
-            -- When player is on critical health show blur effect
+            -- Blur HUD vision on critical health
             if (player.health <= 0.25 and player.shield <= 0 and blam.isNull(player.vehicleObjectId)) then
                 if (not features.state.playerCriticalHealth) then
                     features.state.playerCriticalHealth = true
-                    execute_script([[(begin
-                        (cinematic_screen_effect_start true)
-                        (cinematic_screen_effect_set_convolution 2 1 1 1 5)
-                        (cinematic_screen_effect_start false)
-                    )]])
+                    features.hudBlur(true)
                 end
             else
                 if (features.state.playerCriticalHealth) then
-                    execute_script([[(begin
-                    (cinematic_screen_effect_set_convolution 2 1 1 0 1)(cinematic_screen_effect_start false)
-                    (sleep 45)
-                    (cinematic_stop)
-                )]])
+                    features.hudBlur(false)
                 end
                 features.state.playerCriticalHealth = false
             end
@@ -458,7 +483,7 @@ function features.hudUpgrades()
                 end
             end
         end
-        -- Player is not in a vehicle
+        -- Play sounds at certain biped actions
         if (blam.isNull(player.vehicleObjectId)) then
             -- Landing hard
             if (player.landing == 1) then
@@ -470,6 +495,11 @@ function features.hudUpgrades()
             else
                 landedRecently = false
             end
+        end
+    else
+        if (features.state.playerCriticalHealth) then
+            features.hudBlur(false, true)
+            features.state.playerCriticalHealth = false
         end
     end
 end
@@ -568,7 +598,7 @@ function features.createSettingsMenu(open)
                 config.forge.objectsCastShadow,
                 config.forge.autoSave,
                 config.forge.debugMode,
-                config.forge.snapMode,
+                config.forge.snapMode
             },
             format = "settings"
         }
@@ -582,7 +612,11 @@ end
 function features.createBipedsMenu(open)
     generalMenuStore:dispatch({
         type = "SET_MENU",
-        payload = {title = "Bipeds Selection", elements = glue.keys(const.bipedNames), format = "bipeds"}
+        payload = {
+            title = "Bipeds Selection",
+            elements = glue.keys(const.bipedNames),
+            format = "bipeds"
+        }
     })
     if (open and not features.openMenu(const.uiWidgetDefinitions.generalMenu.path)) then
         dprint("Error, at trying to open general menu!")
@@ -599,7 +633,7 @@ function features.getCurrentWidget()
         if (tag) then
             local isPlayerOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
             if (isPlayerOnMenu) then
-                --dprint("Current widget: " .. tag.path)
+                -- dprint("Current widget: " .. tag.path)
             end
             return tag.id
         end
@@ -681,5 +715,31 @@ end]]
                 end
             end
 ]]
+
+function features.hudBlur(enableBlur, immediate)
+    if (enableBlur) then
+        execute_script([[(begin
+                        (cinematic_screen_effect_start true)
+                        (cinematic_screen_effect_set_convolution 2 1 1 1 5)
+                        (cinematic_screen_effect_start false)
+                    )]])
+        return true
+    end
+    if (not enableBlur and immediate) then
+        execute_script([[(begin
+                    (cinematic_screen_effect_set_convolution 2 1 1 0 1)
+                    (cinematic_screen_effect_start false)
+                    (cinematic_stop)
+                )]])
+        return false
+    end
+    execute_script([[(begin
+                    (cinematic_screen_effect_set_convolution 2 1 1 0 1)
+                    (cinematic_screen_effect_start false)
+                    (sleep 45)
+                    (cinematic_stop)
+                )]])
+    return false
+end
 
 return features

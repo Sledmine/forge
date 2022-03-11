@@ -389,10 +389,9 @@ end
 
 function OnTick()
     local player = blam.biped(get_dynamic_player())
-
-    ---@type playerState
-    local playerState = playerStore:getState()
     if (player) then
+        ---@type playerState
+        local playerState = playerStore:getState()
         -- Prevent players from getting outside map limits
         features.mapLimit()
         if (lastPlayerBiped ~= player.tagId) then
@@ -596,7 +595,6 @@ function OnTick()
             end
         else
             features.regenerateHealth()
-            features.hudUpgrades()
             features.setCrosshairState(0)
             -- Convert into monitor
             if (player.flashlightKey and not player.crouchHold) then
@@ -609,14 +607,6 @@ function OnTick()
                                                player.z)
             end
         end
-
-    elseif (features.state.playerCriticalHealth) then
-        execute_script([[(begin
-                    (cinematic_screen_effect_set_convolution 2 1 1 0 1)
-                    (cinematic_screen_effect_start false)
-                    (cinematic_stop)
-                )]])
-        features.state.playerCriticalHealth = false
     end
 
     -- Attach respective hooks for menus
@@ -637,6 +627,9 @@ function OnTick()
         textRefreshCount = 0
         drawTextBuffer = nil
     end
+
+    -- Safe passive features
+    features.hudUpgrades()
 end
 
 function OnRcon(message)
