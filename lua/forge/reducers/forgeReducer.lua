@@ -194,7 +194,7 @@ local function forgeReducer(state, action)
                     -- FIXME For some reason player is being able unfreeze after applying this
                     if (player) then
                         player.zVel = 0
-                        player.isFrozen = true
+                        --player.isFrozen = true
                     end
 
                     -- Set loading map bar data
@@ -208,7 +208,7 @@ local function forgeReducer(state, action)
                         -- Unfreeze player
                         local player = blam.biped(get_dynamic_player())
                         if (player) then
-                            player.isFrozen = false
+                            --player.isFrozen = false
                         end
                         if (forgeAnimationTimer) then
                             stop_timer(forgeAnimationTimer)
