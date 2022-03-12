@@ -387,12 +387,6 @@ function OnGameEnd()
             eventsStore:dispatch({type = const.requests.loadVoteMapScreen.actionType})
         end
     end
-    -- FIXME This needs a better implementation
-    -- write_file("eventsState.json", json.encode(eventsStore:getState()))
-    -----@type forgeState
-    -- local dumpedState = forgeStore:getState()
-    -- dumpedState.currentMap.name = forgeMapName
-    -- write_file("forgeState.json", json.encode(dumpedState))
     collectgarbage("collect")
 end
 
