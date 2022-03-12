@@ -169,7 +169,7 @@ local cameraTypes = {
 }
 
 -- Netgame flags type
-local netgameFlagTypes = {
+local netgameFlagClasses = {
     ctfFlag = 0,
     ctfVehicle = 1,
     ballSpawn = 2,
@@ -182,7 +182,7 @@ local netgameFlagTypes = {
 }
 
 -- Netgame equipment types
-local netgameEquipmentTypes = {
+local gameTypeClasses = {
     none = 0,
     ctf = 1,
     slayer = 2,
@@ -198,6 +198,24 @@ local netgameEquipmentTypes = {
     allGames = 12,
     allExceptCtf = 13,
     allExceptRaceCtf = 14
+}
+
+local multiplayerTeamClasses = {
+    red = 0,
+    blue = 1
+}
+
+local unitTeamClasses = {
+    defaultByUnit = 0,
+    player = 1,
+    human = 2,
+    covenant = 3,
+    flood = 4,
+    sentinel = 5,
+    unused6 = 6,
+    unused7 = 7,
+    unused8 = 8,
+    unused9 = 9
 }
 
 -- Standard console colors
@@ -1813,9 +1831,13 @@ blam.objectClasses = objectClasses
 blam.joystickInputs = joystickInputs
 blam.dPadValues = dPadValues
 blam.cameraTypes = cameraTypes
-blam.netgameFlagTypes = netgameFlagTypes
-blam.netgameEquipmentTypes = netgameEquipmentTypes
 blam.consoleColors = consoleColors
+blam.netgameFlagClasses = netgameFlagClasses
+blam.gameTypeClasses = gameTypeClasses
+blam.multiplayerTeamClasses = multiplayerTeamClasses
+blam.unitTeamClasses = unitTeamClasses
+
+blam.netgameEquipmentTypes = gameTypeClasses
 
 ---@class tagDataHeader
 ---@field array any
