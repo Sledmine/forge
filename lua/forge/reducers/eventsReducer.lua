@@ -45,7 +45,6 @@ local function eventsReducer(state, action)
         dprint("Action: " .. action.type, "category")
     end
     if (action.type == const.requests.spawnObject.actionType) then
-        dprint("SPAWNING object to store...", "warning")
         local requestObject = action.payload.requestObject
 
         -- Create a new object rather than passing it as "reference"
@@ -95,14 +94,11 @@ local function eventsReducer(state, action)
         if (tagPath:find("spawning")) then
             dprint("-> [Reflecting Spawn]", "warning")
             if (tagPath:find("gametypes")) then
-                dprint("GAMETYPE_SPAWN", "category")
                 -- Make needed modifications to game spawn points
                 core.updatePlayerSpawn(tagPath, forgeObject)
             elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
-                dprint("VEHICLE_SPAWN", "category")
                 core.updateVehicleSpawn(tagPath, forgeObject)
             elseif (tagPath:find("weapons")) then
-                dprint("WEAPON_SPAWN", "category")
                 core.updateNetgameEquipmentSpawn(tagPath, forgeObject)
             end
         elseif (tagPath:find("objectives") or tagPath:find("teleporters")) then
@@ -175,14 +171,11 @@ local function eventsReducer(state, action)
                 if (tagPath:find("spawning")) then
                     dprint("-> [Reflecting Spawn]", "warning")
                     if (tagPath:find("gametypes")) then
-                        dprint("GAMETYPE_SPAWN", "category")
                         -- Make needed modifications to game spawn points
                         core.updatePlayerSpawn(tagPath, forgeObject)
                     elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
-                        dprint("VEHICLE_SPAWN", "category")
                         core.updateVehicleSpawn(tagPath, forgeObject)
                     elseif (tagPath:find("weapons")) then
-                        dprint("WEAPON_SPAWN", "category")
                         core.updateNetgameEquipmentSpawn(tagPath, forgeObject)
                     end
                 elseif (tagPath:find("objectives") or tagPath:find("teleporters")) then
@@ -222,14 +215,11 @@ local function eventsReducer(state, action)
                 if (tagPath:find("spawning")) then
                     dprint("-> [Reflecting Spawn]", "warning")
                     if (tagPath:find("gametypes")) then
-                        dprint("GAMETYPE_SPAWN", "category")
                         -- Make needed modifications to game spawn points
                         core.updatePlayerSpawn(tagPath, forgeObject, true)
                     elseif (tagPath:find("vehicles") or tagPath:find("objects")) then
-                        dprint("VEHICLE_SPAWN", "category")
                         core.updateVehicleSpawn(tagPath, forgeObject, true)
                     elseif (tagPath:find("weapons")) then
-                        dprint("WEAPON_SPAWN", "category")
                         core.updateNetgameEquipmentSpawn(tagPath, forgeObject, true)
                     end
                 elseif (tagPath:find("teleporters")) then
