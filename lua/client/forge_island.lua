@@ -630,6 +630,7 @@ function OnTick()
 
     -- Safe passive features
     features.hudUpgrades()
+    features.meleeMagnetism()
 end
 
 function OnRcon(message)
