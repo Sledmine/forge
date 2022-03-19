@@ -162,8 +162,8 @@ end
 ---@param tagPath string
 ---@return boolean result susccess
 function features.openMenu(tagPath, prevent)
-    local uiWidgetTagId = blam.getTag(tagPath, tagClasses.uiWidgetDefinition).id
-    if (uiWidgetTagId) then
+    local tag = blam.getTag(tagPath, tagClasses.uiWidgetDefinition)
+    if tag then
         return load_ui_widget(tagPath)
     end
     return false

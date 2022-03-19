@@ -17,6 +17,7 @@ local sqrt = math.sqrt
 local abs = math.abs
 local floor = math.floor
 local concat = table.concat
+local netgameFlagClasses = blam.netgameFlagClasses
 
 local core = {}
 
@@ -99,7 +100,7 @@ end
 ---@param sensitivity number
 ---@param zOffset number
 ---@param maximumDistance number
-function core.playerIsAimingAt(target, sensitivity, zOffset, maximumDistance)
+function core.playerIsLookingAt(target, sensitivity, zOffset, maximumDistance)
     -- Minimum amount for distance scaling
     local baselineSensitivity = 0.012
     local function read_vector3d(Address)
@@ -130,11 +131,11 @@ function core.playerIsAimingAt(target, sensitivity, zOffset, maximumDistance)
         if distance > 10 then
             scaler = floor(distance) / 1000
         end
-        local autoAim = sensitivity - scaler
-        if autoAim < baselineSensitivity then
-            autoAim = baselineSensitivity
+        local aimMagnetisim = sensitivity - scaler
+        if aimMagnetisim < baselineSensitivity then
+            aimMagnetisim = baselineSensitivity
         end
-        if average < autoAim and distance < (maximumDistance or 15) then
+        if average < aimMagnetisim and distance < (maximumDistance or 15) then
             return true
         end
     end
@@ -338,7 +339,6 @@ end
 
 --- Process every request as a server
 function core.processRequest(actionType, request, currentRequest, playerIndex)
-    dprint("-> [ Receiving request ]")
     dprint("Incoming request: " .. request)
     dprint("Parsing incoming " .. actionType .. " ...", "warning")
     local requestTable = maeth.requestToTable(request, currentRequest.requestFormat,
@@ -350,8 +350,6 @@ function core.processRequest(actionType, request, currentRequest, playerIndex)
         dprint("Error at converting request.", "error")
         return false, nil
     end
-    dprint("Decoding incoming " .. actionType .. " ...", "warning")
-    dprint("Request size: " .. #request)
     local requestObject = maeth.decodeTable(requestTable, currentRequest.requestFormat)
     if (requestObject) then
         dprint("Done.", "success")
@@ -369,57 +367,65 @@ function core.processRequest(actionType, request, currentRequest, playerIndex)
     return false, requestObject
 end
 
-function core.resetSpawnPoints()
+---Reset all the scenario slots required used in Forge
+---@param keepdefaultSpawn boolean Keep at least one spawn point for player spawning
+function core.resetScenarioSlots(keepdefaultSpawn)
     local scenario = blam.scenario()
-    local netgameFlagsTypes = blam.netgameFlagTypes
 
-    local mapSpawnCount = scenario.spawnLocationCount
+    local playerSpawnLocations = scenario.spawnLocationCount
     local vehicleLocationCount = scenario.vehicleLocationCount
     local netgameFlagsCount = scenario.netgameFlagsCount
-    dprint("Found " .. mapSpawnCount .. " stock player starting points!")
+    local netgameEquipmentCount = scenario.netgameEquipmentCount
+    dprint("Found " .. playerSpawnLocations .. " stock player spawn locations!")
     dprint("Found " .. vehicleLocationCount .. " stock vehicle location points!")
     dprint("Found " .. netgameFlagsCount .. " stock netgame flag points!")
-    -- Reset any spawn point
-    local mapSpawnPoints = scenario.spawnLocationList
-    for i = 1, mapSpawnCount do
-        -- Disable them by setting type to 0
-        mapSpawnPoints[i].type = 0
-    end
+    dprint("Found " .. netgameEquipmentCount .. " stock netgame equipment points!")
 
-    local vehicleLocationList = scenario.vehicleLocationList
+    -- Reset all slots, spawn points, vehicles location, flags, etc
+    local spawnLocations = scenario.spawnLocationList
+    for i = 1, playerSpawnLocations do
+        -- Disable them by setting type to 0
+        spawnLocations[i].type = blam.gameTypeClasses.none
+    end
+    if keepdefaultSpawn then
+        spawnLocations[const.firstUsableNetgameFlagIndex].type = blam.gameTypeClasses.allGames
+    end
+    local vehicleLocations = scenario.vehicleLocationList
     for i = 2, vehicleLocationCount do
         -- Disable spawn and try to erase object from the map
-        vehicleLocationList[i].type = 65535
+        vehicleLocations[i].type = 65535
         -- TODO There should be a way to get object name from memory
-        execute_script("object_destroy v" .. vehicleLocationList[i].nameIndex)
+        execute_script("object_destroy v" .. vehicleLocations[i].nameIndex)
     end
-
-    -- Reset any teleporter point, skipping first 3 points
-    -- those are reserved for Red and Blue CTF flags, the third one is for the 
-    -- oddball spawn point
-    local netgameFlagsList = scenario.netgameFlagsList
-    for i = 4, netgameFlagsCount do
+    local netgameFlags = scenario.netgameFlagsList
+    for i = const.firstUsableNetgameFlagIndex, netgameFlagsCount do
         -- Disabling spawn point by setting to an unused type "vegas - bank"
-        netgameFlagsList[i].type = netgameFlagsTypes.vegasBank
+        netgameFlags[i].type = netgameFlagClasses.vegasBank
+    end
+    local netgameEquipments = scenario.netgameEquipmentList
+    for i = 1, netgameEquipmentCount do
+        netgameEquipments[i].type1 = blam.gameTypeClasses.none
     end
 
-    scenario.spawnLocationList = mapSpawnPoints
-    scenario.vehicleLocationList = vehicleLocationList
-    scenario.netgameFlagsList = netgameFlagsList
+    scenario.spawnLocationList = spawnLocations
+    scenario.vehicleLocationList = vehicleLocations
+    scenario.netgameFlagsList = netgameFlags
+    scenario.netgameEquipmentList = netgameEquipments
 end
 
+---Flush all the forge related modifications to the game
 function core.flushForge()
+    -- TODO Adapt and run this in the server side as well
     if (eventsStore) then
         local forgeObjects = eventsStore:getState().forgeObjects
         if (#glue.keys(forgeObjects) > 0 and #blam.getObjects() > 0) then
-            -- saveForgeMap('unsaved')
-            -- execute_script('object_destroy_all')
             for objectId, forgeObject in pairs(forgeObjects) do
                 delete_object(objectId)
             end
             eventsStore:dispatch({type = "FLUSH_FORGE"})
         end
     end
+    core.resetScenarioSlots(true)
 end
 
 function core.sendMapData(forgeMap, playerIndex)
@@ -484,7 +490,7 @@ function core.loadForgeMap(mapName)
             core.sendMapData(forgeMap)
 
             -- Reset all spawn points to default
-            core.resetSpawnPoints()
+            core.resetScenarioSlots()
 
             -- Remove menu blur after reloading server on local mode
             if (server_type == "local") then
@@ -735,39 +741,26 @@ end
 ---@param forgeObject table
 ---@param disable boolean
 function core.updatePlayerSpawn(tagPath, forgeObject, disable)
+    dprint("PLAYER_SPAWN", "category")
     local teamIndex = 0
-    local gameType = 0
+    local gameTypeIndex = 0
 
-    -- TODO Refactor this to make it dynamic, also use blam constants instad of static game types
     -- Get spawn info from tag name
-    if (tagPath:find("ctf")) then
-        dprint("CTF")
-        gameType = 1
-    elseif (tagPath:find("slayer")) then
-        if (tagPath:find("generic")) then
-            dprint("SLAYER")
-        else
-            dprint("TEAM_SLAYER")
+    for gameTypeClass, gameType in pairs(blam.gameTypeClasses) do
+        local normalizedGameTypeName = core.toCamelCase(gameTypeClass):lower()
+        if tagPath:find(normalizedGameTypeName) then
+            gameTypeIndex = gameType
+            break
         end
-        gameType = 2
-    elseif (tagPath:find("oddball")) then
-        dprint("ODDBALL")
-        gameType = 3
-    elseif (tagPath:find("koth")) then
-        dprint("KOTH")
-        gameType = 4
-    elseif (tagPath:find("race")) then
-        dprint("RACE")
-        gameType = 5
     end
 
-    if (tagPath:find("red")) then
-        dprint("RED TEAM SPAWN")
-        teamIndex = 0
-    elseif (tagPath:find("blue")) then
-        dprint("BLUE TEAM SPAWN")
-        teamIndex = 1
+    if tagPath:find("red") then
+        teamIndex = blam.multiplayerTeamClasses.red
+    elseif tagPath:find("blue") then
+        teamIndex = blam.multiplayerTeamClasses.blue
     end
+    dprint("Team: " .. glue.index(blam.multiplayerTeamClasses)[teamIndex])
+    dprint("Type: " .. glue.index(blam.gameTypeClasses)[gameTypeIndex])
 
     -- Get scenario data
     local scenario = blam.scenario(0)
@@ -786,17 +779,17 @@ function core.updatePlayerSpawn(tagPath, forgeObject, disable)
                 mapSpawnPoints[spawnId].z = forgeObject.z
                 mapSpawnPoints[spawnId].rotation = rad(forgeObject.yaw)
                 mapSpawnPoints[spawnId].teamIndex = teamIndex
-                mapSpawnPoints[spawnId].type = gameType
+                mapSpawnPoints[spawnId].type = gameTypeIndex
 
                 -- Debug spawn index
-                dprint("Creating spawn replacing index: " .. spawnId, "warning")
+                dprint("Creating spawn, index: " .. spawnId, "warning")
                 forgeObject.reflectionId = spawnId
                 break
             end
         end
     else
-        dprint("Erasing spawn with index: " .. forgeObject.reflectionId)
         if (disable) then
+            dprint("Erasing spawn, index: " .. forgeObject.reflectionId)
             -- Disable or "delete" spawn point by setting type as 0
             mapSpawnPoints[forgeObject.reflectionId].type = 0
             -- Update spawn point list
@@ -808,9 +801,8 @@ function core.updatePlayerSpawn(tagPath, forgeObject, disable)
         mapSpawnPoints[forgeObject.reflectionId].y = forgeObject.y
         mapSpawnPoints[forgeObject.reflectionId].z = forgeObject.z
         mapSpawnPoints[forgeObject.reflectionId].rotation = rad(forgeObject.yaw)
-        dprint(mapSpawnPoints[forgeObject.reflectionId].type)
         -- Debug spawn index
-        dprint("Updating spawn replacing index: " .. forgeObject.reflectionId)
+        dprint("Updating spawn, index: " .. forgeObject.reflectionId)
     end
     -- Update spawn point list
     scenario.spawnLocationList = mapSpawnPoints
@@ -824,7 +816,6 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
     -- TODO Review if some flags use team index as "group index"!
     local teamIndex = 0
     local flagType = 0
-    local netgameFlagsTypes = blam.netgameFlagTypes
 
     -- Set flag type from tag path
     --[[
@@ -840,7 +831,7 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
     ]]
     if (tagPath:find("flag stand")) then
         dprint("FLAG POINT")
-        flagType = netgameFlagsTypes.ctfFlag
+        flagType = netgameFlagClasses.ctfFlag
         -- TODO Check if double setting team index against default value is needed!
         if (tagPath:find("red")) then
             dprint("RED TEAM FLAG")
@@ -852,13 +843,13 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
     elseif (tagPath:find("oddball")) then
         -- TODO Check and add weapon based netgame flags like oddball!
         dprint("ODDBALL FLAG")
-        flagType = netgameFlagsTypes.ballSpawn
+        flagType = netgameFlagClasses.ballSpawn
     elseif (tagPath:find("receiver")) then
         dprint("TELEPORT TO")
-        flagType = netgameFlagsTypes.teleportTo
+        flagType = netgameFlagClasses.teleportTo
     elseif (tagPath:find("sender")) then
         dprint("TELEPORT FROM")
-        flagType = netgameFlagsTypes.teleportFrom
+        flagType = netgameFlagClasses.teleportFrom
     else
         dprint("Unknown netgame flag tag: " .. tagPath, "error")
     end
@@ -876,8 +867,8 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
             -- If this flag point is using the same flag type
             if (mapNetgameFlagsPoints[flagIndex].type == flagType and
                 mapNetgameFlagsPoints[flagIndex].teamIndex == teamIndex and
-                (flagType ~= netgameFlagsTypes.teleportFrom and flagType ~=
-                    netgameFlagsTypes.teleportTo)) then
+                (flagType ~= netgameFlagClasses.teleportFrom and flagType ~=
+                    netgameFlagClasses.teleportTo)) then
                 -- Replace spawn point values
                 mapNetgameFlagsPoints[flagIndex].x = forgeObject.x
                 mapNetgameFlagsPoints[flagIndex].y = forgeObject.y
@@ -891,9 +882,9 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
                 dprint("Creating flag replacing index: " .. flagIndex, "warning")
                 forgeObject.reflectionId = flagIndex
                 break
-            elseif (mapNetgameFlagsPoints[flagIndex].type == netgameFlagsTypes.vegasBank and
-                (flagType == netgameFlagsTypes.teleportTo or flagType ==
-                    netgameFlagsTypes.teleportFrom)) then
+            elseif (mapNetgameFlagsPoints[flagIndex].type == netgameFlagClasses.vegasBank and
+                (flagType == netgameFlagClasses.teleportTo or flagType ==
+                    netgameFlagClasses.teleportFrom)) then
                 dprint("Creating teleport replacing index: " .. flagIndex, "warning")
                 dprint("With team index: " .. forgeObject.teamIndex, "warning")
                 -- Replace spawn point values
@@ -910,11 +901,11 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
         end
     else
         if (disable) then
-            if (flagType == netgameFlagsTypes.teleportTo or flagType ==
-                netgameFlagsTypes.teleportFrom) then
+            if (flagType == netgameFlagClasses.teleportTo or flagType ==
+                netgameFlagClasses.teleportFrom) then
                 dprint("Erasing netgame flag teleport with index: " .. forgeObject.reflectionId)
                 -- Vegas bank is a unused gametype, so this is basically the same as disabling it
-                mapNetgameFlagsPoints[forgeObject.reflectionId].type = netgameFlagsTypes.vegasBank
+                mapNetgameFlagsPoints[forgeObject.reflectionId].type = netgameFlagClasses.vegasBank
             end
         else
             -- Replace spawn point values
@@ -922,8 +913,8 @@ function core.updateNetgameFlagSpawn(tagPath, forgeObject, disable)
             mapNetgameFlagsPoints[forgeObject.reflectionId].y = forgeObject.y
             mapNetgameFlagsPoints[forgeObject.reflectionId].z = forgeObject.z
             mapNetgameFlagsPoints[forgeObject.reflectionId].rotation = rad(forgeObject.yaw)
-            if (flagType == netgameFlagsTypes.teleportFrom or flagType ==
-                netgameFlagsTypes.teleportTo) then
+            if (flagType == netgameFlagClasses.teleportFrom or flagType ==
+                netgameFlagClasses.teleportTo) then
                 dprint("Update teamIndex: " .. forgeObject.teamIndex)
                 mapNetgameFlagsPoints[forgeObject.reflectionId].teamIndex = forgeObject.teamIndex
             end
@@ -940,6 +931,7 @@ end
 ---@param forgeObject table
 ---@param disable boolean
 function core.updateNetgameEquipmentSpawn(tagPath, forgeObject, disable)
+    dprint("EQUIPMENT_SPAWN", "category")
     local itemCollectionTagId
     local tagSplitPath = glue.string.split(tagPath, "\\")
     local desiredWeapon = tagSplitPath[#tagSplitPath]:gsub(" spawn", "")
@@ -1006,6 +998,7 @@ end
 -- Must be called after adding scenery object to the store!!
 ---@return boolean result return true if found an available spawn
 function core.updateVehicleSpawn(tagPath, forgeObject, disable)
+    dprint("VEHICLE_SPAWN", "category")
     if (server_type == "dedicated") then
         return true
     end
@@ -1335,6 +1328,10 @@ function core.getTagName(tagPath)
     local tagSplit = glue.string.split(tagPath, "\\")
     local tagName = tagSplit[#tagSplit]
     return tagName
+end
+
+function core.findTagOptional(partialTagName, searchTagClass)
+    return core.findTag(partialTagName, searchTagClass) or {}
 end
 
 return core

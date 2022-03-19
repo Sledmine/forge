@@ -31,6 +31,7 @@ constants.minimumZMapLimit = -69.9
 constants.maximumRenderShadowRadius = 7
 constants.forgeSelectorOffset = 0.33
 constants.forgeSelectorVelocity = 15
+constants.firstUsableNetgameFlagIndex = 4
 
 -- Map name should be the base project name, without build env variants
 constants.absoluteMapName = map:gsub("_dev", ""):gsub("_beta", "")
@@ -42,12 +43,13 @@ constants.maxLoadingBarSize = 422
 -- Constant gameplay values
 constants.healthRegenerationAmount = 0.006
 
-constants.hudFontTagId = core.findTag("blender_pro_medium_12", tagClasses.font).id
-local forgeProjectile = core.findTag("forge", tagClasses.projectile)
+constants.hudFontTagId = core.findTagOptional("blender_pro_medium_12", tagClasses.font).id or
+                             core.findTagOptional("small", tagClasses.font).id
+local forgeProjectile = core.findTagOptional("forge", tagClasses.projectile)
 constants.forgeProjectilePath = forgeProjectile.path
 constants.forgeProjectileTagId = forgeProjectile.id
 constants.forgeProjectileTagIndex = forgeProjectile.index
-constants.fragGrenadeProjectileTagIndex = core.findTag("frag", tagClasses.projectile).index
+constants.fragGrenadeProjectileTagIndex = core.findTagOptional("frag", tagClasses.projectile).index
 
 -- Constant Forge requests data
 constants.requests = {
@@ -141,8 +143,9 @@ constants.requests = {
 
 -- Tag Collections ID
 constants.tagCollections = {
-    forgeObjectsTagId = core.findTag(constants.absoluteMapName .. "_objects",
-                                     tagClasses.tagCollection).id
+    forgeObjectsTagId = core.findTagOptional(constants.absoluteMapName .. "_objects",
+                                             tagClasses.tagCollection).id or
+        core.findTagOptional("custom_objects", tagClasses.tagCollection).id
 }
 
 -- Biped Names
@@ -183,15 +186,15 @@ constants.firstPersonHands["mark vii"] = constants.firstPersonHands["mark vi"]
 
 -- Weapon HUD Interface Tags ID
 constants.weaponHudInterfaces = {
-    forgeCrosshairTagId = core.findTag("ui\\hud\\forge", tagClasses.weaponHudInterface).id
+    forgeCrosshairTagId = core.findTagOptional("ui\\hud\\forge", tagClasses.weaponHudInterface).id
 }
 
 -- Bitmap Tags ID
 constants.bitmaps = {
-    forgingIconFrame0TagId = core.findTag("forge_loading_progress0", tagClasses.bitmap).id,
-    forgeIconFrame1TagId = core.findTag("forge_loading_progress1", tagClasses.bitmap).id,
-    unitHudBackgroundTagId = core.findTag("combined\\hud_background", tagClasses.bitmap).id,
-    dialogIconsTagId = core.findTag("bitmaps\\loading_orb", tagClasses.bitmap).id
+    forgingIconFrame0TagId = core.findTagOptional("forge_loading_progress0", tagClasses.bitmap).id,
+    forgeIconFrame1TagId = core.findTagOptional("forge_loading_progress1", tagClasses.bitmap).id,
+    unitHudBackgroundTagId = core.findTagOptional("combined\\hud_background", tagClasses.bitmap).id,
+    dialogIconsTagId = core.findTagOptional("bitmaps\\loading_orb", tagClasses.bitmap).id
 }
 
 -- UI Widget definitions
@@ -218,30 +221,31 @@ constants.uiWidgetDefinitions = uiWidgetDefinitions
 
 -- Unicode string definitions
 local unicodeStrings = {
-    budgetCountTagId = core.findTag("budget_count", tagClasses.unicodeStringList).id,
-    forgeMenuElementsTagId = core.findTag("elements_text", tagClasses.unicodeStringList).id,
-    votingMapsListTagId = core.findTag("vote_maps_names", tagClasses.unicodeStringList).id,
-    votingCountListTagId = core.findTag("vote_maps_count", tagClasses.unicodeStringList).id,
-    paginationTagId = core.findTag("pagination", tagClasses.unicodeStringList).id,
-    mapsListTagId = core.findTag("maps_name", tagClasses.unicodeStringList).id,
-    pauseGameStringsTagId = core.findTag("titles_and_headers", tagClasses.unicodeStringList).id,
-    forgeControlsTagId = core.findTag("forge_controls", tagClasses.unicodeStringList).id,
-    generalMenuHeaderTagId = core.findTag("general_menu\\strings\\header",
-                                          tagClasses.unicodeStringList).id,
-    generalMenuStringsTagId = core.findTag("general_menu\\strings\\options",
-                                           tagClasses.unicodeStringList).id,
-    generalMenuValueStringsTagId = core.findTag("general_menu\\strings\\values",
-                                                tagClasses.unicodeStringList).id,
-    dialogStringsId = core.findTag("dialog_menu\\strings\\header_and_message",
-                                   tagClasses.unicodeStringList).id
+    budgetCountTagId = core.findTagOptional("budget_count", tagClasses.unicodeStringList).id,
+    forgeMenuElementsTagId = core.findTagOptional("elements_text", tagClasses.unicodeStringList).id,
+    votingMapsListTagId = core.findTagOptional("vote_maps_names", tagClasses.unicodeStringList).id,
+    votingCountListTagId = core.findTagOptional("vote_maps_count", tagClasses.unicodeStringList).id,
+    paginationTagId = core.findTagOptional("pagination", tagClasses.unicodeStringList).id,
+    mapsListTagId = core.findTagOptional("maps_name", tagClasses.unicodeStringList).id,
+    pauseGameStringsTagId = core.findTagOptional("titles_and_headers", tagClasses.unicodeStringList)
+        .id,
+    forgeControlsTagId = core.findTagOptional("forge_controls", tagClasses.unicodeStringList).id,
+    generalMenuHeaderTagId = core.findTagOptional("general_menu\\strings\\header",
+                                                  tagClasses.unicodeStringList).id,
+    generalMenuStringsTagId = core.findTagOptional("general_menu\\strings\\options",
+                                                   tagClasses.unicodeStringList).id,
+    generalMenuValueStringsTagId = core.findTagOptional("general_menu\\strings\\values",
+                                                        tagClasses.unicodeStringList).id,
+    dialogStringsId = core.findTagOptional("dialog_menu\\strings\\header_and_message",
+                                           tagClasses.unicodeStringList).id
 }
 constants.unicodeStrings = unicodeStrings
 
 constants.hsc = {playSound = [[(begin (sound_impulse_start "%s" (list_get (players) %s) %s))]]}
 
 constants.sounds = {
-    landHardPlayerDamagePath = core.findTag("land_hard_plyr_dmg", tagClasses.sound).path,
-    uiForwardPath = core.findTag("forward", tagClasses.sound).path
+    landHardPlayerDamagePath = core.findTagOptional("land_hard_plyr_dmg", tagClasses.sound).path,
+    uiForwardPath = core.findTagOptional("forward", tagClasses.sound).path
 }
 
 --[[local swordProjectileTagPath, swordProjectileTagIndex =
