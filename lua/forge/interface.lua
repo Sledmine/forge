@@ -75,7 +75,9 @@ end
 
 -- Hook to an hsc variable that executes a callback when the variable changes
 function interface.hook(variable, callback, ...)
-    if (get_global(variable)) then
+    local variableExists, variableValue = pcall(get_global, variable)
+    if variableExists and variableValue then
+    --if get_global(variable) then
         dprint("Hooking " .. variable .. "...")
         --execute_script("set " .. variable .. " false")
         set_global(variable, false)
