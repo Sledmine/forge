@@ -62,6 +62,7 @@ core.loadForgeConfiguration()
 -- Internal functions and variables
 -- Buffer to store all the debug printing
 debugBuffer = ""
+drawTextCalls = {}
 -- Tick counter until next text draw refresh
 textRefreshCount = 0
 
@@ -204,12 +205,17 @@ function OnMapLoad()
 end
 
 function OnPreFrame()
-    local isPlayerOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
-    if (drawTextBuffer and not isPlayerOnMenu) then
+    local isGameOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
+    if (drawTextBuffer and not isGameOnMenu) then
         draw_text(table.unpack(drawTextBuffer))
     end
+    for drawTextIndex, drawTextCall in pairs(drawTextCalls) do
+        if not drawTextCall.drawOnMenus and not isGameOnMenu then
+            draw_text(table.unpack(drawTextCall.buffer))
+        end
+    end
     -- Menu, UI Handling
-    if (isPlayerOnMenu) then
+    if (isGameOnMenu) then
         ---@type playerState
         local playerState = playerStore:getState()
 
@@ -419,6 +425,7 @@ function OnTick()
             -- Check if monitor has an object attached
             local playerAttachedObjectId = playerState.attachedObjectId
             if (playerAttachedObjectId) then
+                features.printHUDRight("Flashlight Key - Object properties", "Crouch Key - Undo object changes")
                 -- Unhighlight objects
                 features.unhighlightAll()
                 -- Calculate player point of view
@@ -511,8 +518,7 @@ function OnTick()
                 end
 
             else
-                features.printHUDRight("Flashlight Key - Objects menu", "Crouch Key - Spartan mode",
-                                       25)
+                features.printHUDRight("Flashlight Key - Objects menu", "Crouch Key - Spartan mode")
                 -- Set crosshair to not selected state
                 features.setCrosshairState(1)
 
@@ -626,6 +632,13 @@ function OnTick()
     if (textRefreshCount > 30) then
         textRefreshCount = 0
         drawTextBuffer = nil
+    end
+    for drawTextMessage, drawTextCall in pairs(drawTextCalls) do
+        if drawTextCall.ticks > 0 then
+            drawTextCall.ticks = drawTextCall.ticks - 1
+        else
+            drawTextCalls[drawTextMessage] = nil
+        end
     end
 
     -- Safe passive features

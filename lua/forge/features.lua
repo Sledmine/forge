@@ -204,18 +204,21 @@ end
 ---@param message string
 ---@param optional string
 function features.printHUDRight(message, optional, forcedTickCount)
-    textRefreshCount = forcedTickCount or 0
     local color = {1, 0.890, 0.949, 0.992}
     if (optional) then
-        drawTextBuffer = {
-            message:upper() .. "\r" .. optional:upper(),
-            -60,
-            380,
-            640,
-            480,
-            const.hudFontTagId,
-            "right",
-            table.unpack(color)
+        drawTextCalls[message] = {
+            buffer = {
+                message:upper() .. "\r" .. optional:upper(),
+                -60,
+                380,
+                640,
+                480,
+                const.hudFontTagId,
+                "right",
+                table.unpack(color)
+            },
+            ticks = forcedTickCount or 1,
+            drawOnMenus = false
         }
     end
 end
