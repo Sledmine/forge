@@ -157,7 +157,8 @@ function OnMapLoad()
             for currentLevel, categoryLevel in pairs(sceneriesSplit) do
                 -- TODO This is horrible, remove this "sort" implementation
                 if (categoryLevel:sub(1, 1) == "_") then
-                    categoryLevel = glue.string.fromhex(tostring((0x2))) .. categoryLevel:sub(2, -1)
+                    -- categoryLevel = glue.string.fromhex(tostring((0x2))) .. categoryLevel:sub(2, -1)
+                    categoryLevel = categoryLevel:sub(2, -1)
                 end
                 if (not treePosition[categoryLevel]) then
                     treePosition[categoryLevel] = {}
@@ -200,7 +201,7 @@ function OnMapLoad()
         set_callback("command", "OnCommand")
 
     else
-        error("Error, This is not a compatible Forge CE map!!!")
+        error("This is not a compatible Forge CE map.")
     end
 end
 
@@ -403,6 +404,7 @@ function OnTick()
         if (lastPlayerBiped ~= player.tagId) then
             lastPlayerBiped = player.tagId
             dprint("Biped has changed!")
+            dprint(blam.getTag(player.tagId).path)
             -- Hide spawning related Forge objects
             features.hideReflectionObjects()
             features.showForgeKeys()
@@ -425,7 +427,8 @@ function OnTick()
             -- Check if monitor has an object attached
             local playerAttachedObjectId = playerState.attachedObjectId
             if (playerAttachedObjectId) then
-                features.printHUDRight("Flashlight Key - Object properties", "Crouch Key - Undo object changes")
+                features.printHUDRight("Flashlight Key - Object properties",
+                                       "Crouch Key - Undo object changes")
                 -- Unhighlight objects
                 features.unhighlightAll()
                 -- Calculate player point of view
@@ -456,12 +459,12 @@ function OnTick()
                         type = "SET_LOCK_DISTANCE",
                         payload = {lockDistance = not playerState.lockDistance}
                     })
-                    features.printHUD("Distance from object is " ..
-                                          tostring(glue.round(playerState.distance)) .. " units.")
+                    local distance = glue.round(playerState.distance)
+                    features.printHUD("Distance from object is " .. distance .. " units")
                     if (playerState.lockDistance) then
-                        features.printHUD("Push n pull.")
+                        features.printHUD("Push n pull")
                     else
-                        features.printHUD("Closer or further.")
+                        features.printHUD("Closer or further")
                     end
                 elseif (player.jumpHold) then
                     playerStore:dispatch({type = "DESTROY_OBJECT"})
@@ -595,8 +598,8 @@ function OnTick()
                     })
                     features.openMenu(const.uiWidgetDefinitions.forgeMenu.path)
                 elseif (player.crouchHold and server_type == "local") then
-                    features.swapBiped()
                     playerStore:dispatch({type = "DETACH_OBJECT"})
+                    features.swapBiped()
                 end
             end
         else

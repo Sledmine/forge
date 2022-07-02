@@ -37,6 +37,7 @@ local function forgeReflector()
     local pagination = blam.unicodeStringList(const.unicodeStrings.paginationTagId)
     if (pagination) then
         local paginationStringList = pagination.stringList
+        paginationStringList[1] = " "
         paginationStringList[2] = tostring(currentMenuPage)
         paginationStringList[4] = tostring(#state.forgeMenu.currentElementsList)
         pagination.stringList = paginationStringList

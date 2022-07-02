@@ -147,7 +147,7 @@ end
 ---@field y number
 ---@field z number
 
---- Covert euler into game rotation array, optional rotation matrix, based on this
+---Covert euler and return into game rotation array, return optional rotation matrix, based on this
 ---[source.](https://www.mecademic.com/en/how-is-orientation-in-space-represented-with-euler-angles)
 --- @param yaw number
 --- @param pitch number
@@ -190,51 +190,6 @@ end
 function core.rotateObject(objectId, yaw, pitch, roll)
     local rollVector, yawVector, matrix = core.eulerToRotation(yaw, pitch, roll)
     local object = blam.object(get_object(objectId))
-    -- Debug rotation pivots
-    --[[if (config.forge.debugMode) then
-        if (not globalPivotId) then
-            local pivotTag = core.findTag("pivot", tagClasses.scenery)
-            globalPivotId = core.spawnObject(tagClasses.scenery, pivotTag.path, object.vX,
-                                             object.vY, object.vZ)
-            globalPivotId2 = core.spawnObject(tagClasses.scenery, pivotTag.path, object.v2X,
-                                              object.v2Y, object.v2Z)
-            globalPivotId3 = core.spawnObject(tagClasses.scenery, pivotTag.path, object.x, object.y,
-                                              object.z)
-            globalPivotId4 = core.spawnObject(tagClasses.scenery, pivotTag.path, object.x, object.y,
-                                              object.z)
-        end
-        local pivot = blam.object(get_object(globalPivotId))
-        local pivot2 = blam.object(get_object(globalPivotId2))
-        local pivot3 = blam.object(get_object(globalPivotId3))
-        local pivot4 = blam.object(get_object(globalPivotId4))
-        -- Object pivot + rotation
-        pivot.x = object.x
-        pivot.y = object.y
-        pivot.z = object.z
-        pivot.vX = rollVector.x
-        pivot.vY = rollVector.y
-        pivot.vZ = rollVector.z
-        pivot.v2X = yawVector.x
-        pivot.v2Y = yawVector.y
-        pivot.v2Z = yawVector.z
-
-        -- Roll pivot
-        pivot2.x = object.x + rollVector.x
-        pivot2.y = object.y + rollVector.y
-        pivot2.z = object.z + rollVector.z
-
-        -- Yaw pivot
-        pivot3.x = object.x + yawVector.x
-        pivot3.y = object.y + yawVector.y
-        pivot3.z = object.z + yawVector.z
-
-        -- Pitch pivot (imaginary)
-        pivot4.x = object.x + matrix[1][2]
-        pivot4.y = object.y + matrix[2][2]
-        pivot4.z = object.z + matrix[3][2]
-    end]]
-
-    -- Apply final rotation to desired object
     object.vX = rollVector.x
     object.vY = rollVector.y
     object.vZ = rollVector.z
@@ -415,15 +370,8 @@ end
 
 ---Flush all the forge related modifications to the game
 function core.flushForge()
-    -- TODO Adapt and run this in the server side as well
-    if (eventsStore) then
-        local forgeObjects = eventsStore:getState().forgeObjects
-        if (#glue.keys(forgeObjects) > 0 and #blam.getObjects() > 0) then
-            for objectId, forgeObject in pairs(forgeObjects) do
-                delete_object(objectId)
-            end
-            eventsStore:dispatch({type = "FLUSH_FORGE"})
-        end
+    if eventsStore then
+        eventsStore:dispatch({type = "FLUSH_FORGE"})
     end
     core.resetScenarioSlots(true)
 end

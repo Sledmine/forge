@@ -27,12 +27,7 @@ local rotateObject = core.rotateObject
 ---@class eventsState
 ---@field forgeObjects forgeObject[]
 ---@field cachedResponses string[]
-local defaultState = {
-    forgeObjects = {},
-    cachedResponses = {},
-    playerVotes = {},
-    mapVotesGroup = 0
-}
+local defaultState = {forgeObjects = {}, cachedResponses = {}, playerVotes = {}, mapVotesGroup = 0}
 
 ---@param state eventsState
 local function eventsReducer(state, action)
@@ -52,8 +47,8 @@ local function eventsReducer(state, action)
         local tagPath = blam.getTag(requestObject.tagId or requestObject.tagIndex).path
 
         -- Spawn object in the game
-        local objectId = core.spawnObject(tagClasses.scenery, tagPath, forgeObject.x,
-                                          forgeObject.y, forgeObject.z)
+        local objectId = core.spawnObject(tagClasses.scenery, tagPath, forgeObject.x, forgeObject.y,
+                                          forgeObject.z)
         dprint("objectId: " .. objectId)
 
         local objectIndex = getIndexById(objectId)
@@ -83,8 +78,7 @@ local function eventsReducer(state, action)
         -- Apply color to the object
         if (server_type ~= "sapp" and requestObject.color) then
             local tempObject = blam.object(get_object(objectIndex))
-            features.setObjectColor(const.colorsNumber[requestObject.color],
-                                    tempObject)
+            features.setObjectColor(const.colorsNumber[requestObject.color], tempObject)
         end
 
         dprint("objectIndex: " .. objectIndex)
@@ -124,10 +118,7 @@ local function eventsReducer(state, action)
         state.forgeObjects[objectIndex] = forgeObject
 
         -- Update the current map information
-        forgeStore:dispatch({
-            type = "UPDATE_MAP_INFO",
-            payload = {loadingObjectPath = tagPath}
-        })
+        forgeStore:dispatch({type = "UPDATE_MAP_INFO", payload = {loadingObjectPath = tagPath}})
         forgeStore:dispatch({type = "UPDATE_BUDGET"})
 
         return state
@@ -150,8 +141,7 @@ local function eventsReducer(state, action)
             forgeObject.teamIndex = requestObject.teamIndex
 
             -- Update object rotation
-            core.rotateObject(targetObjectId, forgeObject.yaw, forgeObject.pitch,
-                              forgeObject.roll)
+            core.rotateObject(targetObjectId, forgeObject.yaw, forgeObject.pitch, forgeObject.roll)
 
             -- Update object position
             local tempObject = blam.object(get_object(targetObjectId))
@@ -160,8 +150,7 @@ local function eventsReducer(state, action)
             tempObject.z = forgeObject.z
 
             if (requestObject.color) then
-                features.setObjectColor(const.colorsNumber[requestObject.color],
-                                        tempObject)
+                features.setObjectColor(const.colorsNumber[requestObject.color], tempObject)
             end
 
             -- Check and take actions if the object is reflecting a netgame point
@@ -293,10 +282,13 @@ local function eventsReducer(state, action)
 
         return state
     elseif (action.type == const.requests.flushForge.actionType) then
-        if (server_type ~= "sapp") then
+        if blam.isGameHost() then
             local forgeObjects = state.forgeObjects
-            for objectIndex, forgeObject in pairs(forgeObjects) do
-                delete_object(objectIndex)
+            if (#glue.keys(forgeObjects) > 0 and #blam.getObjects() > 0) then
+                for objectId, forgeObject in pairs(forgeObjects) do
+                    -- dprint(blam.getTag(blam.object(get_object(objectId)).tagId).path)
+                    delete_object(objectId)
+                end
             end
         end
         state.cachedResponses = {}
@@ -357,22 +349,14 @@ local function eventsReducer(state, action)
                     console_out("Final Gametype: " .. finalGametype)
                     votingStore:dispatch({
                         type = const.requests.appendVoteMap.actionType,
-                        payload = {
-                            map = {
-                                name = mapName,
-                                gametype = finalGametype,
-                                mapIndex = 1
-                            }
-                        }
+                        payload = {map = {name = mapName, gametype = finalGametype, mapIndex = 1}}
                     })
                 end
             end
             -- Send list of all available vote maps
             local votingState = votingStore:getState()
             for mapIndex, map in pairs(votingState.votingMenu.mapsList) do
-                local voteMapOpenRequest = {
-                    requestType = const.requests.appendVoteMap.requestType
-                }
+                local voteMapOpenRequest = {requestType = const.requests.appendVoteMap.requestType}
                 glue.update(voteMapOpenRequest, map)
                 core.sendRequest(core.createRequest(voteMapOpenRequest))
             end
@@ -410,10 +394,7 @@ local function eventsReducer(state, action)
                 params.votesMap3,
                 params.votesMap4
             }
-            votingStore:dispatch({
-                type = "SET_MAP_VOTES_LIST",
-                payload = {votesList = votesList}
-            })
+            votingStore:dispatch({type = "SET_MAP_VOTES_LIST", payload = {votesList = votesList}})
         end
         return state
     elseif (action.type == const.requests.sendMapVote.actionType) then
@@ -428,9 +409,7 @@ local function eventsReducer(state, action)
                 local mapGametype = votedMap.gametype
 
                 grprint(playerName .. " voted for " .. mapName .. " " .. mapGametype)
-                eventsStore:dispatch({
-                    type = const.requests.sendTotalMapVotes.actionType
-                })
+                eventsStore:dispatch({type = const.requests.sendTotalMapVotes.actionType})
                 local playerVotes = state.playerVotes
                 if (#playerVotes > 0) then
                     local mapsList = votingState.votingMenu.mapsList
