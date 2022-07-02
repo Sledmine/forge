@@ -81,7 +81,7 @@ end
 ---@param desiredBipedTagId number
 function features.swapBiped(desiredBipedTagId)
     features.unhighlightAll()
-    if (server_type == "local") then
+    if blam.isGameHost() then
         -- If player is alive save his last position
         local playerBiped = blam.biped(get_dynamic_player())
         if (playerBiped) then
@@ -102,30 +102,21 @@ function features.swapBiped(desiredBipedTagId)
             end
         end
         local globals = blam.globalsTag()
-        if (globals) then
-            local player = blam.player(get_player())
-            local playerObject = blam.object(get_object(player.objectId))
-            if (player and playerObject) then
-                if (playerObject.tagId == monitorTagId) then
-                    local newMultiplayerInformation = globals.multiplayerInformation
-                    newMultiplayerInformation[1].unit = spartanTagId
-                    -- Update globals tag data to set new biped
-                    globals.multiplayerInformation = newMultiplayerInformation
-                else
-                    local newMultiplayerInformation = globals.multiplayerInformation
-                    newMultiplayerInformation[1].unit = monitorTagId
-                    -- Update globals tag data to set new biped
-                    globals.multiplayerInformation = newMultiplayerInformation
-                end
-                if (desiredBipedTagId) then
-                    local newMultiplayerInformation = globals.multiplayerInformation
-                    newMultiplayerInformation[1].unit = desiredBipedTagId
-                    -- Update globals tag data to set new biped
-                    globals.multiplayerInformation = newMultiplayerInformation
-                end
-                -- Erase player object to force biped respawn
-                delete_object(player.objectId)
+        local player = blam.player(get_player())
+        if (player and playerBiped) then
+            local newMultiplayerInformation = globals.multiplayerInformation
+            if (playerBiped.tagId == monitorTagId) then
+                newMultiplayerInformation[1].unit = spartanTagId
+            else
+                newMultiplayerInformation[1].unit = monitorTagId
             end
+            if (desiredBipedTagId) then
+                newMultiplayerInformation[1].unit = desiredBipedTagId
+            end
+            -- Update globals tag data to set new biped
+            globals.multiplayerInformation = newMultiplayerInformation
+            -- Erase player object to force biped respawn
+            delete_object(player.objectId)
         end
     end
 end
@@ -171,7 +162,8 @@ end
 
 --- Print formatted text into HUD message output
 ---@param message string
----@param optional string
+---@param optional? string
+---@param forcedTickCount? number
 function features.printHUD(message, optional, forcedTickCount)
     textRefreshCount = forcedTickCount or 0
     local color = {1, 0.890, 0.949, 0.992}
