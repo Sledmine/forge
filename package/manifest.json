@@ -2,9 +2,9 @@
     "manifestVersion": "1.1.0",
     "files": {},
     "label": "forgeisland",
-    "version": "1.0.0-beta.rc",
+    "version": "1.0.0",
     "category": "map",
     "author": "Shadowmods",
     "name": "Forge Island",
-    "description": "Forge for Halo Custom Edition"
+    "description": "Forge Island for Halo Custom Edition"
 }
