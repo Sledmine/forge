@@ -676,7 +676,7 @@ function OnMapUnload()
     core.flushForge()
 
     -- Save configuration
-    write_file(defaultConfigurationPath .. "\\forge_island.ini", ini.encode(config))
+    core.saveConfiguration()
 end
 
 if (server_type == "local") then

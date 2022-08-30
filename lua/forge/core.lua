@@ -1282,4 +1282,9 @@ function core.findTagOptional(partialTagName, searchTagClass)
     return core.findTag(partialTagName, searchTagClass) or {}
 end
 
+function core.saveConfiguration()
+    dprint("Saving configuration...")
+    write_file(defaultConfigurationPath .. "\\forge_island.ini", ini.encode(config))
+end
+
 return core

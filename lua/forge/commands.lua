@@ -56,12 +56,12 @@ local function forgeCommands(command)
         elseif (forgeCommand == "fsnap") then
             config.forge.snapMode = not config.forge.snapMode
             console_out("Snap Mode: " .. tostring(config.forge.snapMode))
-            -- Force settings menu update
+            core.saveConfiguration()
             return false
         elseif (forgeCommand == "fauto") then
             config.forge.autoSave = not config.forge.autoSave
             console_out("Auto Save: " .. tostring(config.forge.autoSave))
-            -- Force settings menu update
+            core.saveConfiguration()
             return false
         elseif (forgeCommand == "fcast") then
             config.forge.objectsCastShadow = not config.forge.objectsCastShadow
@@ -78,7 +78,7 @@ local function forgeCommands(command)
                     end
                 end
             end
-            -- Force settings menu update
+            core.saveConfiguration()
             console_out("Objects Cast Shadow: " .. tostring(config.forge.objectsCastShadow))
             return false
         elseif (forgeCommand == "fload") then
