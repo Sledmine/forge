@@ -1,0 +1,16 @@
+version: 1
+tag_space: 64M
+extend_limits: true
+scenarios:
+  - "[shm]/halo_4/maps/forge_island/forge_island_dev"
+commands:
+  package:
+    - mercury build --release --output $PWD/package/game-maps/
+    - mkdir -p dist
+    - mercury luabundle
+    - cp dist/forge_island.lua package/lua-map/forge_island.lua
+    - mercury pack package/ dist/
+    - rm -f package/lua-map/forge_island.lua
+    - rm -f package/game-maps/forge_island.map
+  release:
+    - mercury build package
