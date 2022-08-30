@@ -1,6 +1,6 @@
 {
     "name": "Forge Island",
-    "target": "lua53",
+    "target": "lua5.3",
     "include": [
         "lua/"
     ],
@@ -29,6 +29,6 @@
         "forge.redux.actions",
         "forge.version"
     ],
-    "main":"lua/client/forge_island",
+    "main": "lua/client/forge_island",
     "output": "dist/forge_island.lua"
 }
