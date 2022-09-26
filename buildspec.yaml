@@ -4,8 +4,14 @@ extend_limits: true
 scenarios:
   - "[shm]/halo_4/maps/forge_island/forge_island_dev"
 commands:
+  hud:
+    - convert "data/[shm]/halo_4/ui/hud/bitmaps/version_number_template.png" -font ./fonts/BlenderPro-Book.ttf -fill "#aaaaab" -gravity Center -pointsize 120 -annotate +0+0 "($(cat package/manifest.json | jq -r '.version'))" "data/[shm]/halo_4/ui/hud/bitmaps/version_number.png"
+    - invader-bitmap -F 32-bit -T 2d_textures "[shm]/halo_4/ui/hud/bitmaps/version_number"
+    - invader-bitmap -n -F 32-bit -T 2d_textures "[shm]/halo_4/ui/hud/bitmaps/combined/hud_background"
+    - invader-bitmap -n -F 32-bit -T 2d_textures "[shm]/halo_4/ui/hud/bitmaps/combined/hud_monitor_background"
+    - invader-bitmap -n -F 32-bit -T 2d_textures "[shm]/halo_4/ui/hud/bitmaps/combined/hud_monitor_foreground"
   package:
-    - mercury build --release --output $PWD/package/game-maps/
+    - rm -rf dist
     - mkdir -p dist
     - mercury luabundle
     - cp dist/forge_island.lua package/lua-map/forge_island.lua
@@ -13,4 +19,5 @@ commands:
     - rm -f package/lua-map/forge_island.lua
     - rm -f package/game-maps/forge_island.map
   release:
+    - mercury build --release --output $PWD/package/game-maps/
     - mercury build package
