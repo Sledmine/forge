@@ -346,7 +346,7 @@ end
 
 --- Split a list/array into small parts of given size
 ---@param list table
----@param chunks elementSize
+---@param chunks number
 function glue.chunks(list, chunks)
 	local chunkcounter = 0
 	local chunk = {}
