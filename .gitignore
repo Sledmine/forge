@@ -53,10 +53,12 @@ dist/
 temp/
 
 # Map files
-tags
-data
+tags/*
+data/*
+data_old/*
 six-shooter.ini
-project
+project/*
+hek/*
 
 # Cloud files
 *.db*

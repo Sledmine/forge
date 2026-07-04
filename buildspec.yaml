@@ -10,6 +10,7 @@ commands:
     - invader-bitmap -n -F 32-bit -T 2d_textures "[shm]/halo_4/ui/hud/bitmaps/combined/hud_background"
     - invader-bitmap -n -F 32-bit -T 2d_textures "[shm]/halo_4/ui/hud/bitmaps/combined/hud_monitor_background"
     - invader-bitmap -n -F 32-bit -T 2d_textures "[shm]/halo_4/ui/hud/bitmaps/combined/hud_monitor_foreground"
+    - invader-bitmap -n -F 32-bit -T 2d_textures "[shm]/halo_4/ui/hud/bitmaps/combined/abilities"
   package:
     - rm -rf dist
     - mkdir -p dist
