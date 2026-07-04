@@ -478,7 +478,7 @@ function core.loadForgeMap(mapName)
                 end
             end
             forgeMapFinishedLoading = true
-            console_out(string.format("Done, elapsed time: %.6f\n", os.clock() - time))
+            console_out(string.format("Done, loaded in: %.6f seconds\n", os.clock() - time))
             dprint("Succesfully loaded '" .. mapName .. "' fmap!")
 
             if (server_type == "local") then
@@ -492,9 +492,6 @@ function core.loadForgeMap(mapName)
         end
     else
         dprint("Error at trying to load '" .. mapName .. "' as a forge map...", "error")
-        if (server_type == "sapp") then
-            grprint("Error at trying to load '" .. mapName .. "' as a forge map...")
-        end
     end
     return false
 end

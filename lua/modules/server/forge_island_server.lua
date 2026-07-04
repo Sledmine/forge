@@ -13,6 +13,7 @@ server_type = "sapp"
 scriptName = "forge_island_server" -- script_name:gsub(".lua", ""):gsub("_dev", ""):gsub("_beta", "")
 defaultConfigurationPath = "config"
 defaultMapsPath = "fmaps\\forge_island"
+math.randomseed(os.time())
 
 -- Print server current Lua version
 print("Server is running " .. _VERSION)
@@ -41,8 +42,10 @@ local votingReducer = require "forge.reducers.votingReducer"
 local forgeReducer = require "forge.reducers.forgeReducer"
 
 -- Variable used to store the current Forge map in memory
--- FIXME This should take the first map available on the list
-forgeMapName = "octagon"
+-- Pick random map from the list of available maps and remove extension from the name
+forgeMapName = list_directory(defaultMapsPath)[math.random(#list_directory(defaultMapsPath))]:gsub(
+                   ".fmap", "")
+print("Forge map name: " .. forgeMapName)
 forgeMapFinishedLoading = false
 -- Controls if "Forging" is available or not in the current game
 local forgingEnabled = false
