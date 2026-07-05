@@ -16,7 +16,7 @@ local fmod = math.fmod
 local rad = math.rad
 local deg = math.deg
 
-local blam = {_VERSION = "2.0.2-dev", debug = false}
+local blam = {_VERSION = "2.0.3-dev", debug = false}
 
 ---Physics gravity default constant
 blam.PHYSICS_GRAVITY_DEFAULT = 996779464
@@ -1182,12 +1182,12 @@ local function createTag(address)
         tag = dumpTable(tag)
 
         tag.primaryGroup = integerToTagGroup(tag.primaryGroup)
-        --tag.secondaryGroup = integerToTagGroup(tag.secondaryGroup)
-        --tag.tertiaryGroup = integerToTagGroup(tag.tertiaryGroup)
+        tag.secondaryGroup = integerToTagGroup(tag.secondaryGroup)
+        tag.tertiaryGroup = integerToTagGroup(tag.tertiaryGroup)
 
         tag.primaryClass = integerToTagGroup(tag.primaryClass)
-        --tag.secondaryClass = integerToTagGroup(tag.secondaryClass)
-        --tag.tertiaryClass = integerToTagGroup(tag.tertiaryClass)
+        tag.secondaryClass = integerToTagGroup(tag.secondaryClass)
+        tag.tertiaryClass = integerToTagGroup(tag.tertiaryClass)
         tag.address = address
 
         local tagStructureModuleName
@@ -1521,23 +1521,20 @@ function blam.rcon.unpatch()
     end
 end
 
---- Return lightweight tag header data by index for fast tag scanning.
----@param tagIndex number
----@return string?, string?
-local function getTagHeaderForSearch(tagIndex)
-    local entryAddress = blam.tagDataHeader.array + tagIndex * 0x20
-    local primaryClassInt = read_dword(entryAddress)
-    if isNull(primaryClassInt) then
-        return nil, nil
+--- Convert a 4-char tag group into its integer representation for fast comparisons.
+---@param tagGroup string
+---@return number?
+local function tagGroupToInteger(tagGroup)
+    if type(tagGroup) ~= "string" or #tagGroup ~= 4 then
+        return nil
     end
 
-    local primaryClass = integerToTagGroup(primaryClassInt)
-    local pathAddress = read_dword(entryAddress + 0x10)
-    if isNull(pathAddress) then
-        return primaryClass, nil
+    local b1, b2, b3, b4 = string.byte(tagGroup, 1, 4)
+    if not b4 then
+        return nil
     end
 
-    return primaryClass, read_string(pathAddress)
+    return b1 * 0x1000000 + b2 * 0x10000 + b3 * 0x100 + b4
 end
 
 --- Find a tag entry by keyword and tag group
@@ -1547,10 +1544,22 @@ end
 ---@param tagGroup tagGroup
 ---@return tagEntry? tag
 function blam.tag.findTag(keyword, tagGroup)
+    local tagClassInt = tagGroupToInteger(tagGroup)
+    if not tagClassInt then
+        return nil
+    end
+
+    local tagArray = blam.tagDataHeader.array
     for tagIndex = 0, blam.tagDataHeader.count - 1 do
-        local primaryClass, path = getTagHeaderForSearch(tagIndex)
-        if primaryClass == tagGroup and path and path:find(keyword, 1, true) then
-            return blam.getTagEntry(tagIndex)
+        local entryAddress = tagArray + tagIndex * 0x20
+        if read_dword(entryAddress) == tagClassInt then
+            local pathAddress = read_dword(entryAddress + 0x10)
+            if not isNull(pathAddress) then
+                local path = read_string(pathAddress)
+                if path and path:find(keyword, 1, true) then
+                    return blam.getTagEntry(tagIndex)
+                end
+            end
         end
     end
     return nil
@@ -1563,11 +1572,23 @@ end
 ---@param tagGroup tagGroup
 ---@return tagEntry[] tag
 function blam.tag.findTags(keyword, tagGroup)
+    local tagClassInt = tagGroupToInteger(tagGroup)
     local tagsList = {}
+    if not tagClassInt then
+        return tagsList
+    end
+
+    local tagArray = blam.tagDataHeader.array
     for tagIndex = 0, blam.tagDataHeader.count - 1 do
-        local primaryClass, path = getTagHeaderForSearch(tagIndex)
-        if primaryClass == tagGroup and path and path:find(keyword, 1, true) then
-            tagsList[#tagsList + 1] = blam.getTagEntry(tagIndex)
+        local entryAddress = tagArray + tagIndex * 0x20
+        if read_dword(entryAddress) == tagClassInt then
+            local pathAddress = read_dword(entryAddress + 0x10)
+            if not isNull(pathAddress) then
+                local path = read_string(pathAddress)
+                if path and path:find(keyword, 1, true) then
+                    tagsList[#tagsList + 1] = blam.getTagEntry(tagIndex)
+                end
+            end
         end
     end
     return tagsList
