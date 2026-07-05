@@ -130,12 +130,12 @@ function OnTick()
                         if (forgingEnabled) then
                             -- Save player position before swap
                             tempPosition[playerIndex] = {player.x, player.y, player.z}
-                            if (const.bipeds.monitorTagId) then
-                                if (player.crouchHold and player.tagId == const.bipeds.monitorTagId) then
+                            if (const.bipedEntries.monitorTagId) then
+                                if (player.crouchHold and player.tagId == const.bipedEntries.monitorTagId) then
                                     monitorPlayers[playerIndex] = false
                                     delete_object(playerObjectId)
                                 elseif (player.flashlightKey and player.tagId ~=
-                                    const.bipeds.monitorTagId) then
+                                    const.bipedEntries.monitorTagId) then
                                     monitorPlayers[playerIndex] = true
                                     delete_object(playerObjectId)
                                 end
@@ -305,10 +305,10 @@ end
 function OnObjectSpawn(playerIndex, tagId, parentId, objectId)
     -- Intercept objects that are related to a player
     if (playerIndex) then
-        for index, bipedTagId in pairs(const.bipeds) do
+        for index, bipedTagId in pairs(const.bipedEntries) do
             if (tagId == bipedTagId) then
                 if (monitorPlayers[playerIndex]) then
-                    return true, const.bipeds.monitorTagId
+                    return true, const.bipedEntries.monitorTagId
                 else
                     local customBipedTagId = PlayersBiped[playerIndex]
                     if (customBipedTagId) then

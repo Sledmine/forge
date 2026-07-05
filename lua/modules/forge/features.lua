@@ -93,9 +93,9 @@ function features.swapBiped(desiredBipedTagId)
         playerBiped.shield = 1
 
         -- Find monitor and alternative spartan biped
-        local monitorTagId = const.bipeds.monitorTagId
+        local monitorTagId = const.bipedEntries.monitorTagId
         local spartanTagId
-        for bipedPropertyName, bipedTagId in pairs(const.bipeds) do
+        for bipedPropertyName, bipedTagId in pairs(const.bipedEntries) do
             if (not bipedPropertyName:find("monitor")) then
                 spartanTagId = bipedTagId
                 break
