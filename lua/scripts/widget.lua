@@ -230,7 +230,7 @@ function widget.createV2(widgetPath, keys)
     -- Create widget from scratch
     if keys.background_bitmap and not fs.is("tags/" .. keys.background_bitmap) then
         local bitmapPath = keys.background_bitmap:replace(".bitmap", "")
-        if not os.execute("invader-bitmap -F 32-bit -T interface_bitmaps " .. bitmapPath) then
+        if not os.execute("invader-bitmap -F 32-bit -T interface_bitmaps \"" .. bitmapPath .. "\"") then
             error("Background bitmap " .. bitmapPath .. " does not exist")
         end
     end
