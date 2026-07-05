@@ -1521,6 +1521,25 @@ function blam.rcon.unpatch()
     end
 end
 
+--- Return lightweight tag header data by index for fast tag scanning.
+---@param tagIndex number
+---@return string?, string?
+local function getTagHeaderForSearch(tagIndex)
+    local entryAddress = blam.tagDataHeader.array + tagIndex * 0x20
+    local primaryClassInt = read_dword(entryAddress)
+    if isNull(primaryClassInt) then
+        return nil, nil
+    end
+
+    local primaryClass = integerToTagGroup(primaryClassInt)
+    local pathAddress = read_dword(entryAddress + 0x10)
+    if isNull(pathAddress) then
+        return primaryClass, nil
+    end
+
+    return primaryClass, read_string(pathAddress)
+end
+
 --- Find a tag entry by keyword and tag group
 --- This function will return the first tag that matches the keyword and tag group.
 --- If no tag is found, it will return nil.
@@ -1529,9 +1548,9 @@ end
 ---@return tagEntry? tag
 function blam.tag.findTag(keyword, tagGroup)
     for tagIndex = 0, blam.tagDataHeader.count - 1 do
-        local tag = blam.getTagEntry(tagIndex)
-        if tag and tag.path:find(keyword, 1, true) and tag.primaryClass == tagGroup then
-            return tag
+        local primaryClass, path = getTagHeaderForSearch(tagIndex)
+        if primaryClass == tagGroup and path and path:find(keyword, 1, true) then
+            return blam.getTagEntry(tagIndex)
         end
     end
     return nil
@@ -1546,9 +1565,9 @@ end
 function blam.tag.findTags(keyword, tagGroup)
     local tagsList = {}
     for tagIndex = 0, blam.tagDataHeader.count - 1 do
-        local tag = blam.getTagEntry(tagIndex)
-        if tag and tag.path:find(keyword, 1, true) and tag.primaryClass == tagGroup then
-            tagsList[#tagsList + 1] = tag
+        local primaryClass, path = getTagHeaderForSearch(tagIndex)
+        if primaryClass == tagGroup and path and path:find(keyword, 1, true) then
+            tagsList[#tagsList + 1] = blam.getTagEntry(tagIndex)
         end
     end
     return tagsList
