@@ -16,7 +16,7 @@ local fmod = math.fmod
 local rad = math.rad
 local deg = math.deg
 
-local blam = {_VERSION = "2.0.3-dev", debug = false}
+local blam = {_VERSION = "2.0.4-dev", debug = false}
 
 ---Physics gravity default constant
 blam.PHYSICS_GRAVITY_DEFAULT = 996779464
@@ -84,7 +84,7 @@ end
 
 local NULL = 0xFFFFFFFF
 -- Valid user-mode memory range for a Halo CE process
-local PROCESS_MEMORY_BASE_ADDRESS    = 0x400000   -- Default Win32 PE image base; anything below is unmapped/null-page
+local PROCESS_MEMORY_BASE_ADDRESS = 0x400000 -- Default Win32 PE image base; anything below is unmapped/null-page
 local PROCESS_MEMORY_CEILING_ADDRESS = 0x6FFFFFFF -- Conservative ceiling below the 0x7FFFFFFF user/kernel boundary
 
 --- Get if given value equals a null value in game engine terms
@@ -497,51 +497,6 @@ function blam.getObjects()
     return objects
 end
 
--- Local reference to the original console_out function
-local original_console_out = console_out
-
---- Print a console message. It also supports multi-line messages!
----@param message string
-local function consoleOutput(message, ...)
-    -- Put the extra arguments into a table
-    local args = {...}
-
-    if (message == nil or #args > 5) then
-        consoleOutput(debug.traceback("Wrong number of arguments on console output function", 2),
-                      consoleColors.error)
-    end
-
-    -- Output color
-    local colorARGB = {1, 1, 1, 1}
-
-    -- Get the output color from arguments table
-    if (isTable(args[1])) then
-        colorARGB = args[1]
-    elseif (#args == 3 or #args == 4) then
-        colorARGB = args
-    end
-
-    -- Set alpha channel if not set
-    if (#colorARGB == 3) then
-        table.insert(colorARGB, 1, 1)
-    end
-
-    if message then
-        if (isString(message)) then
-            -- Explode the string!!
-            for line in message:gmatch("([^\n]+)") do
-                -- Trim the line
-                local trimmedLine = trim(line)
-
-                -- Print the line
-                original_console_out(trimmedLine, table.unpack(colorARGB))
-            end
-        else
-            original_console_out(message, table.unpack(colorARGB))
-        end
-    end
-end
-
 --- Return a boolean from `v` if it is a boolean like value.
 ---@param v string | boolean | number
 ---@return boolean
@@ -819,8 +774,8 @@ local function createBindStruct(baseAddress, struct, parentStruct, parentMeta)
         _addr = string.format("0x%x", baseAddress)
     }
 
-    local function getBaseFallbackStruct()
-        local baseFieldMeta, baseFieldAddress = getFieldMetadata(struct, "base", baseAddress,
+    local function getFallbackStruct(name)
+        local baseFieldMeta, baseFieldAddress = getFieldMetadata(struct, name, baseAddress,
                                                                  parentStruct)
         if baseFieldMeta and baseFieldAddress and
             (baseFieldMeta.is == "struct" or baseFieldMeta.is == "union" or baseFieldMeta.fields) then
@@ -841,18 +796,22 @@ local function createBindStruct(baseAddress, struct, parentStruct, parentMeta)
 
             local fieldMeta, address = getFieldMetadata(struct, key, baseAddress, parentStruct)
             if not (fieldMeta and address) then
-                local baseStruct = getBaseFallbackStruct()
+                -- TODO We need a way to match fallback structs to actual structs so we do not
+                -- endup returning a wrong field data for overlapping names between structs
+                local baseStruct = getFallbackStruct("base") or getFallbackStruct("color")
                 if baseStruct then
                     return baseStruct[key]
                 end
             end
-            assert(fieldMeta and address, "Field '" .. key .. "' not found in struct")
+            assert(fieldMeta and address, "Field \"" .. key .. "\" not found in struct")
             local value
 
             -- Address is not valid, likely a null pointer, we can return nil without trying to read it
-            if not (address >= PROCESS_MEMORY_BASE_ADDRESS and address <= PROCESS_MEMORY_CEILING_ADDRESS) then
-                printdebug(string.format("0x%x", address), key .. " (" .. tostring(fieldMeta.type) ..
-                           ") INVALID ADDRESS, returning nil")
+            if not (address >= PROCESS_MEMORY_BASE_ADDRESS and address <=
+                PROCESS_MEMORY_CEILING_ADDRESS) then
+                printdebug(string.format("0x%x", address),
+                           key .. " (" .. tostring(fieldMeta.type) ..
+                               ") INVALID ADDRESS, returning nil")
                 return nil
             end
             if cTypes[fieldMeta.type] and cTypes[fieldMeta.type].read then
@@ -890,20 +849,24 @@ local function createBindStruct(baseAddress, struct, parentStruct, parentMeta)
         __newindex = function(t, key, value)
             local fieldMeta, address = getFieldMetadata(struct, key, baseAddress, parentStruct)
             if not (fieldMeta and address) then
-                local baseStruct = getBaseFallbackStruct()
+                -- TODO We need a way to match fallback structs to actual structs so we do not
+                -- endup returning a wrong field data for overlapping names between structs
+                local baseStruct = getFallbackStruct("base") or getFallbackStruct("color")
                 if baseStruct then
                     baseStruct[key] = value
                     return
                 end
             end
-            assert(fieldMeta and address, "Field '" .. key .. "' not found in struct")
+            assert(fieldMeta and address, "Field \"" .. key .. "\" not found in struct")
             printdebug(string.format("0x%x", address),
                        key .. " (" .. tostring(fieldMeta.type) .. ") WRITE = " .. tostring(value))
 
             -- Address is not valid, likely a null pointer, we can return nil without trying to read it
-            if not (address >= PROCESS_MEMORY_BASE_ADDRESS and address <= PROCESS_MEMORY_CEILING_ADDRESS) then
-                printdebug(string.format("0x%x", address), key .. " (" .. tostring(fieldMeta.type) ..
-                           ") INVALID ADDRESS, write cancelled")
+            if not (address >= PROCESS_MEMORY_BASE_ADDRESS and address <=
+                PROCESS_MEMORY_CEILING_ADDRESS) then
+                printdebug(string.format("0x%x", address),
+                           key .. " (" .. tostring(fieldMeta.type) ..
+                               ") INVALID ADDRESS, write cancelled")
                 return
             end
             if cTypes[fieldMeta.type] and cTypes[fieldMeta.type].write then
@@ -1214,7 +1177,7 @@ local function createTag(address)
         else
             -- TODO Add a metatable that searchs if the data field is being accesed, if so
             -- then throw warning about data being missing
-            --logger:warning("Missing strug file for tag: {}", tagStructureModuleName)
+            -- logger:warning("Missing strug file for tag: {}", tagStructureModuleName)
             tag.data = nil
         end
 
@@ -1254,7 +1217,7 @@ function blam.getTagEntry(tagIdOrTagPath, tagClass)
     end
 
     if tagAddress then
-        --wdprintdebug("Tag address found: " .. string.format("0x%x", tagAddress))
+        -- printdebug("Tag address found: " .. string.format("0x%x", tagAddress))
         return createTag(tagAddress)
     end
 end
@@ -1333,7 +1296,7 @@ local function getSyncedObjectsTable()
     else
         tableAddress = read_dword(addressList.syncedNetworkObjects)
         if tableAddress == 0 then
-            console_out("Synced objects table is not accesible yet.")
+            print("Synced objects table is not accesible yet.")
             return nil
         end
     end
@@ -1416,7 +1379,7 @@ end
 ---@return {callback: fun(callback: fun(response: string, playerIndex?: number))}
 function blam.rcon.dispatch(eventName, message, playerIndex)
     -- if server_type ~= "dedicated" then
-    --    console_out("Warning, requests only work while connected to a dedicated server.")
+    --    print("Warning, requests only work while connected to a dedicated server.")
     -- end
     assert(eventName ~= nil, "Event must not be empty")
     assert(type(eventName) == "string", "Event must be a string")
@@ -1502,12 +1465,12 @@ function blam.rcon.patch()
         -- Read current rcon in the server
         local serverRcon = read_string(passwordAddress)
         if serverRcon then
-            console_out("Server rcon password is: \"" .. serverRcon .. "\"")
+            print("Server rcon password is: \"" .. serverRcon .. "\"")
         else
-            console_out("Error, at getting server rcon, please set and enable rcon on the server.")
+            print("Error, at getting server rcon, please set and enable rcon on the server.")
         end
     else
-        console_out("Error, at obtaining rcon patches, please check SAPP version.")
+        print("Error, at obtaining rcon patches, please check SAPP version.")
     end
 end
 
