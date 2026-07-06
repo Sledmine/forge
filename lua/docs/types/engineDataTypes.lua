@@ -14,14 +14,10 @@
 
 ---@class MetaEngineColorARGB: EngineColorARGB
 
----@class EngineColorARGBInt
----@field alpha integer
----@field red integer
----@field green integer
----@field blue integer
+---@alias EngineColorARGBInt number
 
----@class MetaEngineColorARGBInt: EngineColorARGBInt
----@class MetaEngineTagDataColorARGBInt: EngineColorARGBInt
+---@alias MetaEngineColorARGBInt EngineColorARGBInt
+---@alias MetaEngineTagDataColorARGBInt EngineColorARGBInt
 
 ---@class EngineColorRGB
 ---@field red number
