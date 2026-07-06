@@ -3,12 +3,10 @@
 local luna = require "luna"
 
 if not register_callback then
-    -- Overrides for default Balltze, as these are buggy we will rely on Blam
+    -- Overrides for default Balltze, as these are buggy we will rely on Blam... until new Balltze!
     local blam2 = require "blam2"
-    local blam = require "blam"
 
     Engine.tag.classes = blam2.tag.groups
-
     function Engine.tag.getTag(tagHandleOrPath, tagClass)
         ---@diagnostic disable-next-line: param-type-mismatch, return-type-mismatch
         return blam2.getTagEntry(tagHandleOrPath, tagClass)
@@ -31,10 +29,9 @@ else
     api_version = "1.12.0.0"
 
     local isWine = os.getenv("WINEPREFIX") or os.getenv("WINELOADERNOEXEC") or
-    os.getenv("WINESERVER")
+                       os.getenv("WINESERVER")
 
     require "compat53"
-    local blam = require "blam"
     local blam2 = require "blam2"
     Balltze = Balltze or {logger = {}, filesystem = {}, memory = {}}
     Engine = Engine or
@@ -65,60 +62,65 @@ else
         Engine.tag.classes[k] = v
     end
 
+    -- Overrides for default Balltze, as these are buggy we will rely on Blam
+    local blam2 = require "blam2"
+    local blam = require "blam"
+
+    Engine.tag.classes = blam2.tag.groups
     function Engine.tag.getTag(tagHandleOrPath, tagClass)
-        ---@diagnostic disable-next-line: param-type-mismatch
-        local tagEntry = blam.getTag(tagHandleOrPath, tagClass)
-        if tagEntry then
-            return {
-                handle = tagEntry.id,
-                path = tagEntry.path,
-                primaryClass = tagEntry.class,
-                dataAddress = tagEntry.data,
-                indexed = tagEntry.indexed
-            }
-        end
+        ---@diagnostic disable-next-line: param-type-mismatch, return-type-mismatch
+        return blam2.getTagEntry(tagHandleOrPath, tagClass)
     end
 
     function Engine.tag.findTags(tagName, tagClass)
         ---@diagnostic disable-next-line: param-type-mismatch
-        local tags = blam.findTagsList(tagName, tagClass) or {}
-        return table.map(tags, function(tag)
-            return {handle = tag.id, path = tag.path, primaryClass = tag.class}
-        end)
+        return blam2.tag.findTags(tagName, tagClass)
     end
 
-    ---@param tagHandle EngineTagHandle|integer @The tag handle of the object
-    ---@param parentObjectHandle? EngineObjectHandle|integer @The handle of the parent object
-    ---@param position EnginePoint3D @The position of the object
-    ---@return EngineObjectHandle @The handle of the object
+    Engine.tag.objectType = blam2.objectClasses
+    function Engine.gameState.getObject(handle, type)
+        ---@diagnostic disable-next-line: param-type-mismatch
+        return blam2.gameState.getObject(handle, type)
+    end
+
     function Engine.gameState.createObject(tagHandle, parentObjectHandle, position)
         if type(tagHandle) == "number" then
             local handleValue = spawn_object(tagHandle, position.x, position.y, position.z)
             return {
                 value = handleValue,
-                index = blam.getIndexById(handleValue),
+                index = blam2.getIndexFromHandle(handleValue),
                 id = handleValue,
                 isNull = function()
-                    return blam.isNull(handleValue)
+                    return blam2.isNull(handleValue)
                 end
             }
         end
         local handleValue = spawn_object(tagHandle.value, position.x, position.y, position.z)
         return {
             value = handleValue,
-            index = blam.getIndexById(handleValue),
+            index = blam2.getIndexFromHandle(handleValue),
             id = handleValue,
             isNull = function()
-                return blam.isNull(handleValue)
+                return blam2.isNull(handleValue)
             end
         }
+    end
+
+    function Engine.gameState.deleteObject(objectHandle)
+        if type(objectHandle) == "number" then
+            return destroy_object(objectHandle)
+        end
+        return destroy_object(objectHandle.value)
     end
 
     ---@param playerIndexOrHandle? EnginePlayerHandle|integer @The index or the handle of the player; If nil, the local player is returned
     ---@return MetaEnginePlayer? @The player
     function Engine.gameState.getPlayer(playerIndexOrHandle)
+        -- TODO Add struct for player from Balltze, use blam2 implementations
         local player = blam.player(get_player(playerIndexOrHandle))
         if player then
+            -- TODO Same as above, get object struct from Balltze and use blam2
+            ---@diagnostic disable-next-line: param-type-mismatch
             local object = blam.object(get_object(player.objectId))
             local position = {x = 0, y = 0, z = 0}
             if object then
@@ -132,17 +134,12 @@ else
                 position = position,
                 objectHandle = {
                     value = player.objectId,
-                    index = blam2.getIndexById(player.objectId),
+                    index = blam2.getIndexFromHandle(player.objectId),
                     isNull = blam2.isNull(player.objectId)
                 }
             }
         end
         return nil
-    end
-
-    function Engine.gameState.getObject(handle, type)
-        ---@diagnostic disable-next-line: param-type-mismatch
-        return blam2.gameState.getObject(handle, type)
     end
 
     local color = {info = 2, error = 4, warning = 6, debug = 3}
@@ -410,13 +407,13 @@ else
         ---register_callback / set_callback to run after the script has finished loading.
         function Balltze.event.registerSappCallbacks()
             register_callback(cb["EVENT_TICK"], "_BalltzeOnTick")
-            set_callback("map load", "_BalltzeOnMapLoad")
+            register_callback(cb["EVENT_GAME_START"], "_BalltzeOnMapLoad")
             register_callback(cb["EVENT_JOIN"], "_BalltzeOnPlayerJoin")
             register_callback(cb["EVENT_LEAVE"], "_BalltzeOnPlayerLeave")
             register_callback(cb["EVENT_DIE"], "_BalltzeOnPlayerDead")
             register_callback(cb["EVENT_OBJECT_SPAWN"], "_BalltzeOnObjectSpawn")
             register_callback(cb["EVENT_GAME_END"], "_BalltzeOnGameEnd")
-            set_callback("rcon message", "_BalltzeOnRconMessage")
+            register_callback(cb["EVENT_COMMAND"], "_BalltzeOnRconMessage")
         end
     end
 
