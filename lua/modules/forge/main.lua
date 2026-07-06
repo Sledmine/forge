@@ -1,7 +1,5 @@
 local script = require "script"
 local sleep = script.sleep
-local hsc = require "hsc"
-local blam = require "blam2"
 local engine = Engine
 local getPlayer = engine.gameState.getPlayer
 local getObject = engine.gameState.getObject
@@ -9,12 +7,15 @@ local objectType = engine.tag.objectType
 
 local constants = require "forge.constants"
 local core = require "forge.core"
+local forge = require "forge.forge"
 local bipeds = constants.bipeds
 
 local map = {}
 
+local isGameDedicated = engine.netgame.getServerType() == "dedicated"
+
 function map.main()
-    logger:info("Welcome to Forge!")
+    logger:info("Welcome to Forge Island!")
 end
 script.startup(map.main)
 
@@ -38,7 +39,7 @@ function map.forgeControl()
                     y = playerBiped.position.y,
                     z = playerBiped.position.z
                 }
-                if playerBiped.unitControlFlags.light then
+                if playerBiped.unitControlFlags.light and forge.mode == "edit" then
                     if playerBiped.tagHandle.value == bipeds.spartan.handle.value then
                         logger:debug("Player {} is pressing light", playerIndex)
                         core.swapBiped(playerIndex, bipeds.monitor.handle.value)
@@ -52,6 +53,8 @@ function map.forgeControl()
                                             previousPosition.z)
                         playerBiped.vitals.health = 1
                         playerBiped.vitals.shield = 1
+                        -- TODO Restore biped rotation as well
+                        forge.setMonitorMode("idle")
                     end
                 elseif playerBiped.unitControlFlags.crouch then
                     logger:debug("Player {} is pressing crouch", playerIndex)
@@ -64,6 +67,7 @@ function map.forgeControl()
                         end)
                         core.teleportPlayer(playerIndex, previousPosition.x, previousPosition.y,
                                             previousPosition.z)
+                        forge.setMonitorMode("hidden")
                     end
                 end
             end)

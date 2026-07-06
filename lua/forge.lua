@@ -2,19 +2,16 @@ package.preload["luna"] = nil
 package.loaded["luna"] = nil
 require "luna"
 require "balltzeCompat"
-local blam = require "blam"
+local blam = require "blam2"
 local script = require "script"
-local hsc = require "hsc"
 local balltze = Balltze
 local engine = Engine
-local concat = table.concat
-local tagClasses = blam.tagClasses
-local objectClasses = blam.objectClasses
 local performance
 inspect = require "inspect"
 
 assert(require "structures.tag.globals")
 assert(require "structures.object.biped")
+assert(require "structures.tag.weaponHudInterface")
 
 DebugMode = true
 DebugLuaMemory = false
