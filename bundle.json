@@ -6,6 +6,6 @@
         "lua/modules"
     ],
     "modules": [],
-    "main": "forge_island",
-    "output": "dist/forge_island.lua"
+    "main": "forge",
+    "output": "dist/forge.lua"
 }
