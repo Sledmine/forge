@@ -1,18 +1,19 @@
 local engine = Engine
-local constants = require "forge.constants"
 local core = require "forge.core"
-local getPlayer = engine.gameState.getPlayer
-local getObject = engine.gameState.getObject
-local objectType = engine.tag.objectType
+local script = require "script"
+local sleep = script.sleep
 local constants = require "forge.constants"
 local bipeds = constants.bipeds
+local getPlayer = engine.player.getPlayer
+local getObject = engine.object.getObject
 
 local forge = {
     ---@type "edit" | "normal"
-    mode = "normal"
+    mode = "edit"
 }
 
 local monitorCrosshairHudTag = constants.weaponHudInterfaces.monitorCrosshair
+local monitorCrosshairHudData = monitorCrosshairHudTag and monitorCrosshairHudTag:getData()
 local crosshairModes = {hidden = 0, idle = 1, selected = 2, holding = 3, bounds = 4}
 
 --- Pack channels into EngineColorARGBInt (0xAARRGGBB).
@@ -43,26 +44,27 @@ function forge.setMonitorMode(mode)
         return
     end
     assert(monitorCrosshairHudTag)
+    assert(monitorCrosshairHudData)
 
-    local crosshairs = monitorCrosshairHudTag.data.crosshairs
-    if not crosshairs or crosshairs.count < 1 then
+    local crosshairs = monitorCrosshairHudData.crosshairs
+    if not crosshairs or #crosshairs < 1 then
         return
     end
-    local crosshair = crosshairs.elements[1]
+    local crosshair = crosshairs[1]
     if not crosshair then
         return
     end
 
     local overlays = crosshair.crosshairOverlays
-    if not overlays or overlays.count < 1 then
+    if not overlays or #overlays < 1 then
         return
     end
-    local overlay = overlays.elements[1]
+    local overlay = overlays[1]
     if not overlay then
         return
     end
 
-    local defaultColor = overlay.defaultColor
+    local defaultColor = overlay.defaultColor.parameters.defaultColor
     local alpha = getAlphaChannel(defaultColor)
 
     if overlay.sequenceIndex == state then
@@ -70,11 +72,11 @@ function forge.setMonitorMode(mode)
     end
 
     if state == crosshairModes.bounds then
-        overlay.defaultColor = toArgbInt(alpha, 255, 0, 0)
+        overlay.defaultColor.parameters.defaultColor = toArgbInt(alpha, 255, 0, 0)
     elseif state == crosshairModes.selected or state == crosshairModes.holding then
-        overlay.defaultColor = toArgbInt(alpha, 0, 255, 0)
+        overlay.defaultColor.parameters.defaultColor = toArgbInt(alpha, 0, 255, 0)
     else
-        overlay.defaultColor = toArgbInt(alpha, 64, 169, 255)
+        overlay.defaultColor.parameters.defaultColor = toArgbInt(alpha, 64, 169, 255)
     end
 
     overlay.sequenceIndex = state
@@ -91,7 +93,7 @@ function forge.controls()
                 if not player then
                     return
                 end
-                local playerBiped = getObject(player.objectHandle.value, objectType.biped)
+                local playerBiped = getObject(player.unitHandle.value, "biped")
                 if not playerBiped then
                     return
                 end
@@ -102,9 +104,9 @@ function forge.controls()
                 }
                 if playerBiped.unitControlFlags.light and forge.mode == "edit" then
                     if playerBiped.tagHandle.value == bipeds.spartan.handle.value then
-                        logger:debug("Player {} is pressing light", playerIndex)
+                        Balltze.logger.debug("Player {} is pressing light", playerIndex)
                         core.swapBiped(playerIndex, bipeds.monitor.handle.value)
-                        engine.gameState.deleteObject(player.objectHandle)
+                        engine.object.deleteObject(player.unitHandle.value)
                         sleep(1)
                         sleep(function()
                             playerBiped = core.getPlayerObject(playerIndex)
@@ -112,16 +114,18 @@ function forge.controls()
                         end)
                         core.teleportPlayer(playerIndex, previousPosition.x, previousPosition.y,
                                             previousPosition.z)
+                        Balltze.logger.debug("Player {} swapped to monitor", playerIndex)
                         playerBiped.vitals.health = 1
                         playerBiped.vitals.shield = 1
                         -- TODO Restore biped rotation as well
                         forge.setMonitorMode("idle")
+                        Balltze.logger.debug("Player {} monitor mode set to idle", playerIndex)
                     end
                 elseif playerBiped.unitControlFlags.crouch then
-                    logger:debug("Player {} is pressing crouch", playerIndex)
+                    Balltze.logger.debug("Player {} is pressing crouch", playerIndex)
                     if playerBiped.tagHandle.value == bipeds.monitor.handle.value then
                         core.swapBiped(playerIndex, bipeds.spartan.handle.value)
-                        engine.gameState.deleteObject(player.objectHandle)
+                        engine.object.deleteObject(player.unitHandle.value)
                         sleep(1)
                         sleep(function()
                             return core.getPlayerObject(playerIndex) ~= nil

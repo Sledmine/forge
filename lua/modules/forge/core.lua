@@ -1,7 +1,6 @@
 local engine = Engine
-local getPlayer = engine.gameState.getPlayer
-local getObject = engine.gameState.getObject
-local objectType = engine.tag.objectType
+local getPlayer = engine.player.getPlayer
+local getObject = engine.object.getObject
 
 local core = {}
 
@@ -9,14 +8,14 @@ local constants = require "forge.constants"
 
 BipedReplacements = {}
 
-local isGameDedicated = engine.netgame.getServerType() == "dedicated"
+local isGameDedicated = engine.game.getGameConnectionType() == "networkClient"
 
 function core.getPlayerObject(playerIndex)
     local player = getPlayer(playerIndex)
     if not player then
         return nil
     end
-    local playerBiped = getObject(player.objectHandle.value, objectType.biped)
+    local playerBiped = getObject(player.unitHandle.value, "biped")
     if not playerBiped then
         return nil
     end
@@ -28,7 +27,7 @@ function core.teleportPlayer(playerIndex, x, y, z)
     if not player then
         return
     end
-    local playerBiped = getObject(player.objectHandle.value, objectType.biped)
+    local playerBiped = getObject(player.unitHandle.value, "biped")
     if not playerBiped then
         return
     end
@@ -39,7 +38,11 @@ end
 
 function core.swapBiped(playerIndex, tagHandleValue)
     if not isGameDedicated then
-        local multiplayerInfo = constants.globals.data.multiplayerInformation.elements[1]
+        local globalsTagData = constants.globals and constants.globals:getData()
+        if not globalsTagData then
+            return
+        end
+        local multiplayerInfo = globalsTagData.multiplayerInformation[1]
         multiplayerInfo.unit.tagHandle.value = tagHandleValue
     else
         BipedReplacements[playerIndex] = tagHandleValue

@@ -14,11 +14,11 @@ commands = {
         func = function(isEnabled)
             DebugMode = luna.bool(isEnabled)
             if DebugMode then
-                logger:info("Debug mode enabled.")
+                Balltze.logger.info("Debug mode enabled.")
             else
-                logger:info("Debug mode disabled.")
+                Balltze.logger.info("Debug mode disabled.")
             end
-            logger:muteDebug(not DebugMode)
+            Balltze.logger.muteDebug(not DebugMode)
         end
     }
 }

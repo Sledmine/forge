@@ -1,18 +1,16 @@
 local constants = {}
 local engine = Engine
-local findTags = engine.tag.findTags
-local tagClasses = engine.tag.classes
 
 constants.bipeds = {
-    monitor = findTags("monitor", tagClasses.biped)[1],
-    spartan = findTags("mjolnir", tagClasses.biped)[1]
+    monitor = engine.tag.filterTags("biped", "monitor")[1],
+    spartan = engine.tag.filterTags("biped", "mjolnir")[1]
 }
 
 constants.weaponHudInterfaces = {
-    monitorCrosshair = findTags("ui\\hud\\forge", tagClasses.weaponHudInterface)[1]
+    monitorCrosshair = engine.tag.filterTags("weapon_hud_interface", "ui\\hud\\forge")[1]
 }
 
---constants.scenario = findTags("", engine.tag.classes.scenario)[1]
-constants.globals = findTags("", tagClasses.globals)[1]
+--constants.scenario = engine.tag.filterTags("scenario", "")[1]
+constants.globals = engine.tag.filterTags("globals", "")[1]
 
 return constants

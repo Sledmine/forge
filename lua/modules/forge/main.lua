@@ -1,19 +1,18 @@
 local script = require "script"
 local sleep = script.sleep
 local engine = Engine
-local getPlayer = engine.gameState.getPlayer
-local getObject = engine.gameState.getObject
-local objectType = engine.tag.objectType
+local getPlayer = engine.player.getPlayer
+local getObject = engine.object.getObject
 
 local forge = require "forge.forge"
 
 
 local map = {}
 
-local isGameDedicated = engine.netgame.getServerType() == "dedicated"
+local isGameDedicated = engine.game.getGameConnectionType() == "networkClient"
 
 function map.main()
-    logger:info("Welcome to Forge Island!")
+    Balltze.logger.info("Welcome to Forge Island!")
 end
 script.startup(map.main)
 
