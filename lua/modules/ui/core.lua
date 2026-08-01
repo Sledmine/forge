@@ -5,9 +5,20 @@ local engine = Engine
 
 local core = {}
 
+---@param widgetDefinition TagHandle|integer
+---@param baseWidget? Widget
+---@return Widget?
+function core.findWidgetByDefinition(widgetDefinition, baseWidget)
+    local widgets = engine.uiWidget.findWidgets(widgetDefinition, baseWidget, true)
+    if widgets and widgets[1] then
+        return widgets[1]
+    end
+    return nil
+end
+
 function core.getRenderedUIWidgetTagHandle()
     -- TODO BALLTZE MIGRATE Ensure this works when the menu is not OPEN and does not crash
-    local rootWidget = engine.userInterface.getRootWidget()
+    local rootWidget = engine.uiWidget.getActiveWidget()
     if rootWidget then
         return rootWidget.definitionTagHandle.value
     end
@@ -17,7 +28,7 @@ end
 ---@return tag | nil
 function core.getCurrentUIWidgetTag()
     -- local widgetTagId = core.getRenderedUIWidgetTagId()
-    local widget = engine.userInterface.getRootWidget()
+    local widget = engine.uiWidget.getActiveWidget()
     if widget then
         local tag = engine.tag.getTag(widget.definitionTagHandle.value)
         assert(tag, "No tag found for widget")
@@ -70,13 +81,13 @@ end
 
 function core.getWidgetValues(widgetTagId)
     if core.getCurrentUIWidgetTag() then
-        return engine.userInterface.findWidget(widgetTagId)
+        return core.findWidgetByDefinition(widgetTagId)
     end
 end
 
 local function setWidgetValuesDOMSafe(widgetTagHandle, values)
     -- Verify there is a widget loaded in the DOM
-    local isWidgetPresent, widget = pcall(engine.userInterface.findWidget, widgetTagHandle)
+    local isWidgetPresent, widget = pcall(core.findWidgetByDefinition, widgetTagHandle)
     if isWidgetPresent and widget then
         for key, value in pairs(values) do
             if type(value) == "table" then
@@ -120,7 +131,7 @@ end
 -- TODO We do not need this, checkout replacements
 function core.getWidgetHandle(widgetTagId)
     if core.getCurrentUIWidgetTag() then
-        local sucess, widgetHandle = pcall(engine.userInterface.findWidgets, widgetTagId)
+        local sucess, widgetHandle = pcall(core.findWidgetByDefinition, widgetTagId)
         if sucess and widgetHandle then
             return widgetHandle
         end
@@ -128,9 +139,9 @@ function core.getWidgetHandle(widgetTagId)
 end
 
 function core.replaceWidgetInDom(widgetTagHandleValue, newWidgetTagHandleValue)
-    local replaced, widget = pcall(engine.userInterface.findWidget, widgetTagHandleValue)
+    local replaced, widget = pcall(core.findWidgetByDefinition, widgetTagHandleValue)
     if replaced and widget then
-        engine.userInterface.replaceWidget(widget, newWidgetTagHandleValue)
+        engine.uiWidget.replaceWidget(widget, newWidgetTagHandleValue)
     end
 end
 
@@ -140,18 +151,6 @@ function core.getScreenResolution()
     local width = read_word(0x637CF2)
     local height = read_word(0x637CF0)
     return width, height
-end
-
-local currentWidgetIdAddress = 0x6B401C
-function core.getRenderedUIWidgetTagId()
-    local isPlayerOnMenu = read_byte(blam.addressList.gameOnMenus) == 0
-    if isPlayerOnMenu then
-        local widgetIdAddress = read_dword(currentWidgetIdAddress)
-        if widgetIdAddress and widgetIdAddress ~= 0 then
-            local widgetId = read_dword(widgetIdAddress)
-            return widgetId
-        end
-    end
 end
 
 local mouseInputAddress = 0x64C73C
@@ -179,13 +178,13 @@ end
 ---Copy text to user clipboard
 ---@param text string
 function core.copyToClipboard(text)
-    return balltze.misc.setClipboard(text)
+    return balltze.setClipboard(text)
 end
 
 ---Get text from user clipboard
 ---@return string | nil
 function core.getClipboard()
-    return balltze.misc.getClipboard()
+    return balltze.getClipboard()
 end
 
 function core.getStringFromWidget(widgetTagId)

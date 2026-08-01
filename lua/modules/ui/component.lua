@@ -6,7 +6,9 @@ local uiWidgetDefinition = blam.uiWidgetDefinition
 local unicodeStringList = blam.unicodeStringList
 local isNull = blam.isNull
 local core = require "ui.core"
-local ether = require "ui.react"
+--local ether = require "ui.ether"
+local logger = balltze.logger
+local findWidgetByDefinition = core.findWidgetByDefinition
 
 local isBlockingInputEnabled = false
 
@@ -66,87 +68,38 @@ function component.callbacks()
     local editableWidgetTagEntry
     lastFocusedWidgetTagEntry = nil
 
-    balltze.event.uiWidgetAccept.subscribe(function(event)
-        if event.time == "before" then
-            if isBlockingInputEnabled then
-                event:cancel()
-                return
+    ---@param tagHandleValue integer
+    ---@param cancel? fun()
+    local function onWidgetFocus(tagHandleValue, cancel)
+        if isBlockingInputEnabled then
+            if cancel then
+                cancel()
             end
-            -- logger:debug("Accepting widget: {}", event.context.widget.definitionTagHandle.value)
-            local isCanceled = false
-            local instance = component.widgets[event.context.widget.definitionTagHandle.value]
-            if instance then
-                if instance.events.onClick then
-                    isCanceled = instance.events.onClick() == false
-                end
-            end
-            if isCanceled then
-                event:cancel()
-            end
+            return
         end
-    end)
 
-    ---@type BalltzeUIWidgetFocusEventCallback
-    local function onWidgetFocus(event)
-        if event.time == "before" then
-            if isBlockingInputEnabled then
-                event:cancel()
-                return
-            end
-            local tagHandleValue = event.context.widget.definitionTagHandle.value
-            local focusedWidgetTag = engine.tag.getTag(tagHandleValue,
-                                                       engine.tag.classes.uiWidgetDefinition)
-            assert(focusedWidgetTag, "Invalid widget tag")
-            -- logger:debug("Focusing widget: {}", focusedWidgetTag.path)
+        local focusedWidgetTag = engine.tag.getTag(tagHandleValue,
+                                                   engine.tag.classes.uiWidgetDefinition)
+        assert(focusedWidgetTag, "Invalid widget tag")
 
-            local component = component.widgets[tagHandleValue]
-            if component and component.events.onFocus and component:isVisible() then
-                -- logger:debug("Focusing component: {}", focusedWidgetTag.path)
-                component.events.onFocus()
-            end
+        local currentComponent = component.widgets[tagHandleValue]
+        if currentComponent and currentComponent.events.onFocus and currentComponent:isVisible() then
+            currentComponent.events.onFocus()
+        end
 
-            lastFocusedWidgetTagEntry = focusedWidgetTag
-            ---@diagnostic disable-next-line: undefined-field
-            if focusedWidgetTag.data.flags1:editable() or focusedWidgetTag.data.flags1:password() then
-                editableWidgetTagData = focusedWidgetTag.data
-                editableWidgetTagEntry = focusedWidgetTag
-            else
-                editableWidgetTagData = nil
-                editableWidgetTagEntry = nil
-            end
+        lastFocusedWidgetTagEntry = focusedWidgetTag
+        ---@diagnostic disable-next-line: undefined-field
+        if focusedWidgetTag.data.flags1:editable() or focusedWidgetTag.data.flags1:password() then
+            editableWidgetTagData = focusedWidgetTag.data
+            editableWidgetTagEntry = focusedWidgetTag
+        else
+            editableWidgetTagData = nil
+            editableWidgetTagEntry = nil
         end
     end
-    balltze.event.uiWidgetFocus.subscribe(onWidgetFocus)
-
-    balltze.event.uiWidgetMouseButtonPress.subscribe(function(event)
-        if event.time == "before" then
-            if isBlockingInputEnabled then
-                event:cancel()
-                return
-            end
-            local button = event.context.button:label()
-            local widgetTag = engine.userInterface.findWidget(event.context.widget
-                                                                  .definitionTagHandle.value)
-            assert(widgetTag, "Invalid widget tag")
-            if editableWidgetTagData and editableWidgetTagEntry then
-                if widgetTag.definitionTagHandle.value == editableWidgetTagEntry.handle.value then
-                    if button == "right" then
-                        local inputString = core.getStringFromWidget(
-                                                editableWidgetTagEntry.handle.value)
-                        local text = inputString .. core.getClipboard()
-                        core.setStringToWidget(text, editableWidgetTagEntry.handle.value)
-                        local component = component.widgets[editableWidgetTagEntry.handle.value] --[[@as uiComponentInput]]
-                        if component and component.events.onInputText then
-                            component.events.onInputText(text)
-                        end
-                    end
-                end
-            end
-        end
-    end)
 
     local function onMouseScroll(widgetTagHandle)
-        local widget = engine.userInterface.findWidget(widgetTagHandle)
+        local widget = findWidgetByDefinition(widgetTagHandle)
         if not widget then
             return
         end
@@ -169,282 +122,260 @@ function component.callbacks()
             end
         end
     end
-    balltze.event.frame.subscribe(function(event)
-        if event.time == "before" then
-            local widget = engine.userInterface.getRootWidget()
-            if widget then
-                if lastFocusedWidgetTagEntry then
-                    local mouse = core.getMouseState()
-                    if mouse.scroll ~= 0 then
-                        onMouseScroll(lastFocusedWidgetTagEntry.handle.value)
+
+    local prevTabEventTypes = {
+        dpadLeft = true,
+        leftAnalogStickLeft = true,
+        rightAnalogStickLeft = true
+    }
+    local nextTabEventTypes = {
+        dpadRight = true,
+        dpadUp = true,
+        dpadDown = true,
+        leftAnalogStickRight = true,
+        leftAnalogStickUp = true,
+        leftAnalogStickDown = true,
+        rightAnalogStickRight = true
+    }
+
+    local function onListTab(eventType, widgetEvent)
+        local widgetListHandle = widgetEvent.definitionTagHandle.value
+        local focusedChild = widgetEvent.focusedChild
+        if not focusedChild then
+            widgetEvent:cancel()
+            return
+        end
+
+        local previousWidgetHandle = focusedChild.definitionTagHandle.value
+        local widgetList = blam.uiWidgetDefinition(widgetListHandle)
+        assert(widgetList, "Invalid widget list tag id")
+
+        local currentComponent = component.widgets[widgetListHandle] --[[@as uiComponentSpinner]]
+        if currentComponent and currentComponent.type == "spinner" and currentComponent.events.onScroll then
+            currentComponent:scroll(prevTabEventTypes[eventType] and -1 or 1)
+            return
+        end
+
+        local function findNextWidget()
+            for childIndex, child in pairs(widgetList.childWidgets) do
+                if child.widgetTag == previousWidgetHandle then
+                    local nextChildIndex
+                    if prevTabEventTypes[eventType] then
+                        if childIndex - 1 < 1 then
+                            nextChildIndex = widgetList.childWidgetsCount
+                        else
+                            nextChildIndex = childIndex - 1
+                        end
+                    elseif nextTabEventTypes[eventType] then
+                        if childIndex + 1 > widgetList.childWidgetsCount then
+                            nextChildIndex = 1
+                        else
+                            nextChildIndex = childIndex + 1
+                        end
                     end
-                    if mouse.rightClick > 0 then
-                        -- TODO BALLTZE MIGRATE
+
+                    local widgetTagId = (widgetList.childWidgets[nextChildIndex] or {}).widgetTag
+                    if widgetTagId and not isNull(widgetTagId) then
+                        local widgetTag = engine.tag.getTag(widgetTagId,
+                                                            engine.tag.classes.uiWidgetDefinition)
+                        assert(widgetTag, "Invalid widget tag")
+                        local widgetValues = core.getWidgetValues(widgetTagId)
+                        if widgetValues and widgetValues.visible then
+                            return widgetTag
+                        end
                     end
                 end
             end
+        end
 
-            -- Draggable prototype code
-            if false then
-                if core.getMouseState().leftClick > 0 then
-                    local lastFocusedWidget = component.getLastFocusedWidgetHandle()
-                    if lastFocusedWidget then
-                        local widget = blam.uiWidgetDefinition(lastFocusedWidget)
-                        assert(widget, "Error, no focused widget found")
-                        logger:debug(widget.width .. " " .. widget.height)
-                        local x, y = core.getWidgetCursorPosition()
-                        logger:debug("X: " .. x .. " Y: " .. y)
-                        local props = core.getWidgetValues(lastFocusedWidget)
-                        -- console_out("Focused widget: " .. focusedWidgetTagId .. " X: " .. props.left_bound .. " Y: " .. props.top_bound)
-                        core.setWidgetValues(lastFocusedWidget, {
-                            position = {x = x - (widget.width / 2), y = y - (widget.height / 2)}
-                            -- position = {x = x, y = y}
-                        })
-                    end
+        local widgetTag = findNextWidget()
+        if not widgetTag then
+            widgetEvent:cancel()
+            return
+        end
+
+        onWidgetFocus(widgetTag.handle.value)
+    end
+
+    balltze.addEventListener("frame", function()
+        local widget = engine.uiWidget.getActiveWidget()
+        if widget and lastFocusedWidgetTagEntry then
+            local mouse = core.getMouseState()
+            if mouse.scroll ~= 0 then
+                onMouseScroll(lastFocusedWidgetTagEntry.handle.value)
+            end
+            if mouse.rightClick > 0 then
+                -- TODO BALLTZE MIGRATE
+            end
+        end
+
+        -- Draggable prototype code
+        if false then
+            if core.getMouseState().leftClick > 0 then
+                local lastFocusedWidget = component.getLastFocusedWidgetHandle()
+                if lastFocusedWidget then
+                    local widgetDef = blam.uiWidgetDefinition(lastFocusedWidget)
+                    assert(widgetDef, "Error, no focused widget found")
+                    logger:debug(widgetDef.width .. " " .. widgetDef.height)
+                    local x, y = core.getWidgetCursorPosition()
+                    logger:debug("X: " .. x .. " Y: " .. y)
+                    core.setWidgetValues(lastFocusedWidget, {
+                        position = {x = x - (widgetDef.width / 2), y = y - (widgetDef.height / 2)}
+                    })
                 end
             end
         end
     end)
 
-    balltze.event.uiWidgetCreate.subscribe(function(event)
-        if event.time == "after" then
-            local tagHandle = event.context.definitionTagHandle.value
-            local widget = engine.userInterface.findWidget(tagHandle)
-            if not widget then
-                local widgetTag = engine.tag
-                                      .getTag(tagHandle, engine.tag.classes.uiWidgetDefinition)
-                assert(widgetTag, "Invalid widget tag")
-                -- logger:debug("Creating widget: {}", widgetTag.path)
-                local componentInstance = component.widgets[tagHandle]
-                -- TODO Add a new event for this called onCreate
-                if componentInstance and componentInstance.events.onOpen then
-                    componentInstance.events.onOpen()
+    balltze.addEventListener("widget_event_dispatch", function(event)
+        local widgetEvent = event:getWidget()
+        local eventHandler = event:getEventHandler()
+        if not widgetEvent or not eventHandler then
+            return
+        end
+
+        local eventType = eventHandler.eventType
+        local tagHandle = widgetEvent.definitionTagHandle.value
+
+        if eventType == "created" then
+            local widgetTag = engine.tag.getTag(tagHandle, engine.tag.classes.uiWidgetDefinition)
+            assert(widgetTag, "Invalid widget tag")
+            local widgetTagData = widgetTag.data
+
+            -- Keep legacy aspect-ratio behavior for root widgets.
+            local rootWidget = core.getRenderedUIWidgetTagHandle()
+            local isRootWidget = rootWidget and rootWidget == tagHandle
+            local isWidgetWidescreen = widgetTagData.bounds.right > 640
+            if isRootWidget then
+                if isWidgetWidescreen then
+                    balltze.features.setUIAspectRatio(16, 9)
+                else
+                    balltze.features.setUIAspectRatio(4, 3)
                 end
             end
-            if widget then
-                local widgetTag = engine.tag
-                                      .getTag(tagHandle, engine.tag.classes.uiWidgetDefinition)
-                assert(widgetTag, "Invalid widget tag")
-                local widgetTagData = widgetTag.data
-                local componentInstance = component.widgets[tagHandle]
+
+            local renderedWidget = findWidgetByDefinition(tagHandle)
+            local componentInstance = component.widgets[tagHandle]
+            if renderedWidget then
                 if componentInstance and componentInstance.events.onOpen then
                     componentInstance.events.onOpen(previousWidgetTag)
-                end
-                if previousWidgetTag then
-                    local previousComponentInstance =
-                        component.widgets[previousWidgetTag.handle.value]
-                    if previousComponentInstance and previousComponentInstance.events.onClose then
-                        -- previousComponentInstance.events.onClose()
-                    end
                 end
                 if previousWidgetTag ~= widgetTag then
                     previousWidgetTag = widgetTag
                 end
 
-                local widgetCount = widgetTagData.childWidgets.count
-                if widgetTagData and widgetCount > 0 then
-                    local optionWidget = widgetTagData.childWidgets.elements[widgetCount]
-                    local optionsWidgetTag = engine.tag.getTag(
-                                                 optionWidget.widgetTag.tagHandle.value,
-                                                 engine.tag.classes.uiWidgetDefinition)
+                local widgetCount = #widgetTagData.childWidgets
+                if widgetCount > 0 then
+                    local optionsWidgetRef = widgetTagData.childWidgets[widgetCount]
+                    local optionsWidgetTag = engine.tag.getTag(optionsWidgetRef.widgetTag.tagHandle.value,
+                                                               engine.tag.classes.uiWidgetDefinition)
                     assert(optionsWidgetTag, "Invalid options widget tag")
                     local optionsWidgetTagData = optionsWidgetTag.data
-                    -- Auto focus on the first editable widget
                     if optionsWidgetTagData and optionsWidgetTagData.childWidgets[1] then
-                        onWidgetFocus(optionsWidget.childWidgets[1].widgetTag)
+                        onWidgetFocus(optionsWidgetTagData.childWidgets[1].widgetTag.tagHandle.value)
+                    end
+                end
+            else
+                if componentInstance and componentInstance.events.onOpen then
+                    componentInstance.events.onOpen()
+                end
+            end
+            return
+        end
+
+        if isBlockingInputEnabled then
+            event:cancel()
+            return
+        end
+
+        if eventType == "getFocus" then
+            onWidgetFocus(tagHandle, function()
+                event:cancel()
+            end)
+            return
+        end
+
+        if eventType == "aButton" or eventType == "leftMouse" then
+            local isCanceled = false
+            local currentComponent = component.widgets[tagHandle]
+            if currentComponent and currentComponent.events.onClick then
+                isCanceled = currentComponent.events.onClick() == false
+            end
+            if isCanceled then
+                event:cancel()
+            end
+            return
+        end
+
+        if eventType == "rightMouse" then
+            local widgetTag = findWidgetByDefinition(tagHandle)
+            if not widgetTag then
+                return
+            end
+            if editableWidgetTagData and editableWidgetTagEntry then
+                if widgetTag.definitionTagHandle.value == editableWidgetTagEntry.handle.value then
+                    local inputString = core.getStringFromWidget(editableWidgetTagEntry.handle.value)
+                    local text = inputString .. core.getClipboard()
+                    core.setStringToWidget(text, editableWidgetTagEntry.handle.value)
+                    local currentComponent = component.widgets[editableWidgetTagEntry.handle.value] --[[@as uiComponentInput]]
+                    if currentComponent and currentComponent.events.onInputText then
+                        currentComponent.events.onInputText(text)
                     end
                 end
             end
-        elseif event.time == "before" then
-            local tagHandle = event.context.definitionTagHandle.value
-            local widgetTag = engine.tag.getTag(tagHandle, engine.tag.classes.uiWidgetDefinition)
-            assert(widgetTag, "Invalid widget tag")
-            local widgetTagData = widgetTag.data
-            -- Dynamically set aspect ratio based on widget bounds
-            local rootWidget = core.getRenderedUIWidgetTagHandle()
-            local isRootWidget = rootWidget and rootWidget == tagHandle
-            local isWidgetWidescreen = widgetTagData.bounds.right > 640
-            if isRootWidget then
-                logger:debug("isRootWidget: {}, isWidgetWidescreen: {}", tostring(isRootWidget),
-                             tostring(isWidgetWidescreen))
-                logger:debug("Opening tag: {}", widgetTag.path)
-            end
-            if isRootWidget then
-                if isWidgetWidescreen then
-                    -- logger:debug("Setting aspect ratio to 16:9")
-                    balltze.features.setUIAspectRatio(16, 9)
-                else
-                    -- logger:debug("Setting aspect ratio to 4:3")
-                    balltze.features.setUIAspectRatio(4, 3)
-                end
-            end
+            return
         end
-    end)
 
-    -- We might be able to use this in the future to play custom sounds or something
-    -- balltze.event.uiWidgetSound.subscribe(function(event)
-    --    if event.time == "before" then
-    --        local sound = event.context.sound
-    --    end
-    -- end)
-
-    balltze.event.uiWidgetBack.subscribe(function(event)
-        if event.time == "before" then
-            if isBlockingInputEnabled then
-                event:cancel()
-                return
-            end
-            -- logger:debug("Closing tag: {}", event.context.widget.definitionTagHandle.value)
-            local widgetTagHandleValue = event.context.widget.definitionTagHandle.value
-            local component = component.widgets[widgetTagHandleValue]
-            if component and component.events.onClose then
-                if component.events.onClose() == false then
+        if eventType == "backButton" then
+            local currentComponent = component.widgets[tagHandle]
+            if currentComponent and currentComponent.events.onClose then
+                if currentComponent.events.onClose() == false then
                     event:cancel()
                 end
             end
             editableWidgetTagData = nil
+            return
+        end
+
+        if prevTabEventTypes[eventType] or nextTabEventTypes[eventType] then
+            onListTab(eventType, widgetEvent)
         end
     end)
 
-    balltze.event.uiWidgetListTab.subscribe(function(event)
-        if event.time == "before" then
-            if isBlockingInputEnabled then
-                event:cancel()
-                return
-            end
-            local pressedKey = event.context.tab
-            local listWidgetTagHandle = event.context.widgetList.definitionTagHandle.value
-            local listWidgetTag = engine.tag.getTag(listWidgetTagHandle,
-                                                    engine.tag.classes.uiWidgetDefinition)
-            assert(listWidgetTag, "Invalid widget tag")
-            -- logger:debug("List widget: {}", listWidgetTag.path)
-            local previousWidgetHandle = event.context.widgetList.focusedChild.definitionTagHandle
-                                             .value
-            local previousFocusedWidgetTag = engine.tag.getTag(previousWidgetHandle, engine.tag
-                                                                   .classes.uiWidgetDefinition)
-            assert(previousFocusedWidgetTag, "Invalid previous focused widget tag")
-            -- logger:debug("Previous widget: {}", previousFocusedWidgetTag.path)
-            -- if previousFocusedWidgetTag.path:endswith("wrapper") then
-            --    local widgetTagHandle = previousFocusedWidgetTag.data.childWidgets.elements[1]
-            --                                .widgetTag.tagHandle.value
-            --    local widgetTag = engine.tag.getTag(widgetTagHandle,
-            --                                        engine.tag.classes.uiWidgetDefinition)
-            --    assert(widgetTag, "Invalid wrapped widget tag")
-            --
-            --    local childListWidgetHandle = widgetTag.data.childWidgets.elements[1].widgetTag
-            --                                      .tagHandle.value
-            --    local childListWidgetTag = engine.tag.getTag(childListWidgetHandle,
-            --                                                 engine.tag.classes.uiWidgetDefinition)
-            --    local widgetHandle = Engine.userInterface.findWidget(childListWidgetTag.handle.value)
-            --    assert(widgetHandle, "Invalid wrapped widget handle")
-            --    logger:debug("Focused wrapped widget: {}", childListWidgetTag.path)
-            --    Engine.userInterface.focusWidget(widgetHandle)
-            --    event:cancel()
-            --    return
-            -- end
-            local widgetList = blam.uiWidgetDefinition(listWidgetTagHandle)
-            assert(widgetList, "Invalid widget list tag id")
-            -- Handle component spinner scrolling
-            -- logger:debug("Pressed key: {}", tostring(pressedKey))
-            if pressedKey == Balltze.event.uiWidgetListTabTypes.tabThruChildrenNextHorizontal or
-                pressedKey == Balltze.event.uiWidgetListTabTypes.tabThruChildrenPrev then
-                local component = component.widgets[listWidgetTagHandle] --[[@as uiComponentSpinner]]
-                if component and component.type == "spinner" and component.events.onScroll then
-                    component:scroll(pressedKey ==
-                                         Balltze.event.uiWidgetListTabTypes.tabThruChildrenPrev and
-                                         -1 or 1)
-                    return
-                end
-            end
-
-            local function findNextWidget()
-                for childIndex, child in pairs(widgetList.childWidgets) do
-                    if child.widgetTag == previousWidgetHandle then
-                        local nextChildIndex
-                        if pressedKey == Balltze.event.uiWidgetListTabTypes.tabThruChildrenPrev then
-                            if childIndex - 1 < 1 then
-                                nextChildIndex = widgetList.childWidgetsCount
-                            else
-                                nextChildIndex = childIndex - 1
-                            end
-                        elseif Balltze.event.uiWidgetListTabTypes.tabThruChildrenNextHorizontal or
-                            Balltze.event.uiWidgetListTabTypes.tabThruChildrenNextVertical then
-                            if childIndex + 1 > widgetList.childWidgetsCount then
-                                nextChildIndex = 1
-                            else
-                                nextChildIndex = childIndex + 1
-                            end
-                        end
-                        local widgetTagId =
-                            (widgetList.childWidgets[nextChildIndex] or {}).widgetTag
-                        if widgetTagId and not isNull(widgetTagId) then
-                            local widgetTag = engine.tag.getTag(widgetTagId, engine.tag.classes
-                                                                    .uiWidgetDefinition)
-                            assert(widgetTag, "Invalid widget tag")
-                            local widgetValues = core.getWidgetValues(widgetTagId)
-                            -- Focus should not happen if widget is not visible
-                            if widgetValues and widgetValues.visible then
-                                return widgetTag
-                            end
-                        end
-                    end
-                end
-            end
-            local widgetTag = findNextWidget()
-            if not widgetTag then
-                -- logger:debug("Widget is not visible, skipping focus")
-                event:cancel()
-                return
-            end
-            -- logger:debug("Focusing widget from tab: {}", widgetTag.path)
-            onWidgetFocus({
-                context = {widget = {definitionTagHandle = {value = widgetTag.handle.value}}},
-                time = "before"
-            })
+    balltze.addEventListener("player_input", function(event)
+        if console_is_open() then
+            return
         end
-    end)
+        if not (editableWidgetTagData and editableWidgetTagEntry) then
+            return
+        end
+        if event:getDevice() ~= "keyboard" then
+            return
+        end
 
-    balltze.event.keyboardInput.subscribe(function(event)
-        if event.time == "before" and not console_is_open() then
-            local modifiers = event.context.key.modifier
-            local char = event.context.key.character
-            local keycode = event.context.key.keycode
-            if editableWidgetTagData and editableWidgetTagEntry then
-                -- engine.core.consolePrint("Editable widget tag found")
-                -- engine.core.consolePrint("Char: " .. char)
-                -- engine.core.consolePrint("Keycode: " .. keycode)
-                -- Get pressed key from the keyboard
-                local pressedKey
-                if char ~= -1 then
-                    pressedKey = char
-                elseif keycode then
-                    pressedKey = core.translateKeycode(keycode)
-                end
-                -- If we pressed a key, update our editable widget
-                if pressedKey then
-                    -- engine.core.consolePrint("Pressed key: " .. pressedKey)
-                    local inputString =
-                        core.getStringFromWidget(editableWidgetTagEntry.handle.value)
-                    -- engine.core.consolePrint("Input string: " .. inputString)
-                    local text = core.mapKeyToText(pressedKey, inputString)
-                    if text then
-                        -- TODO Use widget text flags from widget tag instead (add support for that in lua-blam)
-                        -- if editableWidgetTagData.name:find "password" then
-                        local component = component.widgets[editableWidgetTagEntry.handle.value]
-                        if editableWidgetTagData.name:find "password" then
-                            core.setStringToWidget(text, editableWidgetTagEntry.handle.value, "*")
-                        else
-                            if component and not component.allowEmptyChars then
-                                text = text:trim()
-                            end
-                            core.setStringToWidget(text, editableWidgetTagEntry.handle.value)
-                        end
-                        if component and component.events.onInputText then
-                            component.events.onInputText(text)
-                        end
-                    end
-                end
+        local keycode = event:getKeyCode()
+        local pressedKey = core.translateKeycode(keycode) or keycode
+        if not pressedKey then
+            return
+        end
+
+        local inputString = core.getStringFromWidget(editableWidgetTagEntry.handle.value)
+        local text = core.mapKeyToText(pressedKey, inputString)
+        if not text then
+            return
+        end
+
+        local currentComponent = component.widgets[editableWidgetTagEntry.handle.value]
+        if editableWidgetTagData.name:find "password" then
+            core.setStringToWidget(text, editableWidgetTagEntry.handle.value, "*")
+        else
+            if currentComponent and not currentComponent.allowEmptyChars then
+                text = text:trim()
             end
+            core.setStringToWidget(text, editableWidgetTagEntry.handle.value)
+        end
+        if currentComponent and currentComponent.events.onInputText then
+            currentComponent.events.onInputText(text)
         end
     end)
 end
@@ -653,7 +584,10 @@ end
 function component.replace(self, newWidgetTagId)
     core.replaceWidgetInDom(self.tagId, newWidgetTagId)
     core.setWidgetValues(newWidgetTagId, {neverReceiveEvents = false, visible = true}, false)
-    -- engine.userInterface.focusWidget(engine.userInterface.findWidget(newWidgetTagId))
+    -- local widget = findWidgetByDefinition(newWidgetTagId)
+    -- if widget then
+    --     engine.uiWidget.focusWidget(widget)
+    -- end
 end
 
 -- TODO Discuss with Mango so we can have this class also available in Balltze API
@@ -727,6 +661,11 @@ end
 ---@param blockInput boolean
 function component.blockInput(blockInput)
     isBlockingInputEnabled = blockInput == true
+end
+
+---@param self uiComponent
+function component.launch(self)
+    engine.uiWidget.launchWidget(self.tagId)
 end
 
 return component
