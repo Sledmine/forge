@@ -117,6 +117,7 @@ function Balltze.loadSettings() end
 ---@overload fun(eventName: "map_load", callbackFunction: fun(event: MapLoadEvent), priority?: EventListenerPriority): EventListener
 ---@overload fun(eventName: "map_loaded", callbackFunction: fun(event: MapLoadedEvent), priority?: EventListenerPriority): EventListener
 ---@overload fun(eventName: "player_input", callbackFunction: fun(event: PlayerInputEvent), priority?: EventListenerPriority): EventListener
+---@overload fun(eventName: "widget_loaded", callbackFunction: fun(event: WidgetLoadedEvent), priority?: EventListenerPriority): EventListener
 ---@overload fun(eventName: "widget_event_dispatch", callbackFunction: fun(event: WidgetEventDispatchEvent), priority?: EventListenerPriority): EventListener
 function Balltze.addEventListener(eventName, callbackFunction, priority) end
 

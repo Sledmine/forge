@@ -169,6 +169,13 @@ function PlayerInputEvent:isMapped() end
 function PlayerInputEvent:cancel() end
 
 
+---@class WidgetLoadedEvent
+local WidgetLoadedEvent = {}
+
+---@return Widget
+function WidgetLoadedEvent:getWidget() end
+
+
 ---@class WidgetEventDispatchEvent
 local WidgetEventDispatchEvent = {}
 
