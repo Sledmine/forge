@@ -283,6 +283,9 @@ function component.callbacks()
 
         local eventType = eventHandler.eventType
         local tagHandle = widgetEvent.definitionTagHandle.value
+        local tagEntry = getTagEntry(tagHandle)
+        assert(tagEntry, "Invalid widget tag")
+        --logger.debug("Widget event \"" .. eventType .. "\" dispatched for: \"" .. tagEntry.path .. "\"")
 
         if eventType == "created" then
             local widgetTagEntry = getTagEntry(tagHandle)
@@ -296,9 +299,9 @@ function component.callbacks()
             local isWidgetWidescreen = widgetTagData.bounds.right > 640
             if isRootWidget then
                 if isWidgetWidescreen then
-                    balltze.features.setUIAspectRatio(16, 9)
+                    --balltze.features.setUIAspectRatio(16, 9)
                 else
-                    balltze.features.setUIAspectRatio(4, 3)
+                    --balltze.features.setUIAspectRatio(4, 3)
                 end
             end
 
