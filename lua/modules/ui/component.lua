@@ -84,7 +84,7 @@ local component = {
 ---@class uiComponentEvents
 ---@field onClick? fun(value?: string | boolean | number): boolean
 ---@field onFocus? function
----@field onOpen? fun(previousWidgetTag?: MetaEngineTag)
+---@field onOpen? fun(previousWidgetTag?: TagEntry)
 ---@field onClose? fun():boolean
 ---@field animate? function
 
@@ -274,6 +274,67 @@ function component.callbacks()
         end
     end)
 
+    balltze.addEventListener("widget_loaded", function(event)
+        local widgetEvent = event:getWidget()
+        if not widgetEvent then
+            return
+        end
+
+        local tagHandle = widgetEvent.definitionTagHandle.value
+        local widgetTagEntry = getTagEntry(tagHandle)
+        assert(widgetTagEntry, "Invalid widget tag")
+        
+        local widgetTagData = getWidgetDefinitionData(tagHandle)
+        assert(widgetTagData, "Invalid widget tag data")
+
+        -- Keep legacy aspect-ratio behavior for root widgets.
+        local rootWidget = core.getRenderedUIWidgetTagHandle()
+        local isRootWidget = rootWidget and rootWidget == tagHandle
+        local isWidgetWidescreen = widgetTagData.bounds.right > 640
+        if isRootWidget then
+            if isWidgetWidescreen then
+                -- balltze.features.setUIAspectRatio(16, 9)
+            else
+                -- balltze.features.setUIAspectRatio(4, 3)
+            end
+        end
+
+        local renderedWidget = findWidgetByDefinition(tagHandle)
+        local componentInstance = component.widgets[tagHandle]
+        if renderedWidget then
+            if componentInstance and componentInstance.events.onOpen then
+                componentInstance.events.onOpen(previousWidgetTag)
+            end
+            if previousWidgetTag ~= widgetTagEntry then
+                previousWidgetTag = widgetTagEntry
+            end
+
+            local widgetCount = #widgetTagData.childWidgets
+            if widgetCount > 0 then
+                local optionsWidgetRef = widgetTagData.childWidgets[widgetCount]
+                if hasTagReference(optionsWidgetRef.widgetTag) then
+                    local optionsWidgetTagHandle = getTagHandleValue(optionsWidgetRef.widgetTag)
+                    assert(optionsWidgetTagHandle, "Invalid options widget handle")
+                    local optionsWidgetTagData = getWidgetDefinitionData(optionsWidgetTagHandle)
+                    assert(optionsWidgetTagData, "Invalid options widget tag")
+                    if optionsWidgetTagData and optionsWidgetTagData.childWidgets[1] and
+                        hasTagReference(optionsWidgetTagData.childWidgets[1].widgetTag) then
+                        local firstChildWidgetTagHandle = getTagHandleValue(
+                                                              optionsWidgetTagData.childWidgets[1]
+                                                                  .widgetTag)
+                        assert(firstChildWidgetTagHandle, "Invalid child widget handle")
+                        onWidgetFocus(firstChildWidgetTagHandle)
+                    end
+                end
+            end
+        else
+            if componentInstance and componentInstance.events.onOpen then
+                componentInstance.events.onOpen()
+            end
+        end
+        return
+    end)
+
     balltze.addEventListener("widget_event_dispatch", function(event)
         local widgetEvent = event:getWidget()
         local eventHandler = event:getEventHandler()
@@ -285,60 +346,10 @@ function component.callbacks()
         local tagHandle = widgetEvent.definitionTagHandle.value
         local tagEntry = getTagEntry(tagHandle)
         assert(tagEntry, "Invalid widget tag")
-        --logger.debug("Widget event \"" .. eventType .. "\" dispatched for: \"" .. tagEntry.path .. "\"")
+        -- logger.debug("Widget event \"" .. eventType .. "\" dispatched for: \"" .. tagEntry.path .. "\"")
 
         if eventType == "created" then
-            local widgetTagEntry = getTagEntry(tagHandle)
-            assert(widgetTagEntry, "Invalid widget tag")
-            local widgetTagData = getWidgetDefinitionData(tagHandle)
-            assert(widgetTagData, "Invalid widget tag data")
 
-            -- Keep legacy aspect-ratio behavior for root widgets.
-            local rootWidget = core.getRenderedUIWidgetTagHandle()
-            local isRootWidget = rootWidget and rootWidget == tagHandle
-            local isWidgetWidescreen = widgetTagData.bounds.right > 640
-            if isRootWidget then
-                if isWidgetWidescreen then
-                    --balltze.features.setUIAspectRatio(16, 9)
-                else
-                    --balltze.features.setUIAspectRatio(4, 3)
-                end
-            end
-
-            local renderedWidget = findWidgetByDefinition(tagHandle)
-            local componentInstance = component.widgets[tagHandle]
-            if renderedWidget then
-                if componentInstance and componentInstance.events.onOpen then
-                    componentInstance.events.onOpen(previousWidgetTag --[[@as TagEntry?]] )
-                end
-                if previousWidgetTag ~= widgetTagEntry then
-                    previousWidgetTag = widgetTagEntry
-                end
-
-                local widgetCount = #widgetTagData.childWidgets
-                if widgetCount > 0 then
-                    local optionsWidgetRef = widgetTagData.childWidgets[widgetCount]
-                    if hasTagReference(optionsWidgetRef.widgetTag) then
-                        local optionsWidgetTagHandle = getTagHandleValue(optionsWidgetRef.widgetTag)
-                        assert(optionsWidgetTagHandle, "Invalid options widget handle")
-                        local optionsWidgetTagData = getWidgetDefinitionData(optionsWidgetTagHandle)
-                        assert(optionsWidgetTagData, "Invalid options widget tag")
-                        if optionsWidgetTagData and optionsWidgetTagData.childWidgets[1] and
-                            hasTagReference(optionsWidgetTagData.childWidgets[1].widgetTag) then
-                            local firstChildWidgetTagHandle = getTagHandleValue(
-                                                                  optionsWidgetTagData.childWidgets[1]
-                                                                      .widgetTag)
-                            assert(firstChildWidgetTagHandle, "Invalid child widget handle")
-                            onWidgetFocus(firstChildWidgetTagHandle)
-                        end
-                    end
-                end
-            else
-                if componentInstance and componentInstance.events.onOpen then
-                    componentInstance.events.onOpen()
-                end
-            end
-            return
         end
 
         if isBlockingInputEnabled then
@@ -353,7 +364,9 @@ function component.callbacks()
             return
         end
 
-        if eventType == "aButton" or eventType == "leftMouse" then
+        -- Left click already triggers aButton event so it doesn't need to be handled separately
+        -- if eventType == "aButton" or eventType == "leftMouse" then
+        if eventType == "aButton" then
             local isCanceled = false
             local currentComponent = component.widgets[tagHandle]
             if currentComponent and currentComponent.events.onClick then
@@ -596,7 +609,8 @@ function component.findChildWidgetTag(self, name)
         if childWidgetDefinition then
             local grandChildWidgetTags = getChildWidgetTags(childWidgetDefinition)
             for _, grandChildTag in pairs(grandChildWidgetTags) do
-                logger.debug("Checking grandchild tag: " .. grandChildTag.path .. " for name: " .. name)
+                logger.debug("Checking grandchild tag: " .. grandChildTag.path .. " for name: " ..
+                                 name)
                 if grandChildTag.path:find(name, 1, true) then
                     return grandChildTag
                 end
@@ -641,7 +655,8 @@ function component.get(self, name)
     if childWidgetTag then
         return childWidgetTag.handle.value
     end
-    error("No child widget found with name \"" .. name .. "\" in component \"" .. self.tag.path .. "\"")
+    error("No child widget found with name \"" .. name .. "\" in component \"" .. self.tag.path ..
+              "\"")
 end
 
 ---@param self uiComponent
