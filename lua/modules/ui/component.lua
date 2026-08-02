@@ -1,14 +1,57 @@
 local balltze = Balltze
 local engine = Engine
-local blam = require "blam"
-local getTag = blam.getTag
-local uiWidgetDefinition = blam.uiWidgetDefinition
-local unicodeStringList = blam.unicodeStringList
-local isNull = blam.isNull
 local core = require "ui.core"
---local ether = require "ui.ether"
+-- local ether = require "ui.ether"
 local logger = balltze.logger
 local findWidgetByDefinition = core.findWidgetByDefinition
+local getTagEntry = engine.tag.getTagEntry
+local filterTags = engine.tag.filterTags
+local getTagData = engine.tag.getTagData
+
+---@param value any
+---@return integer?
+local function getTagHandleValue(value)
+    if type(value) == "number" then
+        return value
+    end
+    if type(value) == "table" then
+        if value.tagHandle then
+            if type(value.tagHandle) == "number" then
+                return value.tagHandle
+            end
+            if value.tagHandle.value and not value.tagHandle:isNull() then
+                return value.tagHandle.value
+            end
+        end
+        if value.handle then
+            if type(value.handle) == "number" then
+                return value.handle
+            end
+            if value.handle.value and not value.handle:isNull() then
+                return value.handle.value
+            end
+        end
+    end
+    return nil
+end
+
+---@param tagReference any
+---@return boolean
+local function hasTagReference(tagReference)
+    return getTagHandleValue(tagReference) ~= nil
+end
+
+---@param tagHandleValue integer
+---@return UiWidgetDefinition?
+local function getWidgetDefinitionData(tagHandleValue)
+    return getTagData(tagHandleValue, "ui_widget_definition")
+end
+
+---@param tagHandleValue integer
+---@return UnicodeStringList?
+local function getUnicodeStringListData(tagHandleValue)
+    return getTagData(tagHandleValue, "unicode_string_list")
+end
 
 local isBlockingInputEnabled = false
 
@@ -16,11 +59,11 @@ local isBlockingInputEnabled = false
 
 ---@class uiComponent
 local component = {
-    ---@type number
-    tagId = nil,
-    ---@type tag
+    ---@type integer
+    handleValue = nil,
+    ---@type TagEntry
     tag = nil,
-    ---@type uiWidgetDefinition
+    ---@type UiWidgetDefinition
     widgetDefinition = nil,
     ---@type uiComponentEvents
     events = {},
@@ -50,9 +93,9 @@ component.widgets = {}
 
 -- TODO Make this local and port functions to component
 VirtualInputValue = {}
----@type MetaEngineTag
+---@type TagEntry?
 local previousWidgetTag
----@type MetaEngineTag?
+---@type TagEntry?
 local lastFocusedWidgetTagEntry
 
 function component.getLastFocusedWidgetHandle()
@@ -62,9 +105,9 @@ function component.getLastFocusedWidgetHandle()
 end
 
 function component.callbacks()
-    ---@type MetaEngineTagDataUiWidgetDefinition?
+    ---@type any
     local editableWidgetTagData
-    ---@type MetaEngineTag?
+    ---@type TagEntry?
     local editableWidgetTagEntry
     lastFocusedWidgetTagEntry = nil
 
@@ -78,20 +121,21 @@ function component.callbacks()
             return
         end
 
-        local focusedWidgetTag = engine.tag.getTag(tagHandleValue,
-                                                   engine.tag.classes.uiWidgetDefinition)
-        assert(focusedWidgetTag, "Invalid widget tag")
+        local focusedWidgetTagEntry = getTagEntry(tagHandleValue)
+        assert(focusedWidgetTagEntry, "Invalid widget tag")
+        local focusedWidgetTagData = getWidgetDefinitionData(tagHandleValue)
+        assert(focusedWidgetTagData, "Invalid widget tag data")
 
         local currentComponent = component.widgets[tagHandleValue]
         if currentComponent and currentComponent.events.onFocus and currentComponent:isVisible() then
             currentComponent.events.onFocus()
         end
 
-        lastFocusedWidgetTagEntry = focusedWidgetTag
+        lastFocusedWidgetTagEntry = focusedWidgetTagEntry
         ---@diagnostic disable-next-line: undefined-field
-        if focusedWidgetTag.data.flags1:editable() or focusedWidgetTag.data.flags1:password() then
-            editableWidgetTagData = focusedWidgetTag.data
-            editableWidgetTagEntry = focusedWidgetTag
+        if focusedWidgetTagData.flags1:editable() or focusedWidgetTagData.flags1:password() then
+            editableWidgetTagData = focusedWidgetTagData
+            editableWidgetTagEntry = focusedWidgetTagEntry
         else
             editableWidgetTagData = nil
             editableWidgetTagEntry = nil
@@ -108,9 +152,8 @@ function component.callbacks()
             -- If the widget doesn't have scroll event, try to get the parent widget's component
             local parentWidget = widget.parentWidget
             if parentWidget then
-                local parentWidgetTag = engine.tag.getTag(parentWidget.definitionTagHandle.value,
-                                                          engine.tag.classes.uiWidgetDefinition)
-                assert(parentWidgetTag, "Invalid parent widget tag")
+                local parentWidgetTagEntry = getTagEntry(parentWidget.definitionTagHandle.value)
+                assert(parentWidgetTagEntry, "Invalid parent widget tag")
                 uiComponent = component.widgets[parentWidget.definitionTagHandle.value] --[[@as uiComponentSpinner|uiComponentList]]
             end
         end
@@ -147,41 +190,45 @@ function component.callbacks()
         end
 
         local previousWidgetHandle = focusedChild.definitionTagHandle.value
-        local widgetList = blam.uiWidgetDefinition(widgetListHandle)
-        assert(widgetList, "Invalid widget list tag id")
+        local widgetListData = getWidgetDefinitionData(widgetListHandle)
+        local widgetListChilds = (widgetListData and widgetListData.childWidgets) or {}
+        assert(widgetListData, "Invalid widget list tag")
 
         local currentComponent = component.widgets[widgetListHandle] --[[@as uiComponentSpinner]]
-        if currentComponent and currentComponent.type == "spinner" and currentComponent.events.onScroll then
+        if currentComponent and currentComponent.type == "spinner" and
+            currentComponent.events.onScroll then
             currentComponent:scroll(prevTabEventTypes[eventType] and -1 or 1)
             return
         end
 
         local function findNextWidget()
-            for childIndex, child in pairs(widgetList.childWidgets) do
-                if child.widgetTag == previousWidgetHandle then
+            for childIndex, child in pairs(widgetListData.childWidgets) do
+                local childWidgetHandle = getTagHandleValue(child.widgetTag)
+                if childWidgetHandle and childWidgetHandle == previousWidgetHandle then
                     local nextChildIndex
                     if prevTabEventTypes[eventType] then
                         if childIndex - 1 < 1 then
-                            nextChildIndex = widgetList.childWidgetsCount
+                            nextChildIndex = #widgetListChilds
                         else
                             nextChildIndex = childIndex - 1
                         end
                     elseif nextTabEventTypes[eventType] then
-                        if childIndex + 1 > widgetList.childWidgetsCount then
+                        if childIndex + 1 > #widgetListChilds then
                             nextChildIndex = 1
                         else
                             nextChildIndex = childIndex + 1
                         end
                     end
 
-                    local widgetTagId = (widgetList.childWidgets[nextChildIndex] or {}).widgetTag
-                    if widgetTagId and not isNull(widgetTagId) then
-                        local widgetTag = engine.tag.getTag(widgetTagId,
-                                                            engine.tag.classes.uiWidgetDefinition)
-                        assert(widgetTag, "Invalid widget tag")
-                        local widgetValues = core.getWidgetValues(widgetTagId)
+                    local widgetTag = (widgetListChilds[nextChildIndex] or {}).widgetTag
+                    if hasTagReference(widgetTag) then
+                        local widgetHandle = getTagHandleValue(widgetTag)
+                        assert(widgetHandle, "Invalid widget handle")
+                        local widgetTagEntry = getTagEntry(widgetHandle)
+                        assert(widgetTagEntry, "Invalid widget tag")
+                        local widgetValues = core.getWidgetValues(widgetHandle)
                         if widgetValues and widgetValues.visible then
-                            return widgetTag
+                            return widgetTagEntry
                         end
                     end
                 end
@@ -214,11 +261,11 @@ function component.callbacks()
             if core.getMouseState().leftClick > 0 then
                 local lastFocusedWidget = component.getLastFocusedWidgetHandle()
                 if lastFocusedWidget then
-                    local widgetDef = blam.uiWidgetDefinition(lastFocusedWidget)
+                    local widgetDef = getWidgetDefinitionData(lastFocusedWidget)
                     assert(widgetDef, "Error, no focused widget found")
-                    logger:debug(widgetDef.width .. " " .. widgetDef.height)
+                    logger.debug(widgetDef.width .. " " .. widgetDef.height)
                     local x, y = core.getWidgetCursorPosition()
-                    logger:debug("X: " .. x .. " Y: " .. y)
+                    logger.debug("X: " .. x .. " Y: " .. y)
                     core.setWidgetValues(lastFocusedWidget, {
                         position = {x = x - (widgetDef.width / 2), y = y - (widgetDef.height / 2)}
                     })
@@ -238,9 +285,10 @@ function component.callbacks()
         local tagHandle = widgetEvent.definitionTagHandle.value
 
         if eventType == "created" then
-            local widgetTag = engine.tag.getTag(tagHandle, engine.tag.classes.uiWidgetDefinition)
-            assert(widgetTag, "Invalid widget tag")
-            local widgetTagData = widgetTag.data
+            local widgetTagEntry = getTagEntry(tagHandle)
+            assert(widgetTagEntry, "Invalid widget tag")
+            local widgetTagData = getWidgetDefinitionData(tagHandle)
+            assert(widgetTagData, "Invalid widget tag data")
 
             -- Keep legacy aspect-ratio behavior for root widgets.
             local rootWidget = core.getRenderedUIWidgetTagHandle()
@@ -258,21 +306,28 @@ function component.callbacks()
             local componentInstance = component.widgets[tagHandle]
             if renderedWidget then
                 if componentInstance and componentInstance.events.onOpen then
-                    componentInstance.events.onOpen(previousWidgetTag)
+                    componentInstance.events.onOpen(previousWidgetTag --[[@as TagEntry?]] )
                 end
-                if previousWidgetTag ~= widgetTag then
-                    previousWidgetTag = widgetTag
+                if previousWidgetTag ~= widgetTagEntry then
+                    previousWidgetTag = widgetTagEntry
                 end
 
                 local widgetCount = #widgetTagData.childWidgets
                 if widgetCount > 0 then
                     local optionsWidgetRef = widgetTagData.childWidgets[widgetCount]
-                    local optionsWidgetTag = engine.tag.getTag(optionsWidgetRef.widgetTag.tagHandle.value,
-                                                               engine.tag.classes.uiWidgetDefinition)
-                    assert(optionsWidgetTag, "Invalid options widget tag")
-                    local optionsWidgetTagData = optionsWidgetTag.data
-                    if optionsWidgetTagData and optionsWidgetTagData.childWidgets[1] then
-                        onWidgetFocus(optionsWidgetTagData.childWidgets[1].widgetTag.tagHandle.value)
+                    if hasTagReference(optionsWidgetRef.widgetTag) then
+                        local optionsWidgetTagHandle = getTagHandleValue(optionsWidgetRef.widgetTag)
+                        assert(optionsWidgetTagHandle, "Invalid options widget handle")
+                        local optionsWidgetTagData = getWidgetDefinitionData(optionsWidgetTagHandle)
+                        assert(optionsWidgetTagData, "Invalid options widget tag")
+                        if optionsWidgetTagData and optionsWidgetTagData.childWidgets[1] and
+                            hasTagReference(optionsWidgetTagData.childWidgets[1].widgetTag) then
+                            local firstChildWidgetTagHandle = getTagHandleValue(
+                                                                  optionsWidgetTagData.childWidgets[1]
+                                                                      .widgetTag)
+                            assert(firstChildWidgetTagHandle, "Invalid child widget handle")
+                            onWidgetFocus(firstChildWidgetTagHandle)
+                        end
                     end
                 end
             else
@@ -314,9 +369,15 @@ function component.callbacks()
             end
             if editableWidgetTagData and editableWidgetTagEntry then
                 if widgetTag.definitionTagHandle.value == editableWidgetTagEntry.handle.value then
-                    local inputString = core.getStringFromWidget(editableWidgetTagEntry.handle.value)
+                    local inputString = core.getStringFromWidget({
+                        handleValue = editableWidgetTagEntry.handle.value,
+                        widgetDefinition = editableWidgetTagData
+                    })
                     local text = inputString .. core.getClipboard()
-                    core.setStringToWidget(text, editableWidgetTagEntry.handle.value)
+                    core.setStringToWidget(text, {
+                        handleValue = editableWidgetTagEntry.handle.value,
+                        widgetDefinition = editableWidgetTagData
+                    })
                     local currentComponent = component.widgets[editableWidgetTagEntry.handle.value] --[[@as uiComponentInput]]
                     if currentComponent and currentComponent.events.onInputText then
                         currentComponent.events.onInputText(text)
@@ -359,7 +420,10 @@ function component.callbacks()
             return
         end
 
-        local inputString = core.getStringFromWidget(editableWidgetTagEntry.handle.value)
+        local inputString = core.getStringFromWidget({
+            handleValue = editableWidgetTagEntry.handle.value,
+            widgetDefinition = editableWidgetTagData
+        })
         local text = core.mapKeyToText(pressedKey, inputString)
         if not text then
             return
@@ -367,12 +431,18 @@ function component.callbacks()
 
         local currentComponent = component.widgets[editableWidgetTagEntry.handle.value]
         if editableWidgetTagData.name:find "password" then
-            core.setStringToWidget(text, editableWidgetTagEntry.handle.value, "*")
+            core.setStringToWidget(text, {
+                handleValue = editableWidgetTagEntry.handle.value,
+                widgetDefinition = editableWidgetTagData
+            }, "*")
         else
             if currentComponent and not currentComponent.allowEmptyChars then
                 text = text:trim()
             end
-            core.setStringToWidget(text, editableWidgetTagEntry.handle.value)
+            core.setStringToWidget(text, {
+                handleValue = editableWidgetTagEntry.handle.value,
+                widgetDefinition = editableWidgetTagData
+            })
         end
         if currentComponent and currentComponent.events.onInputText then
             currentComponent.events.onInputText(text)
@@ -381,38 +451,44 @@ function component.callbacks()
 end
 
 function component.cleanAllEditableWidgets()
-    local editableWidgets = blam.findTagsList("input", blam.tagClasses.uiWidgetDefinition) or {}
+    local editableWidgets = filterTags("ui_widget_definition", "input") or {}
     for _, widgetTag in pairs(editableWidgets) do
-        local widget = blam.uiWidgetDefinition(widgetTag.id)
-        assert(widget, "No widget found with tag id " .. widgetTag.id)
-        local widgetStrings = blam.unicodeStringList(widget.unicodeStringListTag)
+        local widget = getWidgetDefinitionData(widgetTag.handle.value)
+        assert(widget, "No widget found with tag handle " .. widgetTag.handle.value)
+        local widgetStrings
+        if hasTagReference(widget.unicodeStringListTag) then
+            widgetStrings = getUnicodeStringListData(widget.unicodeStringListTag.tagHandle.value)
+        end
         if widgetStrings then
             local strings = widgetStrings.strings
             strings[1] = ""
-            -- logger:debug("Cleaned widget " .. widgetTag.path)
+            -- logger.debug("Cleaned widget " .. widgetTag.path)
             widgetStrings.strings = strings
         end
     end
 end
 
----@param tagId number
+---@param handle TagHandle|integer
 ---@return uiComponent
-function component.new(tagId)
+function component.new(handle)
     local instance = setmetatable({}, {__index = component})
-    instance.tagId = tagId
-    instance.tag = getTag(instance.tagId) or error("Invalid tagId") --[[@as tag]]
+    local handleValue = getTagHandleValue(handle)
+    assert(handleValue, "Invalid handle")
+    instance.handleValue = handleValue
+    instance.tag = getTagEntry(instance.handleValue) or error("Invalid tag handle")
     instance.selectedWidgetTagId = nil
-    instance.widgetDefinition = uiWidgetDefinition(tagId) or error("Invalid tagId") --[[@as uiWidgetDefinition]]
+    instance.widgetDefinition = (getWidgetDefinitionData(handleValue) --[[@as any]] ) or
+                                    error("Invalid tagId")
     instance.events = {}
     instance.isBackgroundAnimated = false
-    component.widgets[tagId] = instance
+    component.widgets[handle] = instance
     return instance
 end
 
----@param tagId number
+---@param handleValue number
 ---@return uiComponent
-function component.getComponent(tagId)
-    return component.widgets[tagId]
+function component.getComponent(handleValue)
+    return component.widgets[handleValue]
 end
 
 ---@param self uiComponent
@@ -423,47 +499,20 @@ end
 ---@param self uiComponent
 ---@return string
 function component.getText(self)
-    local virtualValue = VirtualInputValue[self.tagId]
-    if virtualValue then
-        return virtualValue
-    end
-    local unicodeStrings = blam.unicodeStringList(self.widgetDefinition.unicodeStringListTag)
-    if unicodeStrings then
-        return unicodeStrings.strings[self.widgetDefinition.stringListIndex + 1]
-    end
-    error("No unicodeStringList found for widgetDefinition")
+    return core.getStringFromWidget({
+        handleValue = self.handleValue,
+        widgetDefinition = self.widgetDefinition
+    })
 end
 
 ---@param self uiComponent
 ---@param text string
 ---@param mask? string
 function component.setText(self, text, mask)
-    local childUnicodeStrings
-    local childWidgetDefinition
-    local widgetDefinition = self.widgetDefinition
-    if self.widgetDefinition.childWidgetsCount > 0 then
-        local childTagId = self.widgetDefinition.childWidgets[1].widgetTag
-        childWidgetDefinition = uiWidgetDefinition(childTagId) --[[@as uiWidgetDefinition]]
-        childUnicodeStrings = unicodeStringList(childWidgetDefinition.unicodeStringListTag)
-    end
-    local unicodeStrings = unicodeStringList(self.widgetDefinition.unicodeStringListTag)
-    if not (unicodeStrings and not isNull(unicodeStrings)) then
-        unicodeStrings = childUnicodeStrings --[[@as unicodeStringList]]
-        widgetDefinition = childWidgetDefinition --[[@as uiWidgetDefinition]]
-    end
-    if not (unicodeStrings and not isNull(unicodeStrings)) then
-        print(debug.traceback())
-        error("No unicodeStringList found for widgetDefinition " .. self.tag.path)
-    end
-    local stringListIndex = widgetDefinition.stringListIndex
-    local newStrings = unicodeStrings.strings
-    if mask then
-        VirtualInputValue[self.tagId] = text
-        newStrings[stringListIndex + 1] = string.rep(mask, #text)
-    else
-        newStrings[stringListIndex + 1] = text
-    end
-    unicodeStrings.strings = newStrings
+    core.setStringToWidget(text, {
+        handleValue = self.handleValue,
+        widgetDefinition = self.widgetDefinition
+    }, mask)
 end
 
 ---@param self uiComponent
@@ -506,17 +555,28 @@ function component.free()
     collectgarbage("collect")
 end
 
----@param self uiComponent
----@return tag[]
-function component.getChildWidgetTags(self)
-    -- TODO Filter this instead of mapping
-    return table.map(self.widgetDefinition.childWidgets, function(childWidget)
-        if not isNull(childWidget.widgetTag) then
-            local tag = getTag(childWidget.widgetTag)
-            return tag
+local function getChildWidgetTags(widgetDefinition)
+    if not widgetDefinition.childWidgets or #widgetDefinition.childWidgets == 0 then
+        return {}
+    end
+    local childs = table.filter(widgetDefinition.childWidgets, function(childWidget)
+        if childWidget.widgetTag.tagHandle:isNull() then
+            return false
         end
-        return nil
+        return true
     end)
+    return table.map(childs, function(childWidget)
+        return getTagEntry(childWidget.widgetTag.tagHandle.value)
+    end)
+end
+
+---@param self uiComponent
+---@return TagEntry[]
+function component.getChildWidgetTags(self)
+    if not self.widgetDefinition.childWidgets or #self.widgetDefinition.childWidgets == 0 then
+        return {}
+    end
+    return getChildWidgetTags(self.widgetDefinition)
 end
 
 ---@param self uiComponent
@@ -524,17 +584,18 @@ end
 function component.findChildWidgetTag(self, name)
     local childWidgetTags = self:getChildWidgetTags()
     for _, childTag in pairs(childWidgetTags) do
+        logger.debug("Checking child tag: " .. childTag.path .. " for name: " .. name)
         if childTag.path:find(name, 1, true) then
             return childTag
         end
-        local widgetDefinition = uiWidgetDefinition(childTag.id)
-        if widgetDefinition then
-            for _, childWidget in pairs(widgetDefinition.childWidgets) do
-                local tag = getTag(childWidget.widgetTag) --[[@as tag]]
-                if not isNull(childWidget.widgetTag) then
-                    if tag.path:find(name, 1, true) then
-                        return tag
-                    end
+        -- Look one more level down in the child widgets of the child tag
+        local childWidgetDefinition = getWidgetDefinitionData(childTag.handle.value)
+        if childWidgetDefinition then
+            local grandChildWidgetTags = getChildWidgetTags(childWidgetDefinition)
+            for _, grandChildTag in pairs(grandChildWidgetTags) do
+                logger.debug("Checking grandchild tag: " .. grandChildTag.path .. " for name: " .. name)
+                if grandChildTag.path:find(name, 1, true) then
+                    return grandChildTag
                 end
             end
         end
@@ -547,15 +608,19 @@ function component.findChildWidgetDefinition(self, name)
     local childWidgetTags = self:getChildWidgetTags()
     for _, childTag in pairs(childWidgetTags) do
         if childTag.path:find(name, 1, true) then
-            return uiWidgetDefinition(childTag.id)
+            return getWidgetDefinitionData(childTag.handle.value)
         end
-        local widgetDefinition = uiWidgetDefinition(childTag.id)
+        local widgetDefinition = getWidgetDefinitionData(childTag.handle.value)
         if widgetDefinition then
             for _, childWidget in pairs(widgetDefinition.childWidgets) do
-                local tag = getTag(childWidget.widgetTag) --[[@as tag]]
-                if not isNull(childWidget.widgetTag) then
-                    if tag.path:find(name, 1, true) then
-                        return uiWidgetDefinition(childWidget.widgetTag)
+                if hasTagReference(childWidget.widgetTag) then
+                    local childWidgetTagHandle = getTagHandleValue(childWidget.widgetTag)
+                    local tag = childWidgetTagHandle and getTagEntry(childWidgetTagHandle)
+                    if tag and tag.path:find(name, 1, true) then
+                        local handleValue = childWidgetTagHandle
+                        if handleValue then
+                            return getWidgetDefinitionData(handleValue)
+                        end
                     end
                 end
             end
@@ -567,11 +632,13 @@ end
 ---Shorter and handier version of findChildWidgetTag
 ---@param self uiComponent
 ---@param name string
+---@return integer
 function component.get(self, name)
     local childWidgetTag = self:findChildWidgetTag(name)
     if childWidgetTag then
-        return childWidgetTag.id
+        return childWidgetTag.handle.value
     end
+    error("No child widget found with name \"" .. name .. "\" in component \"" .. self.tag.path .. "\"")
 end
 
 ---@param self uiComponent
@@ -582,7 +649,7 @@ end
 ---@param self uiComponent
 ---@param newWidgetTagId number
 function component.replace(self, newWidgetTagId)
-    core.replaceWidgetInDom(self.tagId, newWidgetTagId)
+    core.replaceWidgetInDom(self.handleValue, newWidgetTagId)
     core.setWidgetValues(newWidgetTagId, {neverReceiveEvents = false, visible = true}, false)
     -- local widget = findWidgetByDefinition(newWidgetTagId)
     -- if widget then
@@ -590,68 +657,69 @@ function component.replace(self, newWidgetTagId)
     -- end
 end
 
--- TODO Discuss with Mango so we can have this class also available in Balltze API
----@class MetaEngineWidgetParams
----@field definitionTagHandle? EngineTagHandle
----@field name? string
----@field controllerIndex? boolean
----@field position? EnginePoint2DInt
----@field type? EngineTagDataUIWidgetType
----@field visible? boolean
----@field renderRegardlessOfControllerIndex? boolean
----@field pausesGameTime? boolean
----@field deleted? boolean
----@field creationProcessStartTime? integer
----@field msToClose? integer
----@field msToCloseFadeTime? integer
----@field opacity? number
----@field previousWidget? MetaEngineWidget|nil
----@field nextWidget? MetaEngineWidget|nil
----@field parentWidget? MetaEngineWidget|nil
----@field childWidget? MetaEngineWidget|nil
----@field focusedChild? MetaEngineWidget|nil
----@field textAddress? integer @The address of the text; nil if the widget is not a text widget, be careful!
----@field cursorIndex? integer @Index of the last child widget focused by the mouse
----@field extendedDescriptionWidget? EngineWidget
----@field bitmapIndex? integer
+---@class WidgetParams
+---@field definitionTagHandle TagHandle?
+---@field name string?
+---@field localPlayerIndex integer?
+---@field position Point2dInt?
+---@field type UiWidgetType?
+---@field visible boolean?
+---@field renderRegardlessOfControllerIndex boolean?
+---@field neverReceiveEvents boolean?
+---@field pausesGameTime boolean?
+---@field deleted boolean?
+---@field isErrorDialog boolean?
+---@field closeIfLocalPlayerControllerPresent boolean?
+---@field creationProcessStartTime integer?
+---@field msToClose integer?
+---@field msToCloseFadeTime integer?
+---@field alphaModifier number?
+---@field previous Widget?
+---@field next Widget?
+---@field parent Widget?
+---@field child Widget?
+---@field focusedChild Widget?
+---@field listParameters WidgetListParameters?
+---@field textBoxParameters WidgetTextBoxParameters?
+---@field animationData WidgetAnimationData?
 
 ---@param self uiComponent
----@return MetaEngineWidget?
+---@return Widget?
 function component.getWidgetValues(self)
-    if core.getWidgetHandle(self.tagId) then
-        return core.getWidgetValues(self.tagId)
+    if core.getWidgetHandle(self.handleValue) then
+        return core.getWidgetValues(self.handleValue)
     end
 end
 
 ---@param self uiComponent
----@param values MetaEngineWidgetParams
+---@param values WidgetParams
 function component.setWidgetValues(self, values)
-    core.setWidgetValues(self.tagId, values)
+    core.setWidgetValues(self.handleValue, values)
 end
 
 ---@param self uiComponent
 function component.setBitmapIndex(self, index)
-    core.setWidgetValues(self.tagId, {bitmapIndex = index - 1}, true)
+    core.setWidgetValues(self.handleValue, {bitmapIndex = index - 1}, true)
 end
 
 ---@param self uiComponent
 function component.hide(self, isHidden)
     local isHidden = isHidden or true
-    core.setWidgetValues(self.tagId,
+    core.setWidgetValues(self.handleValue,
                          {visible = not isHidden, neverReceiveEvents = isHidden == true}, false)
 end
 
 ---@param self uiComponent
 function component.show(self, isVisible)
     local isVisible = isVisible == nil and true or isVisible
-    core.setWidgetValues(self.tagId, {visible = isVisible, neverReceiveEvents = isVisible == false},
-                         false)
+    core.setWidgetValues(self.handleValue,
+                         {visible = isVisible, neverReceiveEvents = isVisible == false}, false)
 end
 
 ---@param self uiComponent
 ---@return boolean
 function component.isVisible(self)
-    local widgetValues = core.getWidgetValues(self.tagId)
+    local widgetValues = core.getWidgetValues(self.handleValue)
     if not widgetValues then
         return false
     end
@@ -665,7 +733,7 @@ end
 
 ---@param self uiComponent
 function component.launch(self)
-    engine.uiWidget.launchWidget(self.tagId)
+    engine.uiWidget.launchWidget(self.handleValue)
 end
 
 return component

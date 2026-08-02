@@ -1,9 +1,10 @@
-local blam = require "blam"
 local script = require "script"
 local balltze = Balltze
 local engine = Engine
 
 local core = {}
+local getTagEntry = engine.tag.getTagEntry
+local getTagData = engine.tag.getTagData
 
 ---@param widgetDefinition TagHandle|integer
 ---@param baseWidget? Widget
@@ -105,7 +106,7 @@ end
 
 ---Set the values of a widget in the DOM
 ---@param widgetTagHandleValue number
----@param values MetaEngineWidgetParams
+---@param values WidgetParams
 ---@param isAsync? boolean Control if the function should try to set values async if it fails
 function core.setWidgetValues(widgetTagHandleValue, values, isAsync)
     local isAsync = isAsync == nil and true or isAsync
@@ -187,38 +188,153 @@ function core.getClipboard()
     return balltze.getClipboard()
 end
 
-function core.getStringFromWidget(widgetTagId)
-    local widget = blam.uiWidgetDefinition(widgetTagId)
-    assert(widget, "No widget found with tag id " .. widgetTagId)
-    local virtualValue = VirtualInputValue[widgetTagId]
+---@param widgetTarget integer|{handleValue: integer, widgetDefinition?: UiWidgetDefinition}
+---@param widgetDefinition? UiWidgetDefinition
+---@return string
+function core.getStringFromWidget(widgetTarget, widgetDefinition)
+    local widgetTagHandleValue = widgetTarget
+    if type(widgetTarget) == "table" then
+        widgetTagHandleValue = widgetTarget.handleValue
+        widgetDefinition = widgetDefinition or widgetTarget.widgetDefinition
+    end
+
+    local virtualValue = VirtualInputValue[widgetTagHandleValue]
     if virtualValue then
         return virtualValue
     end
-    local unicodeStrings = blam.unicodeStringList(widget.unicodeStringListTag)
-    assert(unicodeStrings, "No unicodeStringList, can't get text from this widget")
-    return unicodeStrings.strings[widget.stringListIndex + 1]
+
+    widgetDefinition = widgetDefinition or getTagData(widgetTagHandleValue, "ui_widget_definition")
+    assert(widgetDefinition, "No widget found with tag id " .. widgetTagHandleValue)
+
+    local activeWidgetDefinition = widgetDefinition
+    local stringsData
+    if activeWidgetDefinition.textLabelUnicodeStringsList and
+        activeWidgetDefinition.textLabelUnicodeStringsList.tagHandle and
+        not activeWidgetDefinition.textLabelUnicodeStringsList.tagHandle:isNull() then
+        stringsData = getTagData(activeWidgetDefinition.textLabelUnicodeStringsList.tagHandle.value,
+                                        "unicode_string_list")
+    end
+
+    -- Fallback to first child widget when parent does not expose its own text list.
+    if not stringsData and activeWidgetDefinition.childWidgets and #activeWidgetDefinition.childWidgets > 0 then
+        local childWidgetTag = activeWidgetDefinition.childWidgets[1].widgetTag
+        if childWidgetTag and childWidgetTag.tagHandle and not childWidgetTag.tagHandle:isNull() then
+            local childWidgetDefinition = getTagData(childWidgetTag.tagHandle.value, "ui_widget_definition")
+            if childWidgetDefinition and childWidgetDefinition.unicodeStringListTag and
+                childWidgetDefinition.unicodeStringListTag.tagHandle and
+                not childWidgetDefinition.unicodeStringListTag.tagHandle:isNull() then
+                stringsData = getTagData(childWidgetDefinition.unicodeStringListTag.tagHandle.value,
+                                                "unicode_string_list")
+                activeWidgetDefinition = childWidgetDefinition
+            end
+        end
+    end
+
+    if stringsData then
+        local stringReference = stringsData.stringReferences[activeWidgetDefinition.stringListIndex + 1]
+        local stringAddress = stringReference.string.pointer
+        local output = ""
+        local i = 0
+        while true do
+            local char = read_string(stringAddress + i * 0x2)
+            if not char or char == "" then
+                break
+            end
+            output = output .. char
+            i = i + 1
+        end
+        return output
+    end
+
+    local tagEntry = getTagEntry(widgetTagHandleValue)
+    local tagPath = tagEntry and tagEntry.path or tostring(widgetTagHandleValue)
+    error("Widget definition \"" .. tagPath .. "\" does not have a unicode string list")
 end
 
-function core.setStringToWidget(text, widgetTagId, mask)
-    local widgetDefinition = blam.uiWidgetDefinition(widgetTagId)
-    if widgetDefinition then
-        local unicodeStrings = blam.unicodeStringList(widgetDefinition.unicodeStringListTag)
-        if unicodeStrings then
-            if blam.isNull(unicodeStrings) then
-                error("No unicodeStringList, can't assign text to this widget")
-            end
-            local stringListIndex = widgetDefinition.stringListIndex
-            local newStrings = unicodeStrings.strings
-            if mask then
-                VirtualInputValue[widgetTagId] = text
-                newStrings[stringListIndex + 1] = string.rep(mask, #text)
-            else
-                newStrings[stringListIndex + 1] = text
-                VirtualInputValue[widgetTagId] = nil
+---@param text string
+---@param widgetTarget integer|{handleValue: integer, widgetDefinition?: UiWidgetDefinition}
+---@param mask? string
+---@param maxCharacters? integer
+---@param widgetDefinition? UiWidgetDefinition
+function core.setStringToWidget(text, widgetTarget, mask, maxCharacters, widgetDefinition)
+    local widgetTagId = widgetTarget
+    if type(widgetTarget) == "table" then
+        widgetTagId = widgetTarget.handleValue
+        widgetDefinition = widgetDefinition or widgetTarget.widgetDefinition
+    end
 
+    widgetDefinition = widgetDefinition or getTagData(widgetTagId, "ui_widget_definition")
+    if not widgetDefinition then
+        error("No widget found with tag id " .. widgetTagId)
+    end
+
+    local activeWidgetDefinition = widgetDefinition
+    local unicodeStringsData
+
+    if activeWidgetDefinition.textLabelUnicodeStringsList and
+        activeWidgetDefinition.textLabelUnicodeStringsList.tagHandle and
+        not activeWidgetDefinition.textLabelUnicodeStringsList.tagHandle:isNull() then
+        unicodeStringsData = getTagData(activeWidgetDefinition.textLabelUnicodeStringsList.tagHandle.value,
+                                        "unicode_string_list")
+    end
+
+    -- Fallback to first child widget when parent does not expose its own text list
+    if not unicodeStringsData and activeWidgetDefinition.childWidgets and #activeWidgetDefinition.childWidgets > 0 then
+        local childWidgetTag = activeWidgetDefinition.childWidgets[1].widgetTag
+        if childWidgetTag and childWidgetTag.tagHandle and not childWidgetTag.tagHandle:isNull() then
+            local childWidgetDefinition = getTagData(childWidgetTag.tagHandle.value, "ui_widget_definition")
+            if childWidgetDefinition and childWidgetDefinition.unicodeStringListTag and
+                childWidgetDefinition.unicodeStringListTag.tagHandle and
+                not childWidgetDefinition.unicodeStringListTag.tagHandle:isNull() then
+                unicodeStringsData = getTagData(childWidgetDefinition.unicodeStringListTag.tagHandle.value,
+                                                "unicode_string_list")
+                activeWidgetDefinition = childWidgetDefinition
             end
-            unicodeStrings.strings = newStrings
         end
+    end
+
+    if not unicodeStringsData then
+        local tagEntry = getTagEntry(widgetTagId)
+        local tagPath = tagEntry and tagEntry.path or tostring(widgetTagId)
+        error("No unicodeStringList found for widgetDefinition " .. tagPath)
+    end
+
+    local stringListIndex = activeWidgetDefinition.stringListIndex
+    local stringReference = unicodeStringsData.stringReferences[stringListIndex + 1]
+    if not stringReference or not stringReference.string then
+        local tagEntry = getTagEntry(widgetTagId)
+        local tagPath = tagEntry and tagEntry.path or tostring(widgetTagId)
+        error("No unicode string reference found for widgetDefinition " .. tagPath)
+    end
+
+    local stringAddress = stringReference.string.pointer
+    local stringSize = stringReference.string.size
+    if maxCharacters == nil then
+        maxCharacters = stringSize
+    end
+    if maxCharacters and maxCharacters > 0 and #text > maxCharacters then
+        text = text:sub(1, maxCharacters)
+    end
+
+    if mask then
+        VirtualInputValue[widgetTagId] = text
+        text = string.rep(mask, #text)
+    else
+        VirtualInputValue[widgetTagId] = nil
+    end
+
+    for i = 1, #text do
+        local char = text:sub(i, i)
+        local byte = string.byte(char) or string.byte("?")
+        local currentCharAddress = stringAddress + (i - 1) * 0x2
+        write_dword(currentCharAddress, byte)
+        if i == #text then
+            write_dword(currentCharAddress + 0x2, 0x0)
+        end
+    end
+
+    if #text == 0 then
+        write_dword(stringAddress, 0)
     end
 end
 
