@@ -6,6 +6,36 @@ local constants = require "forge.constants"
 local bipeds = constants.bipeds
 local getPlayer = engine.player.getPlayer
 local getObject = engine.object.getObject
+local component = require "ui.component"
+local list = require "ui.list"
+local button = require "ui.button"
+component.callbacks()
+
+local forgeMenu = component.new(constants.menus.forge.handle.value)
+local forgeOptions = list.new(forgeMenu:get("category"), 2)
+local forgeFirstButton = button.new(forgeOptions:get("_1"))
+Balltze.logger.debug("Forge first button text: {}", forgeFirstButton:getText())
+forgeFirstButton:setText("Forge First Button")
+forgeFirstButton:onClick(function()
+    Balltze.logger.debug("Forge first button clicked")
+    forgeFirstButton:setText(string.reverse(tostring(math.random(1000000, 9999999))))
+end)
+
+forgeMenu:onOpen(function()
+    Balltze.logger.debug("Forge menu opened")
+    -- Add random string just to test if the button is working
+end)
+
+forgeOptions:setItems({
+    {label = "Option 1", value = 1},
+    {label = "Option 2", value = 2},
+    {label = "Option 3", value = 3},
+    {label = "Option 4", value = 4},
+    {label = "Option 5", value = 5},
+    {label = "Option 6", value = 6},
+    {label = "Option 7", value = 7}
+})
+
 
 local forge = {
     ---@type "edit" | "normal"
@@ -102,37 +132,44 @@ function forge.controls()
                     y = playerBiped.position.y,
                     z = playerBiped.position.z
                 }
-                if playerBiped.unitControlFlags.light and forge.mode == "edit" then
-                    if playerBiped.tagHandle.value == bipeds.spartan.handle.value then
-                        Balltze.logger.debug("Player {} is pressing light", playerIndex)
-                        core.swapBiped(playerIndex, bipeds.monitor.handle.value)
-                        engine.object.deleteObject(player.unitHandle.value)
-                        sleep(1)
-                        sleep(function()
-                            playerBiped = core.getPlayerObject(playerIndex)
-                            return playerBiped ~= nil
-                        end)
-                        core.teleportPlayer(playerIndex, previousPosition.x, previousPosition.y,
-                                            previousPosition.z)
-                        Balltze.logger.debug("Player {} swapped to monitor", playerIndex)
-                        playerBiped.vitals.health = 1
-                        playerBiped.vitals.shield = 1
-                        -- TODO Restore biped rotation as well
-                        forge.setMonitorMode("idle")
-                        Balltze.logger.debug("Player {} monitor mode set to idle", playerIndex)
-                    end
-                elseif playerBiped.unitControlFlags.crouch then
-                    Balltze.logger.debug("Player {} is pressing crouch", playerIndex)
-                    if playerBiped.tagHandle.value == bipeds.monitor.handle.value then
-                        core.swapBiped(playerIndex, bipeds.spartan.handle.value)
-                        engine.object.deleteObject(player.unitHandle.value)
-                        sleep(1)
-                        sleep(function()
-                            return core.getPlayerObject(playerIndex) ~= nil
-                        end)
-                        core.teleportPlayer(playerIndex, previousPosition.x, previousPosition.y,
-                                            previousPosition.z)
-                        forge.setMonitorMode("hidden")
+                if forge.mode == "edit" then
+                    local isMonitor = playerBiped.tagHandle.value == bipeds.monitor.handle.value
+
+                    if playerBiped.unitControlFlags.light then
+                        if not isMonitor and
+                            playerBiped.tagHandle.value == bipeds.spartan.handle.value then
+                            Balltze.logger.debug("Player {} is pressiwng light", playerIndex)
+                            core.swapBiped(playerIndex, bipeds.monitor.handle.value)
+                            engine.object.deleteObject(player.unitHandle.value)
+                            sleep(1)
+                            sleep(function()
+                                playerBiped = core.getPlayerObject(playerIndex)
+                                return playerBiped ~= nil
+                            end)
+                            core.teleportPlayer(playerIndex, previousPosition.x,
+                                                previousPosition.y, previousPosition.z)
+                            Balltze.logger.debug("Player {} swapped to monitor", playerIndex)
+                            playerBiped.vitals.health = 1
+                            playerBiped.vitals.shield = 1
+                            -- TODO Restore biped rotation as well
+                            forge.setMonitorMode("idle")
+                            Balltze.logger.debug("Player {} monitor mode set to idle", playerIndex)
+                        else
+                            forgeMenu:launch()
+                        end
+                    elseif playerBiped.unitControlFlags.crouch then
+                        if isMonitor then
+                            Balltze.logger.debug("Player {} is pressing crouch", playerIndex)
+                            core.swapBiped(playerIndex, bipeds.spartan.handle.value)
+                            engine.object.deleteObject(player.unitHandle.value)
+                            sleep(1)
+                            sleep(function()
+                                return core.getPlayerObject(playerIndex) ~= nil
+                            end)
+                            core.teleportPlayer(playerIndex, previousPosition.x,
+                                                previousPosition.y, previousPosition.z)
+                            forge.setMonitorMode("hidden")
+                        end
                     end
                 end
             end)

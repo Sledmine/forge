@@ -13,4 +13,8 @@ constants.weaponHudInterfaces = {
 --constants.scenario = engine.tag.filterTags("scenario", "")[1]
 constants.globals = engine.tag.filterTags("globals", "")[1]
 
+constants.menus = {
+    forge = engine.tag.filterTags("ui_widget_definition", "forge_menu\\forge_menu")[1]
+}
+
 return constants

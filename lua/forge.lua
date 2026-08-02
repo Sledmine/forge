@@ -2,7 +2,6 @@ package.preload["luna"] = nil
 package.loaded["luna"] = nil
 require "luna"
 require "chimeraCompat"()
-require "balltzeCompat"
 local blam = require "blam2"
 local script = require "script"
 local balltze = Balltze

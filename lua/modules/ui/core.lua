@@ -1,10 +1,14 @@
 local script = require "script"
+local sleep = script.sleep
 local balltze = Balltze
 local engine = Engine
-
-local core = {}
+local logger = balltze.logger
 local getTagEntry = engine.tag.getTagEntry
 local getTagData = engine.tag.getTagData
+
+local core = {}
+
+local maximumTicksForDOMRenderTime = 90
 
 ---@param widgetDefinition TagHandle|integer
 ---@param baseWidget? Widget
@@ -120,11 +124,11 @@ function core.setWidgetValues(widgetTagHandleValue, values, isAsync)
         if not isAsync then
             return
         end
-        script.thread(function(_, sleep)
+        script.thread(function()
             -- Wait until desired widget is loaded in the DOM
             sleep(function()
                 return setWidgetValuesDOMSafe(widgetTagHandleValue, values)
-            end, 1, constants.maximumTicksForDOMRenderTime)
+            end, 1, maximumTicksForDOMRenderTime)
         end)()
     end
 end
@@ -296,7 +300,9 @@ function core.setStringToWidget(text, widgetTarget, mask, maxCharacters, widgetD
     if not unicodeStringsData then
         local tagEntry = getTagEntry(widgetTagId)
         local tagPath = tagEntry and tagEntry.path or tostring(widgetTagId)
-        error("No unicodeStringList found for widgetDefinition " .. tagPath)
+        --error("No unicodeStringList found for widgetDefinition " .. tagPath)
+        logger.error("No unicodeStringList found for widgetDefinition " .. tagPath)
+        return
     end
 
     local stringListIndex = activeWidgetDefinition.stringListIndex
