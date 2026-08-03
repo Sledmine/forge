@@ -5,25 +5,6 @@ local core = require "ui.core"
 local round = math.round
 local logger = Balltze.logger
 
----@param value any
----@return integer?
-local function getTagHandleValue(value)
-    if type(value) == "number" then
-        return value
-    end
-    if type(value) == "table" and value.tagHandle and value.tagHandle.value and
-        not value.tagHandle:isNull() then
-        return value.tagHandle.value
-    end
-    return nil
-end
-
----@param tagReference any
----@return boolean
-local function hasTagReference(tagReference)
-    return getTagHandleValue(tagReference) ~= nil
-end
-
 ---@class uiComponentListClass : uiComponent
 local list = setmetatable({
     ---@type string
@@ -64,13 +45,13 @@ local list = setmetatable({
 ---@field events uiComponentListEvents
 
 ---@param tagId number
----@param firstWidgetIndex? number
----@param lastWidgetIndex? number
+---@param firstWidgetIndex? integer
+---@param lastWidgetIndex? integer
 ---@return uiComponentList
 function list.new(tagId, firstWidgetIndex, lastWidgetIndex)
     local instance = setmetatable(component.new(tagId), {__index = list}) --[[@as uiComponentList]]
     instance.firstWidgetIndex = firstWidgetIndex or 1
-    local childWidgetsCount = instance.widgetDefinition.childWidgets and #instance.widgetDefinition.childWidgets or 1
+    local childWidgetsCount = (instance.widgetDefinition.childWidgets and #instance.widgetDefinition.childWidgets) or 1
     instance.lastWidgetIndex = lastWidgetIndex or childWidgetsCount
     return instance
 end
@@ -135,6 +116,7 @@ function list.refresh(self)
     local firstWidgetIndex = self.firstWidgetIndex
     local lastWidgetIndex = self.lastWidgetIndex
     if self.isScrollable then
+        --logger.debug("List is scrollable, adjusting first and last widget index to account for scroll buttons")
         firstWidgetIndex = firstWidgetIndex + 1
         lastWidgetIndex = lastWidgetIndex - 1
     end
@@ -176,9 +158,8 @@ function list.refresh(self)
         local item = items[itemIndex]
         local childWidget = widgetDefinition.childWidgets[widgetIndex].widgetTag
         if item then
-            logger.debug("Widget: " .. self.tag.path .. " child widget index: " .. widgetIndex .. " item index: " .. itemIndex)
             if childWidget then
-                logger.debug("Child widget: " .. childWidget.path .. " is being set to item value: " .. tostring(item.value))
+                --logger.debug("Child widget: " .. childWidget.path .. " is being set to item value: " .. tostring(item.value))
                 core.setWidgetValues(childWidget.tagHandle.value, {neverReceiveEvents = false, visible = true})
                 local listButton = button.new(childWidget.tagHandle.value)
                 if item.label then
@@ -199,7 +180,7 @@ function list.refresh(self)
                         -- Set button bitmap state to selected index
                         listButton:setWidgetValues{bitmapIndex = 2}
                         for _, childWidget in ipairs(widgetDefinition.childWidgets) do
-                            local currentChildWidgetHandle = getTagHandleValue(childWidget.widgetTag)
+                            local currentChildWidgetHandle = childWidget.widgetTag.tagHandle.value
                             if currentChildWidgetHandle and
                                 currentChildWidgetHandle ~= listButton.tagHandle.value then
                                 local childComponent = component.widgets[currentChildWidgetHandle]
@@ -226,7 +207,7 @@ function list.refresh(self)
                             listButton:setWidgetValues{bitmapIndex = 1}
                         end
                         for _, childWidget in ipairs(widgetDefinition.childWidgets) do
-                            local currentChildWidgetHandle = getTagHandleValue(childWidget.widgetTag)
+                            local currentChildWidgetHandle = childWidget.widgetTag.tagHandle.value
                             if currentChildWidgetHandle and
                                 currentChildWidgetHandle ~= listButton.tagHandle.value then
                                 local childComponent = component.widgets[currentChildWidgetHandle]
@@ -251,8 +232,8 @@ function list.refresh(self)
                 itemIndex = itemIndex + 1
             end
         else
-            if childWidgetHandle then
-                core.setWidgetValues(childWidgetHandle, {neverReceiveEvents = true, visible = false})
+            if childWidget then
+                core.setWidgetValues(childWidget.tagHandle.value, {neverReceiveEvents = true, visible = false})
             end
         end
     end
@@ -283,27 +264,32 @@ function list.setItems(self, items)
     -- if self.currentItemIndex > #items then
     --    self.currentItemIndex = 1
     -- end
+
+    -- Reset buttons component instance to default state
     for widgetIndex = self.firstWidgetIndex, self.lastWidgetIndex do
-        logger.debug("Widget: " .. self.tag.path .. " child widget index: " .. widgetIndex)
-        local widgetTagHandle = widgetDefinition.childWidgets[widgetIndex].widgetTag.tagHandle
-        if not widgetTagHandle:isNull() then
-            button.new(widgetTagHandle.value)
+        local widgetTag = widgetDefinition.childWidgets[widgetIndex].widgetTag
+        if not widgetTag.tagHandle:isNull() then
+            --logger.debug("Child widget: " .. widgetTag.path .. " is being reset to default state")
+            button.new(widgetTag.tagHandle.value)
         end
     end
+
     self.currentItemIndex = 1
     self.lastSelectedItemIndex = nil
     if self.isScrollable then
-        local firstWidgetTagHandle =
-            getTagHandleValue(widgetDefinition.childWidgets[self.firstWidgetIndex].widgetTag)
-        local lastWidgetTagHandle =
-            getTagHandleValue(widgetDefinition.childWidgets[self.lastWidgetIndex].widgetTag)
-        if firstWidgetTagHandle and lastWidgetTagHandle then
-            local firstWidget = button.new(firstWidgetTagHandle)
-            local lastWidget = button.new(lastWidgetTagHandle)
+        local firstWidgetTag = widgetDefinition.childWidgets[self.firstWidgetIndex].widgetTag
+        local lastWidgetTag = widgetDefinition.childWidgets[self.lastWidgetIndex].widgetTag
+        local firstWidgetTagHandleValue = firstWidgetTag.tagHandle.value
+        local lastWidgetTagHandleValue = lastWidgetTag.tagHandle.value
+        if firstWidgetTagHandleValue and lastWidgetTagHandleValue then
+            local firstWidget = button.new(firstWidgetTagHandleValue)
+            local lastWidget = button.new(lastWidgetTagHandleValue)
             firstWidget:onClick(function()
+                --logger.debug("List scroll up button clicked")
                 self:scroll(-1)
             end)
             lastWidget:onClick(function()
+                --logger.debug("List scroll down button clicked")
                 self:scroll(1)
             end)
         end
@@ -322,7 +308,7 @@ function list.clearSelectedItem(self)
     self.lastSelectedItemIndex = nil
     if self.isSelectable then
         for _, childWidget in ipairs(self.widgetDefinition.childWidgets) do
-            local childWidgetHandle = getTagHandleValue(childWidget.widgetTag)
+            local childWidgetHandle = childWidget.widgetTag.tagHandle.value
             local childComponent = childWidgetHandle and component.widgets[childWidgetHandle]
             if childComponent then
                 -- Restore all buttons to their default state
