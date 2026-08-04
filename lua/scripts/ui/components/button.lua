@@ -17,7 +17,7 @@ local floor = math.floor
 ---@field legacy? boolean
 ---@field close? boolean
 ---@field arrow? "up" | "down"
----@field variant? "small" | "normal" | "large"
+---@field variant? "small" | "normal" | "large" | "forge"
 ---@field order? "top" | "mid" | "bottom"
 ---@field transparent? boolean
 ---@field textOffset? number
@@ -135,13 +135,17 @@ return function(props)
         wid.header_bounds = widget.bounds(arrowY, arrowX, arrowY + arrowHeight, arrowX + arrowWidth)
 
         wid.child_widgets[#wid.child_widgets + 1] = {
-            image("arrow_" .. props.arrow, arrowBitmap, arrowWidth, arrowHeight),
+            image("arrow_" .. props.arrow),
             arrowX,
             arrowY
         }
     end
     if textOffset then
         wid.horiz_offset = textOffset
+    end
+    if variant == "forge" then
+        wid.horiz_offset = wid.horiz_offset + 8
+        wid.vert_offset = wid.vert_offset + 1
     end
     widget.createV2(widgetPath, wid)
     return widgetPath

@@ -69,51 +69,56 @@ return {
             large = {
                 width = 389,
                 height = 24,
-                bitmap = [[insurrection/ui/bitmaps/large_button.bitmap]]
+                bitmap = [[[shm]/halo_4/ui/bitmaps/large_button.bitmap]]
+            },
+            forge = {
+                width = 261,
+                height = 26,
+                bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button.bitmap]]
             }
         },
         arrow = {
-            left = {width = 16, height = 16, bitmap = [[insurrection/ui/bitmaps/arrow_left.bitmap]]},
+            left = {width = 16, height = 16, bitmap = [[[shm]/halo_4/ui/bitmaps/arrow_left.bitmap]]},
             right = {
                 width = 16,
                 height = 16,
-                bitmap = [[insurrection/ui/bitmaps/arrow_right.bitmap]]
+                bitmap = [[[shm]/halo_4/ui/bitmaps/arrow_right.bitmap]]
             },
-            up = {width = 10, height = 8, bitmap = [[insurrection/ui/bitmaps/arrow_up.bitmap]]},
-            down = {width = 10, height = 8, bitmap = [[insurrection/ui/bitmaps/arrow_down.bitmap]]}
+            up = {width = 10, height = 8, bitmap = [[[shm]/halo_4/ui/bitmaps/arrow_up.bitmap]]},
+            down = {width = 10, height = 8, bitmap = [[[shm]/halo_4/ui/bitmaps/arrow_down.bitmap]]}
         },
         complexButton = {
             normal = {
                 width = 120,
                 height = 110,
-                bitmap = [[insurrection/ui/bitmaps/complex_button.bitmap]]
+                bitmap = [[[shm]/halo_4/ui/bitmaps/complex_button.bitmap]]
             },
             vertical = {
                 width = 144,
                 height = 158,
-                bitmap = [[insurrection/ui/bitmaps/vertical_complex_button.bitmap]]
+                bitmap = [[[shm]/halo_4/ui/bitmaps/vertical_complex_button.bitmap]]
             },
             horizontal = {
                 width = 149,
                 height = 36,
-                bitmap = [[insurrection/ui/bitmaps/horizontal_complex_button.bitmap]]
+                bitmap = [[[shm]/halo_4/ui/bitmaps/horizontal_complex_button.bitmap]]
             },
             horizontal_small = {
                 width = 103,
                 height = 36,
-                bitmap = [[insurrection/ui/bitmaps/horizontal_complex_small_button.bitmap]]
+                bitmap = [[[shm]/halo_4/ui/bitmaps/horizontal_complex_small_button.bitmap]]
             }
         },
         input = {
             small = {
                 width = 184,
                 height = 23,
-                bitmap = [[insurrection/ui/bitmaps/input_small.bitmap]]
+                bitmap = [[[shm]/halo_4/ui/bitmaps/input_small.bitmap]]
             },
-            normal = {width = 187, height = 34, bitmap = [[insurrection/ui/bitmaps/input.bitmap]]}
+            normal = {width = 187, height = 34, bitmap = [[[shm]/halo_4/ui/bitmaps/input.bitmap]]}
         },
         overlay = {
-            path = [[insurrection/ui/menus/overlay/overlay_graft.ui_widget_definition]]
+            path = [[[shm]/halo_4/ui/menus/overlay/overlay_graft.ui_widget_definition]]
         }
     }
 }

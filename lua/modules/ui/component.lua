@@ -181,11 +181,11 @@ function component.callbacks()
         rightAnalogStickRight = true
     }
 
-    local function onListTab(eventType, widgetEvent)
+    local function onListTab(eventType, event, widgetEvent)
         local widgetListHandle = widgetEvent.definitionTagHandle.value
         local focusedChild = widgetEvent.focusedChild
         if not focusedChild then
-            widgetEvent:cancel()
+            event:cancel()
             return
         end
 
@@ -237,7 +237,7 @@ function component.callbacks()
 
         local widgetTag = findNextWidget()
         if not widgetTag then
-            widgetEvent:cancel()
+            event:cancel()
             return
         end
 
@@ -415,7 +415,7 @@ function component.callbacks()
         end
 
         if prevTabEventTypes[eventType] or nextTabEventTypes[eventType] then
-            onListTab(eventType, widgetEvent)
+            onListTab(eventType, event, widgetEvent)
         end
     end)
 
@@ -753,5 +753,7 @@ end
 function component.launch(self)
     engine.uiWidget.launchWidget(self.handleValue)
 end
+
+component.open = component.launch
 
 return component

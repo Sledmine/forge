@@ -13,12 +13,9 @@ local constants = require "lua.scripts.ui.components.constants"
 ---@field dataInput? string
 ---@field eventsToChildren? boolean
 ---@field useItems? boolean
----@field campaignMaps? boolean
----@field multiplayerMaps? string
----@field gametypes? string
----@field colorPicker? boolean
 ---@field width? number
 ---@field height? number
+---@field bitmap? string
 ---@field isDebug? boolean
 
 ---Options list component, scroll trough elements using dpad, etc
@@ -41,7 +38,7 @@ return function(props)
     local wid = {
         widget_type = "column_list",
         -- For debug purposes
-        background_bitmap = isDebug and "insurrection/ui/bitmaps/solid_green.bitmap" or nil,
+        background_bitmap = isDebug and "insurrection/ui/bitmaps/solid_green.bitmap" or props.bitmap,
         bounds = bounds or constants.getScreenBounds(),
         flags = {
             pass_unhandled_events_to_focused_child = true,

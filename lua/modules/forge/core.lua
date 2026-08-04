@@ -4,7 +4,7 @@ local getObject = engine.object.getObject
 
 local core = {}
 
-local constants = require "forge.constants"
+local constants = require "forgeIsland.constants"
 
 BipedReplacements = {}
 

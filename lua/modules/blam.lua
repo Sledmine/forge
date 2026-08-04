@@ -2155,6 +2155,10 @@ function blam.tag(address)
     return nil
 end
 
+function get_tag()
+    error(debug.traceback("get_tag is not implemented, use Engine.tag.getTagEntry instead", 2))
+end
+
 --- Return a tag object given tagPath and tagClass or just tagId
 ---@param tagIdOrTagPath string | number
 ---@param tagClass? string

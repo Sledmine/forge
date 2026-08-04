@@ -8,8 +8,7 @@ local widget = require "lua.scripts.widget"
 ---@field branch? boolean
 ---@field conditionalWidgets? invaderWidgetConditionalWidget[]
 ---@field dataInput? string
----@field noBackgroud? boolean
----@field background "transparent" | "fade"
+---@field background? "transparent" | "fade"
 ---@field childs? invaderWidgetChildWidget[]
 
 ---Menu container component, this is the first component that holds a screen
@@ -24,7 +23,6 @@ return function(props)
     local wid = {
         bounds = widget.bounds(-constants.screen.height, -constants.screen.width,
         constants.screen.height, constants.screen.width),
-        background_bitmap = [[[shm]/halo_4/ui/bitmaps/background.bitmap]],
         flags = {pass_unhandled_events_to_focused_child = true},
         event_handlers = {
             {
@@ -50,9 +48,6 @@ return function(props)
         elseif props.background == "fade" then
             wid.background_bitmap = [[[shm]/halo_4/ui/bitmaps/background.bitmap]]
         end
-    end
-    if props.noBackgroud then
-        wid.background_bitmap = nil
     end
     widget.createV2(widgetPath, wid)
     return widgetPath
