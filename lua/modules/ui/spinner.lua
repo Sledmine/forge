@@ -12,9 +12,9 @@ local spinner = setmetatable({
     ---@type string[]
     values = {},
     ---@type number
-    leftArrowTagId = nil,
+    leftArrowHandleValue = nil,
     ---@type number
-    rightArrowTagId = nil,
+    rightArrowHandleValue = nil,
     ---@type number
     currentValueIndex = 1
 }, {__index = component})
@@ -29,15 +29,14 @@ local spinner = setmetatable({
 ---@return uiComponentSpinner
 function spinner.new(tagId)
     local instance = setmetatable(component.new(tagId), {__index = spinner}) --[[@as uiComponentSpinner]]
-    assert(instance.tag.path:find("spinner", 1, true),
-           "Tag " .. instance.tag.path .. " is not a spinner")
-    instance.leftArrowTagId = instance:findChildWidgetTag("arrow_left").id
-    instance.rightArrowTagId = instance:findChildWidgetTag("arrow_right").id
-    local leftArrow = button.new(instance.leftArrowTagId)
+    assert(instance.tag.path:find("spinner", 1, true), "Tag " .. instance.tag.path .. " is not a spinner")
+    instance.leftArrowHandleValue = instance:findChildWidgetTag("arrow_left").handle.value
+    instance.rightArrowHandleValue = instance:findChildWidgetTag("arrow_right").handle.value
+    local leftArrow = button.new(instance.leftArrowHandleValue)
     leftArrow:onClick(function()
         instance:scroll(1)
     end)
-    local rightArrow = button.new(instance.rightArrowTagId)
+    local rightArrow = button.new(instance.rightArrowHandleValue)
     rightArrow:onClick(function()
         instance:scroll(-1)
     end)

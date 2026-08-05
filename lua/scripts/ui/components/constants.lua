@@ -80,11 +80,11 @@ return {
             }
         },
         arrow = {
-            left = {width = 16, height = 16, bitmap = [[[shm]/halo_4/ui/bitmaps/arrow_left.bitmap]]},
+            left = {width = 16, height = 16, bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_left.bitmap]]},
             right = {
                 width = 16,
                 height = 16,
-                bitmap = [[[shm]/halo_4/ui/bitmaps/arrow_right.bitmap]]
+                bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_right.bitmap]]
             },
             up = {width = 10, height = 8, bitmap = [[[shm]/halo_4/ui/bitmaps/arrow_up.bitmap]]},
             down = {width = 10, height = 8, bitmap = [[[shm]/halo_4/ui/bitmaps/arrow_down.bitmap]]}

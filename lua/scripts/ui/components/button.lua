@@ -24,6 +24,7 @@ local floor = math.floor
 ---@field childs? invaderWidgetChildWidget[]
 ---@field width? number
 ---@field height? number
+---@field noHandlers? boolean
 
 ---Generic button component, recycled in multiple components
 ---@param props buttonProps
@@ -146,6 +147,9 @@ return function(props)
     if variant == "forge" then
         wid.horiz_offset = wid.horiz_offset + 8
         wid.vert_offset = wid.vert_offset + 1
+    end
+    if props.noHandlers then
+        wid.event_handlers = nil
     end
     widget.createV2(widgetPath, wid)
     return widgetPath

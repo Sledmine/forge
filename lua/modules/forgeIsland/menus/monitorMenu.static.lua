@@ -9,7 +9,8 @@ local pos = constants.position
 local label = require "lua.scripts.ui.components.label"
 local wrapper = require "lua.scripts.ui.components.wrapper"
 local bar = require "lua.scripts.ui.components.bar"
-local image = require "lua.scripts.ui.components.image"
+-- local image = require "lua.scripts.ui.components.image"
+local spinner = require "lua.scripts.ui.components.spinner"
 
 widget.init [[[shm]/halo_4/ui/menus/monitor/]]
 
@@ -18,6 +19,21 @@ local layout = widget.align("vertical", 26, 0, 28, 1)
 local menuName = "monitor_menu"
 
 local posY = 133
+
+local buttonOptions = {}
+
+for index = 1, 7 do
+    buttonOptions[index] = {
+        spinner {
+            name = menuName .. "_option_" .. index,
+            text = strmem(32, "OPTION " .. index),
+            value = strmem(16, "OFF", "left"),
+            variant = "forge",
+            length = 32
+        },
+        layout()
+    }
+end
 
 local monitorMenuPath = container {
     name = menuName,
@@ -85,288 +101,7 @@ local monitorMenuPath = container {
                 -- bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_background.bitmap]],
                 width = 261,
                 height = 257,
-                childs = {
-                    {
-                        button {
-                            name = "option_1",
-                            text = strmem(64, "Option 1"),
-                            variant = "forge",
-                            childs = {
-                                {
-                                    label {
-                                        name = "option_1_value",
-                                        text = strmem(16, "Value", "left"),
-                                        width = 70,
-                                        justify = "right"
-                                    },
-                                    160,
-                                    -1
-                                },
-                                {
-                                    image {
-                                        name = "option_1_arrow_left",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_left.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    234,
-                                    5
-                                },
-                                {
-                                    image {
-                                        name = "option_1_arrow_right",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_right.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    244,
-                                    5
-                                }
-                            }
-                        },
-                        layout()
-                    },
-                    {
-                        button {
-                            name = "option_2",
-                            text = strmem(64, "Option 2"),
-                            variant = "forge",
-                            childs = {
-                                {
-                                    label {
-                                        name = "option_2_value",
-                                        text = strmem(16, "Value", "left"),
-                                        width = 70,
-                                        justify = "right"
-                                    },
-                                    160,
-                                    -1
-                                },
-                                {
-                                    image {
-                                        name = "option_2_arrow_left",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_left.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    234,
-                                    5
-                                },
-                                {
-                                    image {
-                                        name = "option_2_arrow_right",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_right.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    244,
-                                    5
-                                }
-                            }
-                        },
-                        layout()
-                    },
-                    {
-                        button {
-                            name = "option_3",
-                            text = strmem(64, "Option 3"),
-                            variant = "forge",
-                            childs = {
-                                {
-                                    label {
-                                        name = "option_3_value",
-                                        text = strmem(16, "Value", "left"),
-                                        width = 70,
-                                        justify = "right"
-                                    },
-                                    160,
-                                    -1
-                                },
-                                {
-                                    image {
-                                        name = "option_3_arrow_left",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_left.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    234,
-                                    5
-                                },
-                                {
-                                    image {
-                                        name = "option_3_arrow_right",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_right.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    244,
-                                    5
-                                }
-                            }
-                        },
-                        layout()
-                    },
-                    {
-                        button {
-                            name = "option_4",
-                            text = strmem(64, "Option 4"),
-                            variant = "forge",
-                            childs = {
-                                {
-                                    label {
-                                        name = "option_4_value",
-                                        text = strmem(16, "Value", "left"),
-                                        width = 70,
-                                        justify = "right"
-                                    },
-                                    160,
-                                    -1
-                                },
-                                {
-                                    image {
-                                        name = "option_4_arrow_left",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_left.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    234,
-                                    5
-                                },
-                                {
-                                    image {
-                                        name = "option_4_arrow_right",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_right.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    244,
-                                    5
-                                }
-                            }
-                        },
-                        layout()
-                    },
-                    {
-                        button {
-                            name = "option_5",
-                            text = strmem(64, "Option 5"),
-                            variant = "forge",
-                            childs = {
-                                {
-                                    label {
-                                        name = "option_5_value",
-                                        text = strmem(16, "Value", "left"),
-                                        width = 70,
-                                        justify = "right"
-                                    },
-                                    160,
-                                    -1
-                                },
-                                {
-                                    image {
-                                        name = "option_5_arrow_left",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_left.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    234,
-                                    5
-                                },
-                                {
-                                    image {
-                                        name = "option_5_arrow_right",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_right.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    244,
-                                    5
-                                }
-                            }
-                        },
-                        layout()
-                    },
-                    {
-                        button {
-                            name = "option_6",
-                            text = strmem(64, "Option 6"),
-                            variant = "forge",
-                            childs = {
-                                {
-                                    label {
-                                        name = "option_6_value",
-                                        text = strmem(16, "Value", "left"),
-                                        width = 70,
-                                        justify = "right"
-                                    },
-                                    160,
-                                    -1
-                                },
-                                {
-                                    image {
-                                        name = "option_6_arrow_left",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_left.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    234,
-                                    5
-                                },
-                                {
-                                    image {
-                                        name = "option_6_arrow_right",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_right.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    244,
-                                    5
-                                }
-                            }
-                        },
-                        layout()
-                    },
-                    {
-                        button {
-                            name = "option_7",
-                            text = strmem(64, "Option 7"),
-                            variant = "forge",
-                            childs = {
-                                {
-                                    label {
-                                        name = "option_7_value",
-                                        text = strmem(16, "Value", "left"),
-                                        width = 70,
-                                        justify = "right"
-                                    },
-                                    160,
-                                    -1
-                                },
-                                {
-                                    image {
-                                        name = "option_7_arrow_left",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_left.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    234,
-                                    5
-                                },
-                                {
-                                    image {
-                                        name = "option_7_arrow_right",
-                                        bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_button_arrow_right.bitmap]],
-                                        width = 16,
-                                        height = 16
-                                    },
-                                    244,
-                                    5
-                                }
-                            }
-                        },
-                        layout()
-                    }
-                }
+                childs = buttonOptions
             },
             546,
             posY + 36

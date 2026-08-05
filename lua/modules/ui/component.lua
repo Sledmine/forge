@@ -598,6 +598,7 @@ end
 ---@param self uiComponent
 ---@param name string
 function component.findChildWidgetTag(self, name)
+    logger.debug("Searching for child widget tag: " .. name .. " in component: " .. self.tag.path)
     local childWidgetTags = self:getChildWidgetTags()
     for _, childTag in pairs(childWidgetTags) do
         logger.debug("Checking child tag: " .. childTag.path .. " for name: " .. name)
@@ -655,6 +656,7 @@ function component.get(self, name)
     if childWidgetTag then
         return childWidgetTag.handle.value
     end
+    logger.debug(debug.traceback())
     error("No child widget found with name \"" .. name .. "\" in component \"" .. self.tag.path ..
               "\"")
 end
