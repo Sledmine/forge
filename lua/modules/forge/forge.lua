@@ -19,7 +19,7 @@ local forge = {
             ---@type TagEntry?
             monitor = nil,
             ---@type TagEntry?
-            spartan = nil
+            player = nil
         },
         weaponHudInterfaces = {
             ---@type TagEntry?
@@ -62,16 +62,21 @@ end
 
 --- Swap a player's biped and restore gameplay state used by Forge controls.
 ---@param playerIndex integer
----@param targetBipedTagHandle integer
----@param previousPosition {x: number, y: number, z: number}
+---@param targetBipedName "monitor" | "player"
+---@param previousPosition? {x: number, y: number, z: number}
 ---@return BipedObject?
-local function swapPlayerBipedForForge(playerIndex, targetBipedTagHandle, previousPosition)
+function forge.swapPlayerBiped(playerIndex, targetBipedName, previousPosition)
     local player = getPlayer(playerIndex)
     if not player then
         return nil
     end
 
-    core.swapBiped(playerIndex, targetBipedTagHandle)
+    local targetBiped = bipeds[targetBipedName]
+    if not targetBiped then
+        return nil
+    end
+
+    core.swapBiped(playerIndex, targetBiped.handle.value)
     engine.object.deleteObject(player.unitHandle.value)
     sleep(1)
 
@@ -85,7 +90,9 @@ local function swapPlayerBipedForForge(playerIndex, targetBipedTagHandle, previo
         return nil
     end
 
-    core.teleportPlayer(playerIndex, previousPosition.x, previousPosition.y, previousPosition.z)
+    if previousPosition then
+        core.teleportPlayer(playerIndex, previousPosition.x, previousPosition.y, previousPosition.z)
+    end
     return playerBiped
 end
 
@@ -166,10 +173,10 @@ function forge.controls()
 
                     if playerBiped.unitControlFlags.light then
                         if not isMonitor and playerBiped.tagHandle.value ==
-                            bipeds.spartan.handle.value then
+                            bipeds.player.handle.value then
                             Balltze.logger.debug("Player {} is pressiwng light", playerIndex)
-                            playerBiped = swapPlayerBipedForForge(playerIndex,
-                                                                  bipeds.monitor.handle.value,
+                            playerBiped = forge.swapPlayerBiped(playerIndex,
+                                                                  "monitor",
                                                                   previousPosition)
                             if not playerBiped then
                                 return
@@ -186,8 +193,8 @@ function forge.controls()
                     elseif playerBiped.unitControlFlags.crouch then
                         if isMonitor then
                             Balltze.logger.debug("Player {} is pressing crouch", playerIndex)
-                            playerBiped = swapPlayerBipedForForge(playerIndex,
-                                                                  bipeds.spartan.handle.value,
+                            playerBiped = forge.swapPlayerBiped(playerIndex,
+                                                                  "player",
                                                                   previousPosition)
                             if not playerBiped then
                                 return

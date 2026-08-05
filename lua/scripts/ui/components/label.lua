@@ -2,17 +2,17 @@ local constants = require "lua.scripts.ui.components.constants"
 local widget = require "lua.scripts.widget"
 local button = require "lua.scripts.ui.components.button"
 local ustr = require "lua.scripts.modules.ustr"
+local inspect = require "lua.modules.inspect"
 
 ---@class labelProps
 ---@field name string Name of the component
 ---@field text string | string[] Text to display
 ---@field variant? "title" | "subtitle" | "text" | "button" | "shadow"
----@field color? "white" | "gray" | "silver" | "cobalt" | "yellow" | "red"
+---@field color? "white" | "indigo" | "silver" | "cobalt" | "yellow" | "red" | 
 ---@field justify? "left" | "center" | "right"
 ---@field size? number
 ---@field width? number
 ---@field height? number
----@field [1]? invaderWidgetChildWidget[]
 ---@field childs? invaderWidgetChildWidget[]
 ---@field replace? invaderWidgetSearchAndReplaceFunctions[]
 ---@field isFlashingText? boolean
@@ -27,6 +27,7 @@ return function(props)
     local size = props.size or 24
     local isFlashingText = props.isFlashingText == nil and false or props.isFlashingText
     local isFocuseable = props.isFocuseable == nil and false or props.isFocuseable
+    local justify = props.justify or "left"
 
     local widgetPath = widget.path .. name .. "_label.ui_widget_definition"
     local stringsPath = widget.path .. "strings/" .. name .. "_label.unicode_string_list"
@@ -56,8 +57,8 @@ return function(props)
         textColor = constants.color.title
     elseif props.color == "blueYonder" then
         textColor = constants.color.subtitle
-    elseif props.color == "gray" then
-        textColor = constants.color.selected
+    elseif props.color == "indigo" then
+        textColor = constants.color.indigo
     elseif props.color == "silver" then
         textColor = constants.color.nameplate
     elseif props.color == "blueGray" then
@@ -82,18 +83,17 @@ return function(props)
         flags = {pass_unhandled_events_to_focused_child = true},
         text_font = textFont,
         text_color = textColor,
-        justification = (props.justify or "left") .. "_justify",
+        justification = justify .. "_justify",
         text_label_unicode_strings_list = stringsPath,
         string_list_index = 0,
         flags_1 = {
             flashing = isFlashingText,
             dont_do_that_weird_focus_test = not isFocuseable
         },
-        --horiz_offset = 10,
         horiz_offset = 0,
         vert_offset = 5,
         search_and_replace_functions = props.replace or {},
-        child_widgets = props[1] or props.childs or {}
+        child_widgets = props.childs or {}
     }
     widget.createV2(widgetPath, wid)
     return widgetPath

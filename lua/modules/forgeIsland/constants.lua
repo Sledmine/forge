@@ -3,7 +3,7 @@ local engine = Engine
 
 constants.bipeds = {
     monitor = engine.tag.filterTags("biped", "monitor")[1],
-    spartan = engine.tag.filterTags("biped", "mjolnir")[1]
+    player = engine.tag.filterTags("biped", "mjolnir")[1]
 }
 
 constants.weaponHudInterfaces = {

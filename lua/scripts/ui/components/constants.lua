@@ -7,7 +7,8 @@ return {
         title = "1, 0.8, 0.9, 1",
         placeholder = "1, 0.5, 0.5, 0.5",
         subtitle = "1, 0.576471, 0.788235, 1",
-        selected = "1, 0.55, 0.55, 0.55",
+        -- 0b2d59
+        indigo = "1, 0.0470588, 0.180392, 0.34902",
         nameplate = "1, 0.8, 0.8, 0.8",
         info = "1, 0.427451, 0.564706, 0.803922",
         focus = "1, 0.592157, 0.698039, 0.878431",
@@ -18,13 +19,14 @@ return {
             secondary = "#6d90cd",
             primaryHighlight = "#97b2e0",
             secondaryHighlight = "#2996ff",
-            contrast = "##4a6f98"
+            contrast = "#0b2d59"
         }
     },
     opacity = {primary = 12.5, secondary = 34.5},
     fonts = {
         text = [[[shm]/halo_4/ui/blender_pro_12.font]], -- small
-        title = [[[shm]/halo_4/ui/fonts/blender_pro_medium_20.font]], -- ticker
+        --title = [[[shm]/halo_4/ui/fonts/blender_pro_medium_20.font]], -- ticker
+        title = [[[shm]/halo_4/ui/fonts/arame_numbers_heavy_13.font]], -- ticker
         subtitle = [[[shm]/halo_4/ui/blender_pro_15.font]], -- gamespy/subtitle
         button = [[[shm]/halo_4/ui/blender_pro_12.font]], -- large
         shadow = [[[shm]/halo_4/ui/blender_pro_15.font]]

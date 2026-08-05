@@ -280,11 +280,16 @@ end
 ---Generate a string of spaces to reserve memory for a string
 ---@param size number
 ---@param default? string
+---@param padding? "left" | "right"
 ---@return string
-function widget.strmem(size, default)
+function widget.strmem(size, default, padding)
     local str = default or ""
     local size = size - #str
-    str = str .. string.rep(" ", size)
+    if  padding == "left" then
+        str = string.rep(" ", size) .. str
+    else
+        str = str .. string.rep(" ", size)
+    end
     return str
 end
 
@@ -317,8 +322,8 @@ end
 ---@return string
 function widget.color(color, name)
     local colorDecimal = tonumber(color:sub(2), 16) or 0
-    local bitmapPath = "insurrection/ui/bitmaps/color_" .. (name or colorDecimal)
-    local imagePath = "data/insurrection/ui/bitmaps/color_" .. (name or colorDecimal) .. ".png"
+    local bitmapPath = "[shm]/halo_4/ui/bitmaps/color_" .. (name or colorDecimal)
+    local imagePath = "data/[shm]/halo_4/ui/bitmaps/color_" .. (name or colorDecimal) .. ".png"
 
     if not fs.is("tags/" .. bitmapPath .. ".bitmap") then
         -- Create bitmap from color using image magick, assume color is in hex

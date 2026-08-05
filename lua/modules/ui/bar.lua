@@ -13,14 +13,14 @@ local bar = setmetatable({
     orientation = "horizontal"
 }, {__index = component})
 
----@param tagId number
+---@param handleValue number
 ---@param barType? "progress" | "scroll"
 ---@return uiComponentBar
-function bar.new(tagId, barType)
-    local instance = setmetatable(component.new(tagId), {__index = bar}) --[[@as uiComponentBar]]
+function bar.new(handleValue, barType)
+    local instance = setmetatable(component.new(handleValue), {__index = bar}) --[[@as uiComponentBar]]
     instance.barType = barType or "scroll"
-    instance.orientation = instance.widgetDefinition.bounds.right > instance.widgetDefinition.bounds.bottom and
-                               "horizontal" or "vertical"
+    instance.orientation = instance.widgetDefinition.bounds.right >
+                               instance.widgetDefinition.bounds.top and "horizontal" or "vertical"
     return instance
 end
 
@@ -41,12 +41,14 @@ function bar.setValue(self, value)
         value = 0
     end
     local isHorizontal = self.orientation == "horizontal"
-    local barPosition = round(value * (isHorizontal and self.widgetDefinition.bounds.right or self.instance.widgetDefinition.bounds.bottom))
+    local barPosition = round(value *
+                                  (isHorizontal and self.widgetDefinition.bounds.right or
+                                      self.widgetDefinition.bounds.bottom))
     local barValueDefinition = self:findChildWidgetDefinition("bar_value")
     if isHorizontal then
-        barValueDefinition.width = barPosition
+        barValueDefinition.bounds.right = barPosition
     else
-        barValueDefinition.height = barPosition
+        barValueDefinition.bounds.bottom = barPosition
     end
 end
 
