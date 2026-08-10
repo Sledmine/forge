@@ -42,8 +42,8 @@ _ALIGNMENTS = {}
 
 ---@class invaderWidgetEventHandler
 ---@field flags? invaderWidgetEventHandlerFlags
----@field event_type '"a_button"' | '"b_button"' | '"back_button"' | '"start_button"' |  '"dpad_left"' | '"dpad_right"' | '"created"' | '"deleted"' | '"left_mouse"' | '"double_click"' | '"custom_activation"' | '"post_render"'
----@field function? '"mouse_emit_accept_event"' | string
+---@field event_type "get_focus" | "lose_focus" | "deleted" | "a_button" | "b_button" | "back_button" | "start_button" | "dpad_left" | "dpad_right" | "dpad_up" | "dpad_down" | "created" | "deleted" | "left_mouse" | "double_click" | "custom_activation" | "post_render"
+---@field function? "mouse_emit_accept_event" | string
 ---@field widget_tag? string
 ---@field sound_effect? string
 ---@field script? string
@@ -79,7 +79,7 @@ _ALIGNMENTS = {}
 ---@field function string
 
 ---@class invaderWidget
----@field widget_type? '"container"' | '"text_box"' | '"spinner_list"' | '"column_list"'
+---@field widget_type? "container" | "text_box" | "spinner_list" | "column_list"
 ---@field bounds? string
 ---@field flags? invaderWidgetFlags
 ---@field milliseconds_to_auto_close? number
@@ -91,7 +91,7 @@ _ALIGNMENTS = {}
 ---@field text_label_unicode_strings_list? string
 ---@field text_font? string
 ---@field text_color? string
----@field justification? '"left_justify"' | '"center_justify"' | '"right_justify"'
+---@field justification? "left_justify" | "center_justify" | "right_justify"
 ---@field flags_1? invaderWidgetStringFlags
 ---@field string_list_index? number
 ---@field horiz_offset? number
