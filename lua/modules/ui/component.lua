@@ -181,29 +181,41 @@ function component.callbacks()
         rightAnalogStickRight = true
     }
 
-    local function onListTab(eventType, event, widgetEvent)
-        local widgetListHandle = widgetEvent.definitionTagHandle.value
-        local focusedChild = widgetEvent.focusedChild
+    ---@param eventType UiWidgetDefinitionEventType
+    ---@param event WidgetEventDispatchEvent
+    ---@param widget Widget
+    local function onListTab(eventType, event, widget)
+        -- logger.debug("Tab event detected: " .. eventType)
+        local widgetListHandle = widget.definitionTagHandle.value
+        local focusedChild = widget.focusedChild
         if not focusedChild then
+            -- logger.debug("No focused child found for widget list: " .. widgetListHandle)
             event:cancel()
             return
         end
+        -- logger.debug("Focused child widget: {}", getTagEntry(focusedChild.definitionTagHandle.value).path)
 
         local previousWidgetHandle = focusedChild.definitionTagHandle.value
         local widgetListData = getWidgetDefinitionData(widgetListHandle)
         local widgetListChilds = (widgetListData and widgetListData.childWidgets) or {}
         assert(widgetListData, "Invalid widget list tag")
 
-        local currentComponent = component.widgets[widgetListHandle] --[[@as uiComponentSpinner]]
+        local currentComponent = component.widgets[previousWidgetHandle] --[[@as uiComponentSpinner]]
+        -- logger.debug("Current component: {} {}", currentComponent.tag.path, currentComponent.type)
         if currentComponent and currentComponent.type == "spinner" and
             currentComponent.events.onScroll then
-            currentComponent:scroll(prevTabEventTypes[eventType] and -1 or 1)
-            return
+            -- logger.debug("Scrolling spinner component: " .. currentComponent.tag.path)
+            -- logger.debug("Event type: " .. eventType .. ", scroll direction: " .. (prevTabEventTypes[eventType] and "up" or "down"))
+            local isSpinnerScrollEvent = eventType == "dpadLeft" or eventType == "dpadRight"
+            if isSpinnerScrollEvent then
+                currentComponent:scroll(prevTabEventTypes[eventType] and 1 or -1)
+                return
+            end
         end
 
         local function findNextWidget()
             for childIndex, child in pairs(widgetListData.childWidgets) do
-                local childWidgetHandle = getTagHandleValue(child.widgetTag)
+                local childWidgetHandle = child.widgetTag.tagHandle.value
                 if childWidgetHandle and childWidgetHandle == previousWidgetHandle then
                     local nextChildIndex
                     if prevTabEventTypes[eventType] then
@@ -228,6 +240,7 @@ function component.callbacks()
                         assert(widgetTagEntry, "Invalid widget tag")
                         local widgetValues = core.getWidgetValues(widgetHandle)
                         if widgetValues and widgetValues.visible then
+                            --logger.debug("Found next widget: " .. widgetTagEntry.path)
                             return widgetTagEntry
                         end
                     end
@@ -283,7 +296,7 @@ function component.callbacks()
         local tagHandle = widgetEvent.definitionTagHandle.value
         local widgetTagEntry = getTagEntry(tagHandle)
         assert(widgetTagEntry, "Invalid widget tag")
-        
+
         local widgetTagData = getWidgetDefinitionData(tagHandle)
         assert(widgetTagData, "Invalid widget tag data")
 
@@ -346,7 +359,7 @@ function component.callbacks()
         local tagHandle = widgetEvent.definitionTagHandle.value
         local tagEntry = getTagEntry(tagHandle)
         assert(tagEntry, "Invalid widget tag")
-        -- logger.debug("Widget event \"" .. eventType .. "\" dispatched for: \"" .. tagEntry.path .. "\"")
+        --logger.debug("Widget event \"" .. eventType .. "\" dispatched for: \"" .. tagEntry.path .. "\"")
 
         if eventType == "created" then
 
@@ -598,10 +611,10 @@ end
 ---@param self uiComponent
 ---@param name string
 function component.findChildWidgetTag(self, name)
-    logger.debug("Searching for child widget tag: " .. name .. " in component: " .. self.tag.path)
+    -- logger.debug("Searching for child widget tag: " .. name .. " in component: " .. self.tag.path)
     local childWidgetTags = self:getChildWidgetTags()
     for _, childTag in pairs(childWidgetTags) do
-        logger.debug("Checking child tag: " .. childTag.path .. " for name: " .. name)
+        -- logger.debug("Checking child tag: " .. childTag.path .. " for name: " .. name)
         if childTag.path:find(name, 1, true) then
             return childTag
         end
@@ -610,8 +623,7 @@ function component.findChildWidgetTag(self, name)
         if childWidgetDefinition then
             local grandChildWidgetTags = getChildWidgetTags(childWidgetDefinition)
             for _, grandChildTag in pairs(grandChildWidgetTags) do
-                logger.debug("Checking grandchild tag: " .. grandChildTag.path .. " for name: " ..
-                                 name)
+                -- logger.debug("Checking grandchild tag: " .. grandChildTag.path .. " for name: " .. name)
                 if grandChildTag.path:find(name, 1, true) then
                     return grandChildTag
                 end
