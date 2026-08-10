@@ -47,7 +47,20 @@ return function(props)
             pass_handled_events_to_all_children = props.eventsToChildren or false
         },
         child_widgets = childWidgets or {},
-        event_handlers = {},
+        event_handlers = {
+            {
+                event_type = "dpad_left"
+            },
+            {
+                event_type = "dpad_right"
+            },
+            {
+                event_type = "dpad_up"
+            },
+            {
+                event_type = "dpad_down"
+            }
+        },
         extended_description_widget = description or ".ui_widget_definition",
         conditional_widgets = props.conditionalWidgets
     }
