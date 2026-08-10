@@ -47,6 +47,9 @@ return function(props)
         background_bitmap = constants.components.arrow.left.bitmap,
         bounds = widget.bounds(0, 0, constants.components.arrow.left.height,
                                constants.components.arrow.left.width),
+        flags = {
+            pass_handled_events_to_all_children = true
+        },
         event_handlers = {
             {event_type = "a_button"},
             {
@@ -67,23 +70,31 @@ return function(props)
     local stringsTagPath = widget.path .. "strings/" .. name .. "_spinner.unicode_string_list"
     ustr(stringsTagPath, {value})
 
-    local rightArrowX = width - 20
-    local valueX = rightArrowX - length - 64
-    local leftArrowX = valueX - 1
+    local arrowLeftWidth = constants.components.arrow.left.width
+    local arrowRightWidth = constants.components.arrow.right.width
+    local arrowSpacing = 2
+    local arrowRightPadding = 6
+    local leftArrowX = width - (arrowLeftWidth + arrowRightWidth + arrowSpacing + arrowRightPadding)
+    local rightArrowX = leftArrowX + arrowLeftWidth + arrowSpacing
+    local valueRightX = leftArrowX - 6
+    local valueLeftX = valueRightX - length
+    if valueLeftX < 0 then
+        valueLeftX = 0
+    end
 
-    -- Generate label
+    -- Generate value label
     local labelPath = widget.path .. "buttons/" .. name .. "_spinner_label.ui_widget_definition"
     ---@type invaderWidget
     local labelWidget = {
         widget_type = "text_box",
-        bounds = widget.bounds(0, 0, height, width),
+        bounds = widget.bounds(0, valueLeftX, height, valueRightX),
         text_label_unicode_strings_list = stringsTagPath,
         string_list_index = 0,
-        justification = "center_justify",
+        justification = "right_justify",
         text_color = constants.color.text,
         text_font = constants.fonts.button,
         vert_offset = 5,
-        horiz_offset = valueX - 4
+        horiz_offset = 0
     }
     widget.createV2(labelPath, labelWidget)
 
