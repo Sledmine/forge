@@ -76,7 +76,9 @@ local component = {
     ---@type number?
     delayAnimationTicks = nil,
     ---@type uiComponentType
-    type = "generic"
+    type = "generic",
+    ---@type uiComponent
+    parentComponent = nil
     -- @type table<string, widgetAnimation>
     -- animations = {}
 }
@@ -240,7 +242,7 @@ function component.callbacks()
                         assert(widgetTagEntry, "Invalid widget tag")
                         local widgetValues = core.getWidgetValues(widgetHandle)
                         if widgetValues and widgetValues.visible then
-                            --logger.debug("Found next widget: " .. widgetTagEntry.path)
+                            -- logger.debug("Found next widget: " .. widgetTagEntry.path)
                             return widgetTagEntry
                         end
                     end
@@ -348,6 +350,8 @@ function component.callbacks()
         return
     end)
 
+    local autoCancelEventQueue = {}
+
     balltze.addEventListener("widget_event_dispatch", function(event)
         local widgetEvent = event:getWidget()
         local eventHandler = event:getEventHandler()
@@ -356,10 +360,10 @@ function component.callbacks()
         end
 
         local eventType = eventHandler.eventType
-        local tagHandle = widgetEvent.definitionTagHandle.value
-        local tagEntry = getTagEntry(tagHandle)
+        local tagHandleValue = widgetEvent.definitionTagHandle.value
+        local tagEntry = getTagEntry(tagHandleValue)
         assert(tagEntry, "Invalid widget tag")
-        --logger.debug("Widget event \"" .. eventType .. "\" dispatched for: \"" .. tagEntry.path .. "\"")
+        -- logger.debug("Widget event \"" .. eventType .. "\" dispatched for: \"" .. tagEntry.path .. "\"")
 
         if eventType == "created" then
 
@@ -371,17 +375,22 @@ function component.callbacks()
         end
 
         if eventType == "getFocus" then
-            onWidgetFocus(tagHandle, function()
+            onWidgetFocus(tagHandleValue, function()
                 event:cancel()
             end)
             return
         end
 
         -- Left click already triggers aButton event so it doesn't need to be handled separately
-        -- if eventType == "aButton" or eventType == "leftMouse" then
         if eventType == "aButton" then
+            if autoCancelEventQueue[tagHandleValue] then
+                -- logger.debug("Auto canceling aButton event for widget: " .. tagEntry.path)
+                event:cancel()
+                autoCancelEventQueue[tagHandleValue] = nil
+                return
+            end
             local isCanceled = false
-            local currentComponent = component.widgets[tagHandle]
+            local currentComponent = component.widgets[tagHandleValue]
             if currentComponent and currentComponent.events.onClick then
                 isCanceled = currentComponent.events.onClick() == false
             end
@@ -389,10 +398,29 @@ function component.callbacks()
                 event:cancel()
             end
             return
+        elseif eventType == "leftMouse" then
+            -- We only check for left mouse events on spinners and only in arrow widgets
+            -- If not we will still be triggering a double event for other widgets
+            local currentComponent = component.widgets[tagHandleValue]
+            if currentComponent and currentComponent.events.onClick and
+                currentComponent.tag.path:find("arrow") then
+                -- logger.debug("Left mouse click on spinner arrow detected for component: " .. currentComponent.tag.path)
+                local isCanceled = currentComponent.events.onClick() == false
+                if isCanceled then
+                    event:cancel()
+                end
+                -- Prepare an auto cancel event for thet next "aButton" event to prevent double triggering of the click event
+                -- as the widgets system will trigger the "leftMouse" event for the parent component as well
+                local parentComponent = currentComponent.parentComponent
+                if parentComponent then
+                    autoCancelEventQueue[parentComponent.handleValue] = true
+                end
+            end
+            return
         end
 
         if eventType == "rightMouse" then
-            local widgetTag = findWidgetByDefinition(tagHandle)
+            local widgetTag = findWidgetByDefinition(tagHandleValue)
             if not widgetTag then
                 return
             end
@@ -417,7 +445,7 @@ function component.callbacks()
         end
 
         if eventType == "backButton" then
-            local currentComponent = component.widgets[tagHandle]
+            local currentComponent = component.widgets[tagHandleValue]
             if currentComponent and currentComponent.events.onClose then
                 if currentComponent.events.onClose() == false then
                     event:cancel()

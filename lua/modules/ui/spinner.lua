@@ -3,7 +3,7 @@ local component = require "ui.component"
 local button = require "ui.button"
 local core = require "ui.core"
 
----@class uiComponentSpinnerClass : uiComponent
+---@class uiComponentSpinnerClass : uiComponentButtonClass
 local spinner = setmetatable({
     ---@type string
     type = "spinner",
@@ -16,19 +16,19 @@ local spinner = setmetatable({
     ---@type number
     rightArrowHandleValue = nil,
     ---@type number
-    currentValueIndex = 1
-}, {__index = component})
+    currentValueIndex = 1,
+}, {__index = button})
 
----@class uiComponentSpinnerEvents : uiComponentEvents
+---@class uiComponentSpinnerEvents : uiComponentButtonEvents
 ---@field onScroll fun(value: string, index: number):boolean | nil
 
 ---@class uiComponentSpinner : uiComponentSpinnerClass
 ---@field events uiComponentSpinnerEvents
 
----@param tagId number
+---@param handleValue number
 ---@return uiComponentSpinner
-function spinner.new(tagId)
-    local instance = setmetatable(component.new(tagId), {__index = spinner}) --[[@as uiComponentSpinner]]
+function spinner.new(handleValue)
+    local instance = setmetatable(component.new(handleValue), {__index = spinner}) --[[@as uiComponentSpinner]]
     assert(instance.tag.path:find("spinner", 1, true), "Tag " .. instance.tag.path .. " is not a spinner")
     instance.leftArrowHandleValue = instance:findChildWidgetTag("arrow_left").handle.value
     instance.rightArrowHandleValue = instance:findChildWidgetTag("arrow_right").handle.value
@@ -40,6 +40,8 @@ function spinner.new(tagId)
     rightArrow:onClick(function()
         instance:scroll(-1)
     end)
+    leftArrow.parentComponent = instance
+    rightArrow.parentComponent = instance
     return instance
 end
 
@@ -111,5 +113,11 @@ end
 function spinner.onScroll(self, callback)
     self.events.onScroll = callback
 end
+
+---@param self uiComponentSpinner
+function spinner.onClick(self, callback)
+    self.events.onClick = callback
+end
+
 
 return spinner

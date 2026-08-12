@@ -23,7 +23,6 @@ local constants = require "lua.scripts.ui.components.constants"
 ---@field childs? invaderWidgetChildWidget[]
 ---@field width? number
 ---@field height? number
----@field noHandlers? boolean
 
 ---Spinner component
 ---@param props spinnerProps
@@ -35,7 +34,7 @@ return function(props)
     local variant = props.variant or "normal"
     local width = props.width or constants.components.button[variant].width
     local height = props.height or constants.components.button[variant].height
-    --local sizeFactor = variant == "large" and 4 or 3
+    -- local sizeFactor = variant == "large" and 4 or 3
     local sizeFactor = 4
     local length = props.length or #value * sizeFactor
 
@@ -47,15 +46,14 @@ return function(props)
         background_bitmap = constants.components.arrow.left.bitmap,
         bounds = widget.bounds(0, 0, constants.components.arrow.left.height,
                                constants.components.arrow.left.width),
-        flags = {
-            pass_handled_events_to_all_children = true
-        },
         event_handlers = {
-            {event_type = "a_button"},
+            -- We do not need "a_button" event as this will also trigger the parent button's a button event handler
+            -- We can use the left mouse event to isolate event to this widget, "scrolling"
+            -- Is already handled with the dpad event handlers from the parent button
+
+            -- {event_type = "a_button"},
             {
-                event_type = "left_mouse",
-                ["function"] = "mouse_emit_accept_event",
-                flags = {run_function = true}
+                event_type = "left_mouse"
             }
         }
     }
@@ -99,8 +97,16 @@ return function(props)
     widget.createV2(labelPath, labelWidget)
 
     local childWidgets = props.childs and {table.unpack(props.childs)} or {}
-    childWidgets[#childWidgets + 1] = {widget_tag = arrowLeftPath, horizontal_offset = leftArrowX, vertical_offset = 4}
-    childWidgets[#childWidgets + 1] = {widget_tag = arrowRightPath, horizontal_offset = rightArrowX, vertical_offset = 4}
+    childWidgets[#childWidgets + 1] = {
+        widget_tag = arrowLeftPath,
+        horizontal_offset = leftArrowX,
+        vertical_offset = 4
+    }
+    childWidgets[#childWidgets + 1] = {
+        widget_tag = arrowRightPath,
+        horizontal_offset = rightArrowX,
+        vertical_offset = 4
+    }
     childWidgets[#childWidgets + 1] = {widget_tag = labelPath}
 
     local widgetPath = button {
@@ -120,7 +126,7 @@ return function(props)
         textOffset = props.textOffset,
         width = width,
         height = height,
-        noHandlers = props.noHandlers,
+        unhandleEventsAllChildren = true,
         childs = childWidgets
     }
 

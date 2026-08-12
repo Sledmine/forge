@@ -24,7 +24,7 @@ local floor = math.floor
 ---@field childs? invaderWidgetChildWidget[]
 ---@field width? number
 ---@field height? number
----@field noHandlers? boolean
+---@field unhandleEventsAllChildren? boolean
 
 ---Generic button component, recycled in multiple components
 ---@param props buttonProps
@@ -75,6 +75,9 @@ return function(props)
                 event_type = "a_button",
                 widget_tag = props.opens,
                 script = props.script
+            },
+            {
+                event_type = "get_focus"
             }
         },
         text_label_unicode_strings_list = stringsTagPath,
@@ -148,8 +151,10 @@ return function(props)
         wid.horiz_offset = wid.horiz_offset + 8
         wid.vert_offset = wid.vert_offset + 1
     end
-    if props.noHandlers then
-        wid.event_handlers = nil
+    if props.unhandleEventsAllChildren then
+        wid.flags = {
+            pass_unhandled_events_to_all_children = true
+        }
     end
     widget.createV2(widgetPath, wid)
     return widgetPath

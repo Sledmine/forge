@@ -43,7 +43,6 @@ function map.hotReload()
         os.remove("/tmp/reload")
         Balltze.logger.info("Hot reloading Forge Island...")
         engine.script.execute("fast_setup_network_server ui ui 1")
-        Balltze.logger.info("Hot reload complete!")
     end
     sleep(90)
 end

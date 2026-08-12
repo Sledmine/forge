@@ -14,7 +14,7 @@ local elementsData = {
     option_1 = {
         label = "ROTATION SNAP",
         values = {"OFF", "5", "15", "30", "45", "90"},
-        value = "15",
+        value = "OFF",
         change = function(value)
             Balltze.logger.debug("Rotation snap set to {}", value)
         end,
@@ -59,6 +59,9 @@ for index = 1, 7 do
             end)
             spin:onFocus(function()
                 optionData.focus()
+            end)
+            spin:onClick(function()
+                Balltze.logger.debug("Clicked on option {}", optionKey)
             end)
             elements[optionKey] = spin
         else
