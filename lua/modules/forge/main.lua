@@ -3,12 +3,14 @@ local sleep = script.sleep
 local engine = Engine
 local constants = require "forgeIsland.constants"
 local monitorMenu = require "forgeIsland.menus.monitorMenu"
+local inspect = require "inspect"
 
 local forge = require "forge.forge"
 
 -- Configure Forge constants
 forge.constants.bipeds.monitor = constants.bipeds.monitor
 forge.constants.bipeds.player = constants.bipeds.player
+forge.constants.tagCollections.forgeObjects = constants.tagCollections.forgeObjects
 forge.constants.weaponHudInterfaces.monitorCrosshair =
     constants.weaponHudInterfaces.monitorCrosshair
 
@@ -27,6 +29,7 @@ function map.main()
         forge.swapPlayerBiped(0, "monitor")
         forge.callbacks.launchMonitorMenu()
         --engine.uiWidget.launchWidget(constants.menus.forge.handle.value)
+        Balltze.logger.debug("{}", inspect(forge.getAvailableForgeObjectsMenu()))
     end
 end
 script.startup(map.main)

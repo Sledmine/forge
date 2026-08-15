@@ -5,6 +5,7 @@ local sleep = script.sleep
 local getPlayer = engine.player.getPlayer
 local getObject = engine.object.getObject
 local getTagData = engine.tag.getTagData
+local logger = Balltze.logger
 
 local component = require "ui.component"
 local list = require "ui.list"
@@ -20,6 +21,10 @@ local forge = {
             monitor = nil,
             ---@type TagEntry?
             player = nil
+        },
+        tagCollections = {
+            ---@type TagEntry?
+            forgeObjects = nil
         },
         weaponHudInterfaces = {
             ---@type TagEntry?
@@ -39,6 +44,91 @@ function forge.load()
     monitorCrosshairHudTag = forge.constants.weaponHudInterfaces.monitorCrosshair
     assert(monitorCrosshairHudTag, "Monitor crosshair HUD tag not found")
     monitorCrosshairHudData = getTagData(monitorCrosshairHudTag.handle.value, "weapon_hud_interface")
+end
+
+--- Build a nested menu tree for all forge-available object tags in the current map.
+---@return table menuList @{ root = { ... } }
+---@return table objectDatabase @{ [displayName] = tagPath }
+function forge.getAvailableForgeObjectsMenu()
+    local forgeObjectsTag = forge.constants.tagCollections.forgeObjects
+    --logger.debug("Forge objects tag: {}", forgeObjectsTag and forgeObjectsTag.path or "nil")
+    local menuList = { root = {} }
+    local objectDatabase = {}
+
+    local function addObjectPath(tagPath)
+        local displayName = tagPath:match("([^\\]+)$") or tagPath
+        objectDatabase[displayName] = tagPath
+
+        local pathParts = {}
+        local collectPath = false
+        for part in tagPath:gmatch("[^\\]+") do
+            if part == "scenery" then
+                collectPath = true
+            elseif collectPath then
+                part = part:gsub("^_", "")
+                if part ~= "" then
+                    table.insert(pathParts, part)
+                end
+            end
+        end
+
+        if #pathParts == 0 then
+            pathParts = {displayName}
+        end
+
+        local treePosition = menuList.root
+        for _, part in ipairs(pathParts) do
+            if not treePosition[part] then
+                treePosition[part] = {}
+            end
+            treePosition = treePosition[part]
+        end
+    end
+
+    local function walkTagCollection(tagCollectionHandle)
+        local ok, collectionData = pcall(function()
+            return getTagData(tagCollectionHandle, "tag_collection")
+        end)
+        if not ok or not collectionData or not collectionData.tagReferences then
+            return
+        end
+
+        for _, tagReference in ipairs(collectionData.tagReferences) do
+            if not tagReference or not tagReference.tag then
+                goto continue
+            end
+
+            local referenceTag = tagReference.tag
+            local tagPath = referenceTag.path
+            local tagHandle = referenceTag.tagHandle
+
+            if not tagPath or tagPath == "" then
+                goto continue
+            end
+
+            local nestedOk, nestedCollectionData = pcall(function()
+                if tagHandle and tagHandle.value then
+                    return getTagData(tagHandle.value, "tag_collection")
+                end
+                return nil
+            end)
+
+            if nestedOk and nestedCollectionData then
+                walkTagCollection(tagHandle.value)
+            else
+                addObjectPath(tagPath)
+            end
+
+            ::continue::
+        end
+    end
+
+    if not forgeObjectsTag then
+        return menuList, objectDatabase
+    end
+
+    walkTagCollection(forgeObjectsTag.handle.value)
+    return menuList, objectDatabase
 end
 
 local bipeds = forge.constants.bipeds
