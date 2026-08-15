@@ -1,6 +1,7 @@
 ---@diagnostic disable: inject-field
 local component = require "ui.component"
 local button = require "ui.button"
+local spinner = require "ui.spinner"
 local core = require "ui.core"
 local round = math.round
 local logger = Balltze.logger
@@ -28,16 +29,26 @@ local list = setmetatable({
     ---@type uiComponentBar
     scrollBar = nil,
     ---@type number
-    scrollAmount = 1
+    scrollAmount = 1,
+    ---@type table<number, uiComponent>
+    itemComponentsByIndex = {}
 }, {__index = component})
 
 ---@class uiComponentListItem
 ---@field label? string | fun(uiComponent: uiComponent)
 ---@field value string | boolean | number | any
 ---@field bitmap? number | fun(uiComponent: uiComponent)
+---@field values? string[]
+---@field component? uiComponentButtonClass | uiComponentSpinnerClass
+---@field componentFactory? fun(handleValue: number):uiComponent
+---@field onRender? fun(uiComponent: uiComponent, item: uiComponentListItem, itemIndex: number, list: uiComponentList)
+---@field onClick? fun(item: uiComponentListItem, uiComponent: uiComponent)
+---@field onFocus? fun(item: uiComponentListItem, uiComponent: uiComponent)
+---@field onScroll? fun(value: string, index: number, item: uiComponentListItem, uiComponent: uiComponent)
+---@field hideArrows? boolean
 
 ---@class uiComponentListEvents : uiComponentEvents
----@field onSelect fun(item: uiComponentListItem, button: uiComponentButton)
+---@field onSelect fun(item: uiComponentListItem, uiComponent?: uiComponent)
 ---@field onScroll fun(item: uiComponentListItem)
 ---@field onFocus fun(item: uiComponentListItem)
 
@@ -57,7 +68,7 @@ function list.new(tagId, firstWidgetIndex, lastWidgetIndex)
 end
 
 ---@param self uiComponentList
----@param callback fun(item: uiComponentListItem, button?: uiComponentButton)
+---@param callback fun(item: uiComponentListItem, uiComponent?: uiComponent)
 function list.onSelect(self, callback)
     self.events.onSelect = callback
 end
@@ -115,6 +126,25 @@ function list.refresh(self)
     local widgetDefinition = self.widgetDefinition
     local firstWidgetIndex = self.firstWidgetIndex
     local lastWidgetIndex = self.lastWidgetIndex
+    local itemComponentsByIndex = {}
+
+    ---@param item uiComponentListItem
+    ---@param itemComponentReference? uiComponentButtonClass | uiComponentSpinnerClass
+    ---@param childWidgetHandleValue number
+    ---@return uiComponent
+    local function createItemComponent(item, itemComponentReference, childWidgetHandleValue)
+        if type(item.componentFactory) == "function" then
+            return item.componentFactory(childWidgetHandleValue)
+        end
+
+        local componentType = itemComponentReference and itemComponentReference.type
+        if componentType == "spinner" then
+            return spinner.new(childWidgetHandleValue)
+        end
+
+        return button.new(childWidgetHandleValue)
+    end
+
     if self.isScrollable then
         --logger.debug("List is scrollable, adjusting first and last widget index to account for scroll buttons")
         firstWidgetIndex = firstWidgetIndex + 1
@@ -131,7 +161,7 @@ function list.refresh(self)
         if isHorizontal then
             size = scrollBackground.width
         end
-        barSizePerElement = size / elementsCount
+        local barSizePerElement = size / elementsCount
         local isScrollBarVisible = elementsCount > visibleElementsCount
         if isScrollBarVisible then
             local scrollPosition = round((itemIndex - 1) * barSizePerElement)
@@ -161,28 +191,61 @@ function list.refresh(self)
             if childWidget then
                 --logger.debug("Child widget: " .. childWidget.path .. " is being set to item value: " .. tostring(item.value))
                 core.setWidgetValues(childWidget.tagHandle.value, {neverReceiveEvents = false, visible = true})
-                local listButton = button.new(childWidget.tagHandle.value)
+                local listItemComponent = createItemComponent(item, item.component,
+                                                              childWidget.tagHandle.value)
+                itemComponentsByIndex[itemIndex] = listItemComponent
                 if item.label then
                     if type(item.label) == "function" then
-                        item.label(listButton)
+                        item.label(listItemComponent)
                     else
-                        listButton:setText(tostring(item.label))
+                        listItemComponent:setText(tostring(item.label))
                     end
                 end
+
+                if listItemComponent.type == "spinner" then
+                    ---@cast listItemComponent uiComponentSpinner
+                    local hasSpinnerValues = type(item.values) == "table" and #item.values > 0
+                    if hasSpinnerValues then
+                        listItemComponent:setValues(item.values)
+                    end
+                    if hasSpinnerValues and item.value then
+                        listItemComponent:setValue(tostring(item.value))
+                    end
+                    local shouldHideArrows = item.hideArrows
+                    if shouldHideArrows == nil then
+                        shouldHideArrows = not hasSpinnerValues
+                    end
+                    listItemComponent:setArrowsHidden(shouldHideArrows)
+                    listItemComponent:onScroll(function(value, index)
+                        item.value = value
+                        if item.onScroll then
+                            item.onScroll(value, index, item, listItemComponent)
+                        end
+                    end)
+                end
+
+                if item.onRender then
+                    item.onRender(listItemComponent, item, itemIndex, self)
+                end
+
                 local onSelect = self.events.onSelect
                 local lastSelectedItemIndex = itemIndex
-                listButton:onClick(function()
+                ---@diagnostic disable-next-line: param-type-mismatch
+                listItemComponent:onClick(function()
                     self.lastSelectedItemIndex = lastSelectedItemIndex
                     if onSelect then
-                        onSelect(item, listButton)
+                        onSelect(item, listItemComponent)
                     end
-                    if self.isSelectable then
+                    if item.onClick then
+                        item.onClick(item, listItemComponent)
+                    end
+                    if self.isSelectable and listItemComponent.type ~= "spinner" then
                         -- Set button bitmap state to selected index
-                        listButton:setWidgetValues{bitmapIndex = 2}
+                        listItemComponent:setWidgetValues{bitmapIndex = 2}
                         for _, childWidget in ipairs(widgetDefinition.childWidgets) do
                             local currentChildWidgetHandle = childWidget.widgetTag.tagHandle.value
                             if currentChildWidgetHandle and
-                                currentChildWidgetHandle ~= listButton.tagHandle.value then
+                                currentChildWidgetHandle ~= listItemComponent.handleValue then
                                 local childComponent = component.widgets[currentChildWidgetHandle]
                                 if childComponent then
                                     -- Restore all other buttons to their default state
@@ -195,21 +258,25 @@ function list.refresh(self)
 
                 ---@diagnostic disable-next-line: undefined-field
                 local onFocus = self.events.onFocusItem
-                listButton:onFocus(function()
+                ---@diagnostic disable-next-line: param-type-mismatch
+                listItemComponent:onFocus(function()
                     if onFocus then
                         onFocus(item)
                     end
-                    if self.isSelectable then
+                    if item.onFocus then
+                        item.onFocus(item, listItemComponent)
+                    end
+                    if self.isSelectable and listItemComponent.type ~= "spinner" then
 
-                        local isButtonSelected = listButton:getWidgetValues().bitmapIndex == 2
+                        local isButtonSelected = listItemComponent:getWidgetValues().bitmapIndex == 2
                         if not isButtonSelected then
                             -- Set button bitmap state to focused index
-                            listButton:setWidgetValues{bitmapIndex = 1}
+                            listItemComponent:setWidgetValues{bitmapIndex = 1}
                         end
                         for _, childWidget in ipairs(widgetDefinition.childWidgets) do
                             local currentChildWidgetHandle = childWidget.widgetTag.tagHandle.value
                             if currentChildWidgetHandle and
-                                currentChildWidgetHandle ~= listButton.tagHandle.value then
+                                currentChildWidgetHandle ~= listItemComponent.handleValue then
                                 local childComponent = component.widgets[currentChildWidgetHandle]
                                 if childComponent and childComponent:getWidgetValues().bitmapIndex == 1 then
                                     -- Restore all other buttons to their default state
@@ -222,11 +289,11 @@ function list.refresh(self)
                 if item.bitmap then
                     if type(item.bitmap) == "number" then
                         -- TODO We might need to animate bitmaps when selected by a function
-                        listButton:animate()
-                        local backgroundBitmap = listButton.widgetDefinition.backgroundBitmap --[[@as any]]
+                        listItemComponent:animate()
+                        local backgroundBitmap = listItemComponent.widgetDefinition.backgroundBitmap --[[@as any]]
                         backgroundBitmap.tagHandle.value = item.bitmap
                     elseif type(item.bitmap) == "function" then
-                        item.bitmap(listButton)
+                        item.bitmap(listItemComponent)
                     end
                 end
                 itemIndex = itemIndex + 1
@@ -237,6 +304,7 @@ function list.refresh(self)
             end
         end
     end
+    self.itemComponentsByIndex = itemComponentsByIndex
 end
 
 ---@param self uiComponentList
@@ -352,6 +420,13 @@ end
 ---@return number itemIndex
 function list.getCurrentItemIndex(self)
     return self.currentItemIndex
+end
+
+---@param self uiComponentList
+---@param itemIndex number
+---@return uiComponent?
+function list.getItemComponent(self, itemIndex)
+    return self.itemComponentsByIndex[itemIndex]
 end
 
 ---@param self uiComponentList

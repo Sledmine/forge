@@ -119,5 +119,20 @@ function spinner.onClick(self, callback)
     self.events.onClick = callback
 end
 
+---@param self uiComponentSpinner
+---@param hide boolean
+function spinner.setArrowsHidden(self, hide)
+    local leftArrowTagHandleValue = component.widgets[self.leftArrowHandleValue]
+    local rightArrowTagHandleValue = component.widgets[self.rightArrowHandleValue]
+    leftArrowTagHandleValue:hide(hide)
+    rightArrowTagHandleValue:hide(hide)
+end
+
+---@param self uiComponentSpinner
+---@param hide boolean
+function spinner.hideArrows(self, hide)
+    self:setArrowsHidden(hide == true)
+end
+
 
 return spinner
