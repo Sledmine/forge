@@ -2,6 +2,7 @@
 local component = require "ui.component"
 local button = require "ui.button"
 local core = require "ui.core"
+local logger = Balltze.logger
 
 ---@class uiComponentSpinnerClass : uiComponentButtonClass
 local spinner = setmetatable({
@@ -49,7 +50,7 @@ end
 ---@param text string
 local function setValueText(self, text)
     if text == nil then
-        logger:error("Tried to set nil text on spinner " .. self.tag.path)
+        logger.error("Tried to set nil text on spinner {}", self.tag.path)
         return
     end
     local labelTagHandleValue = self:findChildWidgetTag("label").handle.value
@@ -77,8 +78,8 @@ function spinner.setValue(self, value)
         setValueText(self, value)
         return true
     end
-    logger:error(debug.traceback())
-    logger:error("Value " .. tostring(value) .. " not found in spinner values for " .. self.tag.path)
+    logger.error(debug.traceback())
+    logger.error("Value {} not found in spinner values for {}", tostring(value), self.tag.path)
     return false
 end
 

@@ -764,7 +764,7 @@ end
 
 ---@param self uiComponent
 function component.hide(self, isHidden)
-    local isHidden = isHidden or true
+    local isHidden = isHidden == nil and true or isHidden
     core.setWidgetValues(self.handleValue,
                          {visible = not isHidden, neverReceiveEvents = isHidden == true}, false)
 end

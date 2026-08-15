@@ -15,35 +15,32 @@ local description = component.new(monitorMenu:get("description"))
 local defaultOptionsData = {
     {
         label = "ROTATION SNAP",
+        --values = {"OFF", "5°", "15°", "30°", "45°", "90°"},
         values = {"OFF", "5", "15", "30", "45", "90"},
         value = "OFF",
         change = function(value)
             Balltze.logger.debug("Rotation snap set to {}", value)
         end,
         focus = function()
-            description:setText("Sets monitor object rotation snap step.")
+            description:setText("CAUSES ALL OBJECT ROTATION TO SNAP TO MULTIPLES OF THIS ANGLE.")
         end
     },
     {
         label = "DELETE BY PALETTE",
-        values = {"OFF", "ON"},
-        value = "OFF",
-        change = function(value)
-            Balltze.logger.debug("Delete by palette set to {}", value)
+        click = function(value)
+            Balltze.logger.debug("Delete by palette clicked")
         end,
         focus = function()
-            description:setText("Deletes every spawned object from the current palette selection.")
+            description:setText("SELECT A PALETTE TO DELETE.")
         end
     },
     {
         label = "UNLOCK ALL",
-        values = {"NO", "YES"},
-        value = "NO",
-        change = function(value)
-            Balltze.logger.debug("Unlock all set to {}", value)
+        click = function(value)
+            Balltze.logger.debug("Unlock all clicked")
         end,
         focus = function()
-            description:setText("Unlocks every Forge object in the palette.")
+            description:setText("UNLOCK ALL OBJECTS THAT ARE CURRENTLY LOCKED.")
         end
     }
 }
@@ -54,18 +51,12 @@ local optionsData = defaultOptionsData
 ---@param optionIndex number
 ---@return uiComponentListItem
 local function toListItem(optionData, optionIndex)
-    local resolvedHideArrows = optionData.hideArrows
-    if resolvedHideArrows == nil then
-        local valuesCount = type(optionData.values) == "table" and #optionData.values or 0
-        resolvedHideArrows = valuesCount == 0
-    end
-
+    local hideArrows = not optionData.values or #optionData.values <= 1
     return {
         label = optionData.label,
         component = spinner,
         values = optionData.values,
         value = optionData.value,
-        hideArrows = resolvedHideArrows,
         onScroll = function(value)
             optionData.value = value
             if optionData.change then
@@ -78,12 +69,14 @@ local function toListItem(optionData, optionIndex)
             end
         end,
         onClick = function()
-            Balltze.logger.debug("Clicked on option {}", optionIndex)
+            if optionData.click then
+                optionData.click()
+            end
         end,
         onRender = function(uiComponent, item)
-            if uiComponent.type == "spinner" and item.hideArrows ~= nil then
+            if uiComponent.type == "spinner" then
                 ---@cast uiComponent uiComponentSpinner
-                uiComponent:hideArrows(item.hideArrows)
+                uiComponent:hideArrows(hideArrows)
             end
         end
     }
