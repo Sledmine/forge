@@ -46,33 +46,33 @@ local elementsData = {
     }
 }
 
-for index = 1, 7 do
-    local optionKey = "option_" .. index
-    local optionHandle = options:get(optionKey)
-    if optionHandle then
-        local optionData = elementsData[optionKey]
-        if optionData then
-            local spin = spinner.new(optionHandle)
-            spin:setText(optionData.label)
-            spin:onScroll(function(value)
-                optionData.change(value)
-            end)
-            spin:onFocus(function()
-                optionData.focus()
-            end)
-            spin:onClick(function()
-                Balltze.logger.debug("Clicked on option {}", optionKey)
-            end)
-            elements[optionKey] = spin
-        else
-            local optionComponent = component.new(optionHandle)
-            optionComponent:hide(true)
-        end
-    end
-end
-
 monitorMenu:onOpen(function()
     Balltze.logger.debug("Monitor menu opened")
+
+    for index = 1, 7 do
+        local optionKey = "option_" .. index
+        local optionHandle = options:get(optionKey)
+        if optionHandle then
+            local optionData = elementsData[optionKey]
+            if optionData then
+                local spin = spinner.new(optionHandle)
+                spin:setText(optionData.label)
+                spin:onScroll(function(value)
+                    optionData.change(value)
+                end)
+                spin:onFocus(function()
+                    optionData.focus()
+                end)
+                spin:onClick(function()
+                    Balltze.logger.debug("Clicked on option {}", optionKey)
+                end)
+                elements[optionKey] = spin
+            else
+                local optionComponent = component.new(optionHandle)
+                optionComponent:hide(true)
+            end
+        end
+    end
 
     for optionKey, spin in pairs(elements) do
         local optionData = elementsData[optionKey]
