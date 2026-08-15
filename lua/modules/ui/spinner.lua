@@ -127,6 +127,7 @@ function spinner.setArrowsHidden(self, hide)
     local rightArrowTagHandleValue = component.widgets[self.rightArrowHandleValue]
     leftArrowTagHandleValue:hide(hide)
     rightArrowTagHandleValue:hide(hide)
+    setValueText(self, hide and "" or self:getValue())
 end
 
 ---@param self uiComponentSpinner

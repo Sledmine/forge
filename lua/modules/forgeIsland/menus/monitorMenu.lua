@@ -84,7 +84,7 @@ end
 
 ---@param nextOptionsData? table[]
 function monitorMenu.setOptions(nextOptionsData)
-    optionsData = nextOptionsData or {}
+    optionsData = nextOptionsData or defaultOptionsData
     local listItems = {}
     for optionIndex, optionData in ipairs(optionsData) do
         listItems[optionIndex] = toListItem(optionData, optionIndex)
