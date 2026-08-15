@@ -4,6 +4,7 @@ local engine = Engine
 local constants = require "forgeIsland.constants"
 local monitorMenu = require "forgeIsland.menus.monitorMenu"
 local inspect = require "inspect"
+local logger = Balltze.logger
 
 local forge = require "forge.forge"
 
@@ -14,7 +15,8 @@ forge.constants.tagCollections.forgeObjects = constants.tagCollections.forgeObje
 forge.constants.weaponHudInterfaces.monitorCrosshair =
     constants.weaponHudInterfaces.monitorCrosshair
 
-forge.callbacks.launchMonitorMenu = function()
+forge.callbacks.launchMonitorMenu = function(mode)
+    logger.debug("Launching monitor menu with mode={}", mode)
     monitorMenu:launch()
 end
 
@@ -27,7 +29,7 @@ function map.main()
     Balltze.logger.info("Welcome to Forge Island!")
     if DebugMode then
         forge.swapPlayerBiped(0, "monitor")
-        forge.callbacks.launchMonitorMenu()
+        forge.callbacks.launchMonitorMenu("tools")
         --engine.uiWidget.launchWidget(constants.menus.forge.handle.value)
         Balltze.logger.debug("{}", inspect(forge.getAvailableForgeObjectsMenu()))
     end

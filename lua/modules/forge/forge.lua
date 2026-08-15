@@ -32,7 +32,9 @@ local forge = {
         }
     },
     callbacks = {
-        launchMonitorMenu = function()
+        ---@param mode "tools" | "place"
+        launchMonitorMenu = function(mode)
+            logger.debug("Forge: launchMonitorMenu callback not set, mode={}", mode)
         end
     }
 }
@@ -51,7 +53,8 @@ end
 ---@return table objectDatabase @{ [displayName] = tagPath }
 function forge.getAvailableForgeObjectsMenu()
     local forgeObjectsTag = forge.constants.tagCollections.forgeObjects
-    --logger.debug("Forge objects tag: {}", forgeObjectsTag and forgeObjectsTag.path or "nil")
+    assert(forgeObjectsTag, "Forge objects tag collection not found")
+    --logger.debug("Forge objects tag: {}", forgeObjectsTag.path)
     local menuList = { root = {} }
     local objectDatabase = {}
 
@@ -278,7 +281,7 @@ function forge.controls()
                             forge.setMonitorMode("idle")
                             Balltze.logger.debug("Player {} monitor mode set to idle", playerIndex)
                         else
-                            forge.callbacks.launchMonitorMenu()
+                            forge.callbacks.launchMonitorMenu("tools")
                         end
                     elseif playerBiped.unitControlFlags.crouch then
                         if isMonitor then
