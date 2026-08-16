@@ -1,8 +1,3 @@
--- SPDX-License-Identifier: GPL-3.0-only
--- Hand-written additions to meta_types.lua: methods (LUAS_METHOD_FIELD) aren't captured by
--- the lua-types-dump tool, since luastruct doesn't record their param/return signatures.
--- These `---@class` blocks merge with the auto-generated ones of the same name.
-
 ---@meta _
 ---@diagnostic disable: missing-return
 ---@diagnostic disable: unused-local

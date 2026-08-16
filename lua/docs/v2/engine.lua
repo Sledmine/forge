@@ -1,7 +1,3 @@
--- SPDX-License-Identifier: GPL-3.0-only
--- This file documents the Balltze Lua plugin API v2 (Engine namespace).
--- It should not be included; it exists purely for IDE autocomplete/type-checking.
-
 ---@meta _
 ---@diagnostic disable: missing-return
 ---@diagnostic disable: unused-local
@@ -59,6 +55,18 @@ Engine.script = {}
 ---@param script string
 function Engine.script.execute(script) end
 
+-- Read a script global by name. Errors if no global has that name, or if its type is not
+-- boolean, real, short or long. Engine globals are searched before the scenario's own.
+---@param name string @case insensitive
+---@return boolean|number
+function Engine.script.getGlobal(name) end
+
+-- Write a script global by name. The value is converted to the global's declared type.
+-- Errors if no global has that name, or if its type is not boolean, real, short or long.
+---@param name string @case insensitive
+---@param value boolean|number
+function Engine.script.setGlobal(name, value) end
+
 
 -------------------------------------------------------
 -- Engine.tag
@@ -77,97 +85,97 @@ function Engine.tag.lookupTag(path, group) end
 ---@param handle TagHandle
 ---@param group TagGroup
 ---@return table @the concrete tag data type depends on `group`; see the per-group overloads below
----@overload fun(handle: TagHandle|integer, group: "actor"): Actor
----@overload fun(handle: TagHandle|integer, group: "actor_variant"): ActorVariant
----@overload fun(handle: TagHandle|integer, group: "antenna"): Antenna
----@overload fun(handle: TagHandle|integer, group: "model_animations"): ModelAnimations
----@overload fun(handle: TagHandle|integer, group: "biped"): Biped
----@overload fun(handle: TagHandle|integer, group: "bitmap"): Bitmap
----@overload fun(handle: TagHandle|integer, group: "spheroid"): Spheroid
----@overload fun(handle: TagHandle|integer, group: "continuous_damage_effect"): ContinuousDamageEffect
----@overload fun(handle: TagHandle|integer, group: "model_collision_geometry"): ModelCollisionGeometry
----@overload fun(handle: TagHandle|integer, group: "color_table"): ColorTable
----@overload fun(handle: TagHandle|integer, group: "contrail"): Contrail
----@overload fun(handle: TagHandle|integer, group: "device_control"): DeviceControl
----@overload fun(handle: TagHandle|integer, group: "decal"): Decal
----@overload fun(handle: TagHandle|integer, group: "ui_widget_definition"): UiWidgetDefinition
----@overload fun(handle: TagHandle|integer, group: "input_device_defaults"): InputDeviceDefaults
----@overload fun(handle: TagHandle|integer, group: "device"): Device
----@overload fun(handle: TagHandle|integer, group: "detail_object_collection"): DetailObjectCollection
----@overload fun(handle: TagHandle|integer, group: "effect"): Effect
----@overload fun(handle: TagHandle|integer, group: "equipment"): Equipment
----@overload fun(handle: TagHandle|integer, group: "flag"): Flag
----@overload fun(handle: TagHandle|integer, group: "fog"): Fog
----@overload fun(handle: TagHandle|integer, group: "font"): Font
----@overload fun(handle: TagHandle|integer, group: "material_effects"): MaterialEffects
----@overload fun(handle: TagHandle|integer, group: "garbage"): Garbage
----@overload fun(handle: TagHandle|integer, group: "glow"): Glow
----@overload fun(handle: TagHandle|integer, group: "grenade_hud_interface"): GrenadeHudInterface
----@overload fun(handle: TagHandle|integer, group: "hud_message_text"): HudMessageText
----@overload fun(handle: TagHandle|integer, group: "hud_number"): HudNumber
----@overload fun(handle: TagHandle|integer, group: "hud_globals"): HudGlobals
----@overload fun(handle: TagHandle|integer, group: "item"): Item
----@overload fun(handle: TagHandle|integer, group: "item_collection"): ItemCollection
----@overload fun(handle: TagHandle|integer, group: "damage_effect"): DamageEffect
----@overload fun(handle: TagHandle|integer, group: "lens_flare"): LensFlare
----@overload fun(handle: TagHandle|integer, group: "lightning"): Lightning
----@overload fun(handle: TagHandle|integer, group: "device_light_fixture"): DeviceLightFixture
----@overload fun(handle: TagHandle|integer, group: "light"): Light
----@overload fun(handle: TagHandle|integer, group: "sound_looping"): SoundLooping
----@overload fun(handle: TagHandle|integer, group: "device_machine"): DeviceMachine
----@overload fun(handle: TagHandle|integer, group: "globals"): Globals
----@overload fun(handle: TagHandle|integer, group: "meter"): Meter
----@overload fun(handle: TagHandle|integer, group: "light_volume"): LightVolume
----@overload fun(handle: TagHandle|integer, group: "gbxmodel"): Gbxmodel
----@overload fun(handle: TagHandle|integer, group: "model"): Model
----@overload fun(handle: TagHandle|integer, group: "multiplayer_scenario_description"): MultiplayerScenarioDescription
----@overload fun(handle: TagHandle|integer, group: "null"): nil
----@overload fun(handle: TagHandle|integer, group: "preferences_network_game"): PreferencesNetworkGame
----@overload fun(handle: TagHandle|integer, group: "object"): Object
----@overload fun(handle: TagHandle|integer, group: "particle"): Particle
----@overload fun(handle: TagHandle|integer, group: "particle_system"): ParticleSystem
----@overload fun(handle: TagHandle|integer, group: "physics"): Physics
----@overload fun(handle: TagHandle|integer, group: "placeholder"): Placeholder
----@overload fun(handle: TagHandle|integer, group: "point_physics"): PointPhysics
----@overload fun(handle: TagHandle|integer, group: "projectile"): Projectile
----@overload fun(handle: TagHandle|integer, group: "weather_particle_system"): WeatherParticleSystem
----@overload fun(handle: TagHandle|integer, group: "scenario_structure_bsp"): ScenarioStructureBsp
----@overload fun(handle: TagHandle|integer, group: "scenery"): Scenery
----@overload fun(handle: TagHandle|integer, group: "shader_transparent_chicago_extended"): ShaderTransparentChicagoExtended
----@overload fun(handle: TagHandle|integer, group: "shader_transparent_chicago"): ShaderTransparentChicago
----@overload fun(handle: TagHandle|integer, group: "scenario"): Scenario
----@overload fun(handle: TagHandle|integer, group: "shader_environment"): ShaderEnvironment
----@overload fun(handle: TagHandle|integer, group: "shader_transparent_glass"): ShaderTransparentGlass
----@overload fun(handle: TagHandle|integer, group: "shader"): Shader
----@overload fun(handle: TagHandle|integer, group: "sky"): Sky
----@overload fun(handle: TagHandle|integer, group: "shader_transparent_meter"): ShaderTransparentMeter
----@overload fun(handle: TagHandle|integer, group: "sound"): Sound
----@overload fun(handle: TagHandle|integer, group: "sound_environment"): SoundEnvironment
----@overload fun(handle: TagHandle|integer, group: "shader_model"): ShaderModel
----@overload fun(handle: TagHandle|integer, group: "shader_transparent_generic"): ShaderTransparentGeneric
----@overload fun(handle: TagHandle|integer, group: "ui_widget_collection"): UiWidgetCollection
----@overload fun(handle: TagHandle|integer, group: "shader_transparent_plasma"): ShaderTransparentPlasma
----@overload fun(handle: TagHandle|integer, group: "sound_scenery"): SoundScenery
----@overload fun(handle: TagHandle|integer, group: "string_list"): StringList
----@overload fun(handle: TagHandle|integer, group: "shader_transparent_water"): ShaderTransparentWater
----@overload fun(handle: TagHandle|integer, group: "tag_collection"): TagCollection
----@overload fun(handle: TagHandle|integer, group: "camera_track"): CameraTrack
----@overload fun(handle: TagHandle|integer, group: "dialogue"): Dialogue
----@overload fun(handle: TagHandle|integer, group: "unit_hud_interface"): UnitHudInterface
----@overload fun(handle: TagHandle|integer, group: "unit"): Unit
----@overload fun(handle: TagHandle|integer, group: "unicode_string_list"): UnicodeStringList
----@overload fun(handle: TagHandle|integer, group: "virtual_keyboard"): VirtualKeyboard
----@overload fun(handle: TagHandle|integer, group: "vehicle"): Vehicle
----@overload fun(handle: TagHandle|integer, group: "weapon"): Weapon
----@overload fun(handle: TagHandle|integer, group: "wind"): Wind
----@overload fun(handle: TagHandle|integer, group: "weapon_hud_interface"): WeaponHudInterface
----@overload fun(handle: TagHandle|integer, group: "vector_font"): VectorFont
----@overload fun(handle: TagHandle|integer, group: "vector_font_data"): VectorFontData
+---@overload fun(handle: TagHandle, group: "actor"): Actor
+---@overload fun(handle: TagHandle, group: "actor_variant"): ActorVariant
+---@overload fun(handle: TagHandle, group: "antenna"): Antenna
+---@overload fun(handle: TagHandle, group: "model_animations"): ModelAnimations
+---@overload fun(handle: TagHandle, group: "biped"): Biped
+---@overload fun(handle: TagHandle, group: "bitmap"): Bitmap
+---@overload fun(handle: TagHandle, group: "spheroid"): Spheroid
+---@overload fun(handle: TagHandle, group: "continuous_damage_effect"): ContinuousDamageEffect
+---@overload fun(handle: TagHandle, group: "model_collision_geometry"): ModelCollisionGeometry
+---@overload fun(handle: TagHandle, group: "color_table"): ColorTable
+---@overload fun(handle: TagHandle, group: "contrail"): Contrail
+---@overload fun(handle: TagHandle, group: "device_control"): DeviceControl
+---@overload fun(handle: TagHandle, group: "decal"): Decal
+---@overload fun(handle: TagHandle, group: "ui_widget_definition"): UiWidgetDefinition
+---@overload fun(handle: TagHandle, group: "input_device_defaults"): InputDeviceDefaults
+---@overload fun(handle: TagHandle, group: "device"): Device
+---@overload fun(handle: TagHandle, group: "detail_object_collection"): DetailObjectCollection
+---@overload fun(handle: TagHandle, group: "effect"): Effect
+---@overload fun(handle: TagHandle, group: "equipment"): Equipment
+---@overload fun(handle: TagHandle, group: "flag"): Flag
+---@overload fun(handle: TagHandle, group: "fog"): Fog
+---@overload fun(handle: TagHandle, group: "font"): Font
+---@overload fun(handle: TagHandle, group: "material_effects"): MaterialEffects
+---@overload fun(handle: TagHandle, group: "garbage"): Garbage
+---@overload fun(handle: TagHandle, group: "glow"): Glow
+---@overload fun(handle: TagHandle, group: "grenade_hud_interface"): GrenadeHudInterface
+---@overload fun(handle: TagHandle, group: "hud_message_text"): HudMessageText
+---@overload fun(handle: TagHandle, group: "hud_number"): HudNumber
+---@overload fun(handle: TagHandle, group: "hud_globals"): HudGlobals
+---@overload fun(handle: TagHandle, group: "item"): Item
+---@overload fun(handle: TagHandle, group: "item_collection"): ItemCollection
+---@overload fun(handle: TagHandle, group: "damage_effect"): DamageEffect
+---@overload fun(handle: TagHandle, group: "lens_flare"): LensFlare
+---@overload fun(handle: TagHandle, group: "lightning"): Lightning
+---@overload fun(handle: TagHandle, group: "device_light_fixture"): DeviceLightFixture
+---@overload fun(handle: TagHandle, group: "light"): Light
+---@overload fun(handle: TagHandle, group: "sound_looping"): SoundLooping
+---@overload fun(handle: TagHandle, group: "device_machine"): DeviceMachine
+---@overload fun(handle: TagHandle, group: "globals"): Globals
+---@overload fun(handle: TagHandle, group: "meter"): Meter
+---@overload fun(handle: TagHandle, group: "light_volume"): LightVolume
+---@overload fun(handle: TagHandle, group: "gbxmodel"): Gbxmodel
+---@overload fun(handle: TagHandle, group: "model"): Model
+---@overload fun(handle: TagHandle, group: "multiplayer_scenario_description"): MultiplayerScenarioDescription
+---@overload fun(handle: TagHandle, group: "null"): nil
+---@overload fun(handle: TagHandle, group: "preferences_network_game"): PreferencesNetworkGame
+---@overload fun(handle: TagHandle, group: "object"): Object
+---@overload fun(handle: TagHandle, group: "particle"): Particle
+---@overload fun(handle: TagHandle, group: "particle_system"): ParticleSystem
+---@overload fun(handle: TagHandle, group: "physics"): Physics
+---@overload fun(handle: TagHandle, group: "placeholder"): Placeholder
+---@overload fun(handle: TagHandle, group: "point_physics"): PointPhysics
+---@overload fun(handle: TagHandle, group: "projectile"): Projectile
+---@overload fun(handle: TagHandle, group: "weather_particle_system"): WeatherParticleSystem
+---@overload fun(handle: TagHandle, group: "scenario_structure_bsp"): ScenarioStructureBsp
+---@overload fun(handle: TagHandle, group: "scenery"): Scenery
+---@overload fun(handle: TagHandle, group: "shader_transparent_chicago_extended"): ShaderTransparentChicagoExtended
+---@overload fun(handle: TagHandle, group: "shader_transparent_chicago"): ShaderTransparentChicago
+---@overload fun(handle: TagHandle, group: "scenario"): Scenario
+---@overload fun(handle: TagHandle, group: "shader_environment"): ShaderEnvironment
+---@overload fun(handle: TagHandle, group: "shader_transparent_glass"): ShaderTransparentGlass
+---@overload fun(handle: TagHandle, group: "shader"): Shader
+---@overload fun(handle: TagHandle, group: "sky"): Sky
+---@overload fun(handle: TagHandle, group: "shader_transparent_meter"): ShaderTransparentMeter
+---@overload fun(handle: TagHandle, group: "sound"): Sound
+---@overload fun(handle: TagHandle, group: "sound_environment"): SoundEnvironment
+---@overload fun(handle: TagHandle, group: "shader_model"): ShaderModel
+---@overload fun(handle: TagHandle, group: "shader_transparent_generic"): ShaderTransparentGeneric
+---@overload fun(handle: TagHandle, group: "ui_widget_collection"): UiWidgetCollection
+---@overload fun(handle: TagHandle, group: "shader_transparent_plasma"): ShaderTransparentPlasma
+---@overload fun(handle: TagHandle, group: "sound_scenery"): SoundScenery
+---@overload fun(handle: TagHandle, group: "string_list"): StringList
+---@overload fun(handle: TagHandle, group: "shader_transparent_water"): ShaderTransparentWater
+---@overload fun(handle: TagHandle, group: "tag_collection"): TagCollection
+---@overload fun(handle: TagHandle, group: "camera_track"): CameraTrack
+---@overload fun(handle: TagHandle, group: "dialogue"): Dialogue
+---@overload fun(handle: TagHandle, group: "unit_hud_interface"): UnitHudInterface
+---@overload fun(handle: TagHandle, group: "unit"): Unit
+---@overload fun(handle: TagHandle, group: "unicode_string_list"): UnicodeStringList
+---@overload fun(handle: TagHandle, group: "virtual_keyboard"): VirtualKeyboard
+---@overload fun(handle: TagHandle, group: "vehicle"): Vehicle
+---@overload fun(handle: TagHandle, group: "weapon"): Weapon
+---@overload fun(handle: TagHandle, group: "wind"): Wind
+---@overload fun(handle: TagHandle, group: "weapon_hud_interface"): WeaponHudInterface
+---@overload fun(handle: TagHandle, group: "vector_font"): VectorFont
+---@overload fun(handle: TagHandle, group: "vector_font_data"): VectorFontData
 function Engine.tag.getTagData(handle, group) end
 
 -- Get the tag entry (metadata: group, handle, path, ...) for a tag handle. Errors if no map
 -- is loaded.
----@param handle TagHandle|integer
+---@param handle TagHandle
 ---@return TagEntry|nil
 function Engine.tag.getTagEntry(handle) end
 
@@ -180,7 +188,7 @@ function Engine.tag.filterTags(group, pathFilter) end
 
 -- Import a tag (and its whole dependency tree) from another map into the currently loaded
 -- map's live tag table. The imported tag and every dependency are fully self-contained
--- copies — not references back into the source map. If a tag with the same path and group
+-- copies, not references back into the source map. If a tag with the same path and group
 -- already exists in the destination, it's reused instead of imported again. Errors if no map
 -- is loaded; returns nil if the source map or tag couldn't be found/imported.
 ---@param mapName string @name of the source map, without extension (e.g. "bloodgulch")
@@ -211,6 +219,11 @@ Engine.object = {}
 ---@overload fun(handle: ObjectHandle|integer, type: "deviceLightFixture"): DeviceLightFixtureObject|nil
 function Engine.object.getObject(handle, type) end
 
+-- Get the type of an object without fetching the object itself
+---@param handle ObjectHandle|integer
+---@return ObjectType|nil @nil if the handle doesn't refer to a live object
+function Engine.object.getObjectType(handle) end
+
 -- Spawn an object
 ---@param tagHandle TagHandle|integer
 ---@param parentObjectHandle? ObjectHandle|integer
@@ -228,6 +241,37 @@ function Engine.object.deleteObject(objectHandle) end
 ---@param attachmentObjectHandle ObjectHandle|integer
 ---@param attachmentMarker string|nil
 function Engine.object.objectAttachToMarker(objectHandle, objectMarker, attachmentObjectHandle, attachmentMarker) end
+
+
+-------------------------------------------------------
+-- Engine.physics
+-------------------------------------------------------
+
+Engine.physics = {}
+
+---@alias CollisionTestPreset
+---| "environment" # structure and water surfaces only
+---| "lineOfSight" # what blocks vision: structure, vehicles, scenery, machines
+---| "projectiles" # what stops a projectile: structure, water and every object type
+---| "objects" # every object type, ignores structure
+---| "bipedMovement" # hits what blocks a walking biped: structure, vehicles, scenery, machines; passes through bipeds
+---| "bipedMovementSolid" # like "bipedMovement" but also hits bipeds
+---| "deadBipedMovement" # hits what blocks a dead biped: structure, scenery, machines
+---| "vehicleMovement" # hits what blocks a vehicle: structure, scenery, machines
+
+---@class CollisionResult
+---@field point Point3d @hit point in world space
+---@field type CollisionResultType @"structure", "media" or "object"
+---@field objectHandle ObjectHandle? @nil when the hit was against the structure BSP
+
+-- Cast a ray and return the first hit, or nil if nothing was hit.
+-- delta is the full displacement, not a unit direction; the ray spans origin to origin + delta.
+---@param origin Point3d|{x: number, y: number, z: number}
+---@param delta Vector3d|{i: number, j: number, k: number}
+---@param flags? CollisionTestPreset @default "environment"
+---@param excludedObjectHandle? ObjectHandle|integer @unit to ignore during the test
+---@return CollisionResult|nil
+function Engine.physics.castRay(origin, delta, flags, excludedObjectHandle) end
 
 
 -------------------------------------------------------
@@ -341,30 +385,90 @@ function Engine.uiWidget.textBoxWidgetIsFocused(widget) end
 
 
 -------------------------------------------------------
--- Engine.hud
+-- Engine.input
 -------------------------------------------------------
 
-Engine.hud = {}
+Engine.input = {}
 
----@class HudText
-local HudText = {}
+---@alias MouseButton "left"|"middle"|"right"|"x1"|"x2"|"x3"|"x4"|"x5"
+
+-- Get the state of a mouse button.
+---@param button MouseButton
+---@return integer heldFrames @frames the button has been held, 0 when it is up
+---@return boolean released @true only on the frame the button came up
+function Engine.input.getMouseButton(button) end
+
+-- Get the mouse movement of the current frame. Deltas since the last input poll, so reading
+-- them outside a frame event repeats the last frame's values.
+---@return integer x
+---@return integer y @positive is up
+function Engine.input.getMouseMovement() end
+
+-- Get the wheel notches turned during the current frame, positive being forward.
+---@return integer
+function Engine.input.getMouseWheel() end
+
+
+-------------------------------------------------------
+-- Engine.interface
+-------------------------------------------------------
+
+Engine.interface = {}
+
+---@class InterfaceText
+local InterfaceText = {}
 
 -- Replace this text's displayed string.
 ---@param text string
-function HudText:setText(text) end
+function InterfaceText:setText(text) end
 
 -- Stop drawing this text. Calling this a second time is an error.
-function HudText:remove() end
+function InterfaceText:remove() end
 
--- Add a persistent text overlay to the HUD. It is redrawn automatically every frame for as
--- long as it exists — no need to draw it yourself from a "frame" (or any other) event
--- listener. It draws for every active local player's HUD (i.e. every split-screen pane), at
--- the same position relative to each pane. It's automatically taken down if the plugin that
--- created it is unloaded (e.g. on a map change for a map-scoped plugin) without having called
--- HudText:remove() itself.
+-- Options are fixed at creation time; to change one, remove the text and add a new one.
+---@class InterfaceTextOptions
+---@field color? {a: number, r: number, g: number, b: number} @0-1 per channel; default opaque white
+---@field font? TagHandle @default: the globals terminal font
+---@field style? "plain"|"bold"|"italic"|"condense"|"underline" @default: "plain"
+---@field justification? "left"|"right"|"center" @default: the anchor's edge
+---@field anchor? "topLeft"|"topRight"|"bottomLeft"|"bottomRight"|"center" @default: "topLeft"
+---@field layer? "hud"|"ui" @default: "hud"; "ui" draws over menus, in full screen space
+---@field shadow? boolean @default: true; false draws the text without a drop shadow
+---@field flags? integer @raw TextDrawGlobals flags
+
+-- Add a text overlay, redrawn every frame until it's removed or the plugin is unloaded. On the
+-- "hud" layer it draws on every local player's HUD pane (once per split-screen pane, not in
+-- menus); on the "ui" layer it draws once per frame over the whole interface, menus included.
+-- Text longer than the pane is clipped, not wrapped.
 ---@param text string
----@param x integer @pixels from the left edge of the HUD viewport
----@param y integer @pixels from the top edge of the HUD viewport
----@param color? {a: number, r: number, g: number, b: number} @0-1 per channel; defaults to opaque white
----@return HudText
-function Engine.hud.addText(text, x, y, color) end
+---@param x integer @pixels inward from the anchored corner
+---@param y integer @pixels inward from the anchored corner
+---@param options? InterfaceTextOptions
+---@return InterfaceText
+function Engine.interface.addText(text, x, y, options) end
+
+---@class HudStaticElement
+local HudStaticElement = {}
+
+---@param flags HudDrawFlags
+function HudStaticElement:setFlags(flags) end
+
+---@param tick integer @tick the flash started at, or -1
+function HudStaticElement:setFlashStartTime(tick) end
+
+function HudStaticElement:remove() end
+
+-- Add a static element to the HUD, drawn every frame in each local player's pane
+-- until removed. The definition comes from a HUD interface tag, so the element is
+-- dropped when the map changes.
+---@param anchor HudInterfaceAnchor
+---@param staticElement HudInterfaceStaticElementDefinition
+---@param flags? HudDrawFlags
+---@param flashStartTime? integer @tick the flash started at, or -1
+---@return HudStaticElement
+function Engine.interface.addHudStaticElement(anchor, staticElement, flags, flashStartTime) end
+
+-- Get the menu cursor position, in the same screen space as a text on the "ui" layer.
+-- The cursor only moves while a menu is up; elsewhere it keeps its last position.
+---@return Point2dInt
+function Engine.interface.getCursorPosition() end

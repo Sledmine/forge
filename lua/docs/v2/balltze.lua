@@ -1,7 +1,3 @@
--- SPDX-License-Identifier: GPL-3.0-only
--- This file documents the Balltze Lua plugin API v2 (Balltze namespace).
--- It should not be included; it exists purely for IDE autocomplete/type-checking.
-
 ---@meta _
 ---@diagnostic disable: missing-return
 ---@diagnostic disable: unused-local
@@ -50,7 +46,7 @@ function BalltzeConfig:getBoolean(key) end
 ---@param value integer|number|string|boolean
 function BalltzeConfig:set(key, value) end
 
--- Open (or create) a JSON configuration file. `path` is a raw filesystem path — it is NOT
+-- Open (or create) a JSON configuration file. `path` is a raw filesystem path, it is NOT
 -- sandboxed to the plugin's own directory the way Balltze.filesystem is, so build an absolute
 -- path yourself (e.g. via Balltze.filesystem.getPluginPath()) if you want it scoped there.
 ---@param path string
@@ -263,7 +259,7 @@ function Balltze.logger.muteDebug(setting) end
 
 Balltze.memory = {}
 
--- Every Balltze.memory function is a raw, unchecked pointer dereference at `address` — an
+-- Every Balltze.memory function is a raw, unchecked pointer dereference at `address`, an
 -- invalid address crashes the process. There is no bounds checking.
 
 ---@param address integer
