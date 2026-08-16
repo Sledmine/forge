@@ -265,14 +265,10 @@ function component.callbacks()
     balltze.addEventListener("frame", function()
         local widget = engine.uiWidget.getActiveWidget()
         if widget and lastFocusedWidgetTagEntry then
-            -- local mouse = Balltze.engine.get
-            local mouse = core.getMouseState()
-            -- logger.debug("Mouse scroll: " .. mouse.scroll .. ", right click: " .. mouse.rightClick)
-            if mouse.scroll ~= 0 then
+            -- local mouse = core.getMouseState()
+            local mouseWheelScroll = engine.input.getMouseWheel()
+            if mouseWheelScroll ~= 0 then
                 onMouseScroll(lastFocusedWidgetTagEntry.handle.value)
-            end
-            if mouse.rightClick > 0 then
-                -- TODO BALLTZE MIGRATE
             end
         end
 
