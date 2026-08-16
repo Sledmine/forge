@@ -52,7 +52,7 @@ local optionsData = defaultOptionsData
 ---@return uiComponentListItem
 local function toListItem(optionData, optionIndex)
     local hideArrows = not optionData.values or #optionData.values <= 1
-    return {
+    local item = {
         label = optionData.label,
         component = spinner,
         values = optionData.values,
@@ -80,6 +80,10 @@ local function toListItem(optionData, optionIndex)
             end
         end
     }
+    if hideArrows then
+        item.onScroll = nil
+    end
+    return item
 end
 
 ---@param nextOptionsData? table[]

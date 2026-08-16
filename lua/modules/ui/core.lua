@@ -35,7 +35,7 @@ function core.getCurrentUIWidgetTag()
     -- local widgetTagId = core.getRenderedUIWidgetTagId()
     local widget = engine.uiWidget.getActiveWidget()
     if widget then
-        local tag = engine.tag.getTag(widget.definitionTagHandle.value)
+        local tag = engine.tag.getTagEntry(widget.definitionTagHandle.value)
         assert(tag, "No tag found for widget")
         -- TODO BALLTZE MIGRATE
         return {
@@ -163,7 +163,7 @@ function core.getMouseState()
     return {
         right = read_int(mouseInputAddress),
         up = read_int(mouseInputAddress + 4),
-        scroll = read_char(mouseInputAddress + 8),
+        scroll = read_byte(mouseInputAddress + 8),
         leftClick = read_byte(mouseInputAddress + 12),
         scrollClick = read_byte(mouseInputAddress + 13),
         rightClick = read_byte(mouseInputAddress + 14)

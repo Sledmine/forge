@@ -36,6 +36,12 @@ local forge = {
         launchMonitorMenu = function(mode)
             logger.debug("Forge: launchMonitorMenu callback not set, mode={}", mode)
         end
+    },
+    state = {
+        player = {
+            ---@type integer?
+            attachedObjectHandleValue = nil,
+        }
     }
 }
 
@@ -170,7 +176,11 @@ function forge.swapPlayerBiped(playerIndex, targetBipedName, previousPosition)
     end
 
     core.swapBiped(playerIndex, targetBiped.handle.value)
-    engine.object.deleteObject(player.unitHandle.value)
+    -- If biped exists at this point in time
+    --if engine.object.getObject(player.unitHandle.value, "biped") then
+    if not player.unitHandle:isNull() then
+        engine.object.deleteObject(player.unitHandle.value)
+    end
     sleep(1)
 
     local playerBiped
@@ -267,7 +277,7 @@ function forge.controls()
                     if playerBiped.unitControlFlags.light then
                         if not isMonitor and playerBiped.tagHandle.value ==
                             bipeds.player.handle.value then
-                            Balltze.logger.debug("Player {} is pressiwng light", playerIndex)
+                            Balltze.logger.debug("Player {} is pressing light", playerIndex)
                             playerBiped = forge.swapPlayerBiped(playerIndex,
                                                                   "monitor",
                                                                   previousPosition)
@@ -281,7 +291,7 @@ function forge.controls()
                             forge.setMonitorMode("idle")
                             Balltze.logger.debug("Player {} monitor mode set to idle", playerIndex)
                         else
-                            forge.callbacks.launchMonitorMenu("tools")
+                            forge.callbacks.launchMonitorMenu(forge.state.player.attachedObjectHandleValue and "tools" or "place")
                         end
                     elseif playerBiped.unitControlFlags.crouch then
                         if isMonitor then

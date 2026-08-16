@@ -98,7 +98,6 @@ local monitorMenuPath = container {
             options {
                 name = menuName,
                 layout = "vertical",
-                -- bitmap = [[[shm]/halo_4/ui/bitmaps/monitor_menu_background.bitmap]],
                 width = 261,
                 height = 257,
                 childs = buttonOptions

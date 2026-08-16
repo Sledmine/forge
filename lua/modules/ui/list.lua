@@ -62,7 +62,8 @@ local list = setmetatable({
 function list.new(tagId, firstWidgetIndex, lastWidgetIndex)
     local instance = setmetatable(component.new(tagId), {__index = list}) --[[@as uiComponentList]]
     instance.firstWidgetIndex = firstWidgetIndex or 1
-    local childWidgetsCount = (instance.widgetDefinition.childWidgets and #instance.widgetDefinition.childWidgets) or 1
+    local childWidgetsCount = (instance.widgetDefinition.childWidgets and
+                                  #instance.widgetDefinition.childWidgets) or 1
     instance.lastWidgetIndex = lastWidgetIndex or childWidgetsCount
     return instance
 end
@@ -90,7 +91,7 @@ function list.scroll(self, direction, isFromMouse)
     local itemIndex = self.currentItemIndex + (self.scrollAmount * direction)
     if itemIndex < 1 then
         if not isFromMouse then
-            --interface.sound("error")
+            -- interface.sound("error")
         end
         itemIndex = 1
     elseif itemIndex > #self.items then
@@ -107,7 +108,7 @@ function list.scroll(self, direction, isFromMouse)
     end
     if itemIndex > maximumDisplayableIndex then
         if not isFromMouse then
-            --interface.sound("error")
+            -- interface.sound("error")
         end
         itemIndex = maximumDisplayableIndex
     end
@@ -146,7 +147,7 @@ function list.refresh(self)
     end
 
     if self.isScrollable then
-        --logger.debug("List is scrollable, adjusting first and last widget index to account for scroll buttons")
+        -- logger.debug("List is scrollable, adjusting first and last widget index to account for scroll buttons")
         firstWidgetIndex = firstWidgetIndex + 1
         lastWidgetIndex = lastWidgetIndex - 1
     end
@@ -189,8 +190,9 @@ function list.refresh(self)
         local childWidget = widgetDefinition.childWidgets[widgetIndex].widgetTag
         if item then
             if childWidget then
-                --logger.debug("Child widget: " .. childWidget.path .. " is being set to item value: " .. tostring(item.value))
-                core.setWidgetValues(childWidget.tagHandle.value, {neverReceiveEvents = false, visible = true})
+                -- logger.debug("Child widget: " .. childWidget.path .. " is being set to item value: " .. tostring(item.value))
+                core.setWidgetValues(childWidget.tagHandle.value,
+                                     {neverReceiveEvents = false, visible = true})
                 local listItemComponent = createItemComponent(item, item.component,
                                                               childWidget.tagHandle.value)
                 itemComponentsByIndex[itemIndex] = listItemComponent
@@ -216,12 +218,12 @@ function list.refresh(self)
                         shouldHideArrows = not hasSpinnerValues
                     end
                     listItemComponent:setArrowsHidden(shouldHideArrows)
-                    listItemComponent:onScroll(function(value, index)
-                        item.value = value
-                        if item.onScroll then
+                    if item.onScroll then
+                        listItemComponent:onScroll(function(value, index)
+                            item.value = value
                             item.onScroll(value, index, item, listItemComponent)
-                        end
-                    end)
+                        end)
+                    end
                 end
 
                 if item.onRender then
@@ -244,8 +246,8 @@ function list.refresh(self)
                         listItemComponent:setWidgetValues{bitmapIndex = 2}
                         for _, childWidget in ipairs(widgetDefinition.childWidgets) do
                             local currentChildWidgetHandle = childWidget.widgetTag.tagHandle.value
-                            if currentChildWidgetHandle and
-                                currentChildWidgetHandle ~= listItemComponent.handleValue then
+                            if currentChildWidgetHandle and currentChildWidgetHandle ~=
+                                listItemComponent.handleValue then
                                 local childComponent = component.widgets[currentChildWidgetHandle]
                                 if childComponent then
                                     -- Restore all other buttons to their default state
@@ -268,17 +270,19 @@ function list.refresh(self)
                     end
                     if self.isSelectable and listItemComponent.type ~= "spinner" then
 
-                        local isButtonSelected = listItemComponent:getWidgetValues().bitmapIndex == 2
+                        local isButtonSelected = listItemComponent:getWidgetValues().bitmapIndex ==
+                                                     2
                         if not isButtonSelected then
                             -- Set button bitmap state to focused index
                             listItemComponent:setWidgetValues{bitmapIndex = 1}
                         end
                         for _, childWidget in ipairs(widgetDefinition.childWidgets) do
                             local currentChildWidgetHandle = childWidget.widgetTag.tagHandle.value
-                            if currentChildWidgetHandle and
-                                currentChildWidgetHandle ~= listItemComponent.handleValue then
+                            if currentChildWidgetHandle and currentChildWidgetHandle ~=
+                                listItemComponent.handleValue then
                                 local childComponent = component.widgets[currentChildWidgetHandle]
-                                if childComponent and childComponent:getWidgetValues().bitmapIndex == 1 then
+                                if childComponent and childComponent:getWidgetValues().bitmapIndex ==
+                                    1 then
                                     -- Restore all other buttons to their default state
                                     childComponent:setWidgetValues{bitmapIndex = 0}
                                 end
@@ -300,7 +304,8 @@ function list.refresh(self)
             end
         else
             if childWidget then
-                core.setWidgetValues(childWidget.tagHandle.value, {neverReceiveEvents = true, visible = false})
+                core.setWidgetValues(childWidget.tagHandle.value,
+                                     {neverReceiveEvents = true, visible = false})
             end
         end
     end
@@ -312,7 +317,8 @@ end
 function list.setItems(self, items)
     local widgetDefinition = self.widgetDefinition
     if widgetDefinition.widgetType ~= "columnList" then
-        logger.debug("Widget: " .. self.tag.path .. " is being used as a list but is not a column list")
+        logger.debug("Widget: " .. self.tag.path ..
+                         " is being used as a list but is not a column list")
     end
     -- if not (#items > 0) then
     --    error("setItems requires at least one item")
@@ -337,7 +343,7 @@ function list.setItems(self, items)
     for widgetIndex = self.firstWidgetIndex, self.lastWidgetIndex do
         local widgetTag = widgetDefinition.childWidgets[widgetIndex].widgetTag
         if not widgetTag.tagHandle:isNull() then
-            --logger.debug("Child widget: " .. widgetTag.path .. " is being reset to default state")
+            -- logger.debug("Child widget: " .. widgetTag.path .. " is being reset to default state")
             button.new(widgetTag.tagHandle.value)
         end
     end
@@ -353,11 +359,11 @@ function list.setItems(self, items)
             local firstWidget = button.new(firstWidgetTagHandleValue)
             local lastWidget = button.new(lastWidgetTagHandleValue)
             firstWidget:onClick(function()
-                --logger.debug("List scroll up button clicked")
+                -- logger.debug("List scroll up button clicked")
                 self:scroll(-1)
             end)
             lastWidget:onClick(function()
-                --logger.debug("List scroll down button clicked")
+                -- logger.debug("List scroll down button clicked")
                 self:scroll(1)
             end)
         end

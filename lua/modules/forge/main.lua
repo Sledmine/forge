@@ -26,37 +26,102 @@ local function sortedKeys(tbl)
     return keys
 end
 
+local function isMirroredLeaf(node, label)
+    if type(node) ~= "table" then
+        return false
+    end
+    local keys = sortedKeys(node)
+    if #keys ~= 1 or keys[1] ~= label then
+        return false
+    end
+    local child = node[label]
+    return type(child) == "table" and next(child) == nil
+end
+
 ---@param objectsMenu table
 ---@param objectsDatabase table
----@return table[]
-local function buildPlaceOptions(objectsMenu, objectsDatabase)
-    local options = {}
-    local usedLabels = {}
-    local root = (objectsMenu and objectsMenu.root) or {}
+---@return fun(): table[] buildOptions
+local function createPlaceMenuNavigator(objectsMenu, objectsDatabase)
+    local rootNode = (objectsMenu and objectsMenu.root) or {}
+    local pathStack = {rootNode}
+    local labelStack = {}
 
-    for _, categoryName in ipairs(sortedKeys(root)) do
-        local categoryNode = root[categoryName]
-        if type(categoryNode) == "table" then
-            for _, entryName in ipairs(sortedKeys(categoryNode)) do
-                if not usedLabels[entryName] then
-                    usedLabels[entryName] = true
-                    local entryPath = objectsDatabase[entryName]
-                    options[#options + 1] = {
-                        label = entryName,
-                        click = function()
-                            logger.debug("Place option selected: {} ({})", entryName,
-                                         entryPath or "unknown")
-                        end,
-                        focus = function()
-                            logger.debug("Focused place option: {}", entryName)
-                        end
-                    }
-                end
-            end
+    local function currentNode()
+        return pathStack[#pathStack] or rootNode
+    end
+
+    local function goBack()
+        if #pathStack > 1 then
+            table.remove(pathStack)
+            table.remove(labelStack)
         end
     end
 
-    return options
+    local function tryEnter(label)
+        local node = currentNode()[label]
+        if type(node) ~= "table" then
+            return false
+        end
+        if next(node) == nil or isMirroredLeaf(node, label) then
+            return false
+        end
+        pathStack[#pathStack + 1] = node
+        labelStack[#labelStack + 1] = label
+        return true
+    end
+
+    local function buildOptions()
+        local options = {}
+        local node = currentNode()
+
+        if #pathStack > 1 then
+            options[#options + 1] = {
+                label = "< BACK",
+                click = function()
+                    goBack()
+                    monitorMenu.setOptions(buildOptions())
+                end,
+                focus = function()
+                    logger.debug("Place menu: go back")
+                end
+            }
+        end
+
+        for _, label in ipairs(sortedKeys(node)) do
+            local entryNode = node[label]
+            local canEnter = type(entryNode) == "table" and next(entryNode) ~= nil and
+                not isMirroredLeaf(entryNode, label)
+            local entryPath = objectsDatabase[label]
+            local itemLabel = label
+            local itemDisplayLabel = tostring(label):upper()
+            local itemCanEnter = canEnter
+            local itemEntryPath = entryPath
+
+            options[#options + 1] = {
+                label = itemDisplayLabel,
+                click = function()
+                    if itemCanEnter then
+                        tryEnter(itemLabel)
+                        monitorMenu.setOptions(buildOptions())
+                        return
+                    end
+                    logger.debug("Place option selected: {} ({})", itemLabel,
+                                 itemEntryPath or "unknown")
+                end,
+                focus = function()
+                    if itemCanEnter then
+                        logger.debug("Place category: {}", itemLabel)
+                    else
+                        logger.debug("Place object: {}", itemLabel)
+                    end
+                end
+            }
+        end
+
+        return options
+    end
+
+    return buildOptions
 end
 
 forge.callbacks.launchMonitorMenu = function(mode)
@@ -64,7 +129,8 @@ forge.callbacks.launchMonitorMenu = function(mode)
 
     if mode == "place" then
         local objectsMenu, objectsDatabase = forge.getAvailableForgeObjectsMenu()
-        local placeOptions = buildPlaceOptions(objectsMenu, objectsDatabase)
+        local buildPlaceOptions = createPlaceMenuNavigator(objectsMenu, objectsDatabase)
+        local placeOptions = buildPlaceOptions()
         monitorMenu.setOptions(placeOptions)
         monitorMenu:launch()
         return
@@ -85,7 +151,6 @@ function map.main()
         forge.swapPlayerBiped(0, "monitor")
         forge.callbacks.launchMonitorMenu("place")
         --engine.uiWidget.launchWidget(constants.menus.forge.handle.value)
-        Balltze.logger.debug("{}", inspect(forge.getAvailableForgeObjectsMenu()))
     end
 end
 script.startup(map.main)

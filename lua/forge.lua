@@ -15,7 +15,7 @@ assert(require "structures.tag.weaponHudInterface")
 
 DebugMode = true
 DebugLuaMemory = false
-DebugPerformance = true
+DebugPerformance = false
 
 if DebugMode then
     performance = require "performance"

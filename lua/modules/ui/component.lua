@@ -135,7 +135,7 @@ function component.callbacks()
 
         lastFocusedWidgetTagEntry = focusedWidgetTagEntry
         ---@diagnostic disable-next-line: undefined-field
-        if focusedWidgetTagData.flags1:editable() or focusedWidgetTagData.flags1:password() then
+        if focusedWidgetTagData.flags1.editable or focusedWidgetTagData.flags1.password then
             editableWidgetTagData = focusedWidgetTagData
             editableWidgetTagEntry = focusedWidgetTagEntry
         else
@@ -150,18 +150,20 @@ function component.callbacks()
             return
         end
         local uiComponent = component.widgets[widgetTagHandle] --[[@as uiComponentSpinner|uiComponentList]]
-        if uiComponent and not uiComponent.events.onScroll then
-            -- If the widget doesn't have scroll event, try to get the parent widget's component
-            local parentWidget = widget.parentWidget
-            if parentWidget then
-                local parentWidgetTagEntry = getTagEntry(parentWidget.definitionTagHandle.value)
-                assert(parentWidgetTagEntry, "Invalid parent widget tag")
-                uiComponent = component.widgets[parentWidget.definitionTagHandle.value] --[[@as uiComponentSpinner|uiComponentList]]
-            end
-        end
         if uiComponent then
+            if not uiComponent.events.onScroll then
+                -- If the widget doesn't have scroll event, try to get the parent widget's component
+                local parentWidget = widget.parent
+                if parentWidget then
+                    local parentWidgetTagEntry = getTagEntry(parentWidget.definitionTagHandle.value)
+                    assert(parentWidgetTagEntry, "Invalid parent widget tag")
+                    uiComponent = component.widgets[parentWidget.definitionTagHandle.value] --[[@as uiComponentSpinner|uiComponentList]]
+                end
+            end
+
             -- If the component has onScroll event or is a list, scroll it
             if uiComponent.events.onScroll or uiComponent.type == "list" then
+                -- logger.debug("Mouse scroll component {} with type {}", uiComponent.tag.path, uiComponent.type)
                 local mouse = core.getMouseState()
                 uiComponent:scroll(mouse.scroll, true)
             end
@@ -252,6 +254,7 @@ function component.callbacks()
 
         local widgetTag = findNextWidget()
         if not widgetTag then
+            --logger.debug("No next widget found for event: " .. eventType)
             event:cancel()
             return
         end
@@ -262,7 +265,9 @@ function component.callbacks()
     balltze.addEventListener("frame", function()
         local widget = engine.uiWidget.getActiveWidget()
         if widget and lastFocusedWidgetTagEntry then
+            -- local mouse = Balltze.engine.get
             local mouse = core.getMouseState()
+            -- logger.debug("Mouse scroll: " .. mouse.scroll .. ", right click: " .. mouse.rightClick)
             if mouse.scroll ~= 0 then
                 onMouseScroll(lastFocusedWidgetTagEntry.handle.value)
             end

@@ -56,8 +56,8 @@ end
 
 local function drawTextCompat(channel, text, left, top, right, bottom, font, align, ...)
     local _ = {right, bottom, font, align}
-    if not (engine.hud and engine.hud.addText and left ~= nil and top ~= nil) then
-        engine.terminal.print("{}", tostring(text))
+    if not (engine.interface and engine.interface.addText and left ~= nil and top ~= nil) then
+        --engine.terminal.print("{}", tostring(text))
         return
     end
 
@@ -73,7 +73,7 @@ local function drawTextCompat(channel, text, left, top, right, bottom, font, ali
     end
 
     if not entry then
-        local hudText = Engine.hud.addText(tostring(text), left, top, hudColor)
+        local hudText = Engine.interface.addText(tostring(text), left, top, hudColor)
         channelTexts[key] = {text = hudText, colorKey = colorKey, seen = true}
         return
     end
