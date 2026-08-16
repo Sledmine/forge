@@ -38,12 +38,45 @@ local forge = {
         end
     },
     state = {
+        ---@type table<integer, {attachedObject: integer?}>
+        players = {},
         player = {
             ---@type integer?
-            attachedObjectHandleValue = nil,
+            attachedObject = nil
         }
     }
 }
+
+local function getPlayerState(playerIndex)
+    if type(playerIndex) ~= "number" then
+        playerIndex = 0
+    end
+    forge.state.players[playerIndex] = forge.state.players[playerIndex] or {attachedObject = nil}
+    return forge.state.players[playerIndex]
+end
+
+function forge.getAttachedObject(playerIndex)
+    local state = getPlayerState(playerIndex)
+    return state.attachedObject
+end
+
+function forge.setAttachedObject(playerIndex, objectHandle)
+    local state = getPlayerState(playerIndex)
+    state.attachedObject = objectHandle
+    forge.state.player.attachedObject = objectHandle
+end
+
+function forge.clearAttachedObject(playerIndex)
+    local state = getPlayerState(playerIndex)
+    if state.attachedObject then
+        local object = engine.object.getObject(state.attachedObject)
+        if object then
+            engine.object.deleteObject(state.attachedObject)
+        end
+    end
+    state.attachedObject = nil
+    forge.state.player.attachedObject = nil
+end
 
 local monitorCrosshairHudTag
 local monitorCrosshairHudData
@@ -51,7 +84,8 @@ local monitorCrosshairHudData
 function forge.load()
     monitorCrosshairHudTag = forge.constants.weaponHudInterfaces.monitorCrosshair
     assert(monitorCrosshairHudTag, "Monitor crosshair HUD tag not found")
-    monitorCrosshairHudData = getTagData(monitorCrosshairHudTag.handle.value, "weapon_hud_interface")
+    monitorCrosshairHudData =
+        getTagData(monitorCrosshairHudTag.handle.value, "weapon_hud_interface")
 end
 
 --- Build a nested menu tree for all forge-available object tags in the current map.
@@ -60,13 +94,13 @@ end
 function forge.getAvailableForgeObjectsMenu()
     local forgeObjectsTag = forge.constants.tagCollections.forgeObjects
     assert(forgeObjectsTag, "Forge objects tag collection not found")
-    --logger.debug("Forge objects tag: {}", forgeObjectsTag.path)
-    local menuList = { root = {} }
+    -- logger.debug("Forge objects tag: {}", forgeObjectsTag.path)
+    local menuList = {root = {}}
     local objectDatabase = {}
 
-    local function addObjectPath(tagPath)
+    local function addObjectPath(tagPath, tagHandle)
         local displayName = tagPath:match("([^\\]+)$") or tagPath
-        objectDatabase[displayName] = tagPath
+        objectDatabase[displayName] = tagHandle
 
         local pathParts = {}
         local collectPath = false
@@ -125,7 +159,7 @@ function forge.getAvailableForgeObjectsMenu()
             if nestedOk and nestedCollectionData then
                 walkTagCollection(tagHandle.value)
             else
-                addObjectPath(tagPath)
+                addObjectPath(tagPath, tagHandle)
             end
 
             ::continue::
@@ -165,6 +199,9 @@ end
 ---@param previousPosition? {x: number, y: number, z: number}
 ---@return BipedObject?
 function forge.swapPlayerBiped(playerIndex, targetBipedName, previousPosition)
+    -- Reset attached object when swapping bipeds to avoid invalid states
+    forge.clearAttachedObject(playerIndex)
+
     local player = getPlayer(playerIndex)
     if not player then
         return nil
@@ -177,7 +214,7 @@ function forge.swapPlayerBiped(playerIndex, targetBipedName, previousPosition)
 
     core.swapBiped(playerIndex, targetBiped.handle.value)
     -- If biped exists at this point in time
-    --if engine.object.getObject(player.unitHandle.value, "biped") then
+    -- if engine.object.getObject(player.unitHandle.value, "biped") then
     if not player.unitHandle:isNull() then
         engine.object.deleteObject(player.unitHandle.value)
     end
@@ -278,9 +315,8 @@ function forge.controls()
                         if not isMonitor and playerBiped.tagHandle.value ==
                             bipeds.player.handle.value then
                             Balltze.logger.debug("Player {} is pressing light", playerIndex)
-                            playerBiped = forge.swapPlayerBiped(playerIndex,
-                                                                  "monitor",
-                                                                  previousPosition)
+                            playerBiped = forge.swapPlayerBiped(playerIndex, "monitor",
+                                                                previousPosition)
                             if not playerBiped then
                                 return
                             end
@@ -291,14 +327,14 @@ function forge.controls()
                             forge.setMonitorMode("idle")
                             Balltze.logger.debug("Player {} monitor mode set to idle", playerIndex)
                         else
-                            forge.callbacks.launchMonitorMenu(forge.state.player.attachedObjectHandleValue and "tools" or "place")
+                            forge.callbacks.launchMonitorMenu(
+                                forge.getAttachedObject(playerIndex) and "tools" or "place")
                         end
                     elseif playerBiped.unitControlFlags.crouch then
                         if isMonitor then
                             Balltze.logger.debug("Player {} is pressing crouch", playerIndex)
-                            playerBiped = forge.swapPlayerBiped(playerIndex,
-                                                                  "player",
-                                                                  previousPosition)
+                            playerBiped = forge.swapPlayerBiped(playerIndex, "player",
+                                                                previousPosition)
                             if not playerBiped then
                                 return
                             end
