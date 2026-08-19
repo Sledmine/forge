@@ -14,6 +14,9 @@ local list = require "ui.list"
 local button = require "ui.button"
 component.callbacks()
 
+-- Forward declaration so early helper functions capture this local symbol.
+local setMonitorMode
+
 local forge = {
     ---@type "edit" | "normal"
     mode = "edit",
@@ -40,7 +43,7 @@ local forge = {
         end
     },
     state = {
-        ---@type table<integer, {attachedObject: integer?, distance: number, lockDistance: boolean}>
+        ---@type table<integer, {attachedObject: integer?, distance: number, lockDistance: boolean, highlightedObject: integer?}>
         players = {},
         player = {
             ---@type integer?
@@ -54,7 +57,12 @@ local function getPlayerState(playerIndex)
         playerIndex = 0
     end
     forge.state.players[playerIndex] = forge.state.players[playerIndex] or
-                                           {attachedObject = nil, distance = 5, lockDistance = true}
+                                           {
+            attachedObject = nil,
+            distance = 5,
+            lockDistance = true,
+            highlightedObject = nil
+        }
     return forge.state.players[playerIndex]
 end
 
@@ -120,14 +128,48 @@ local function getAimedObjectHandle(playerBiped)
     return aimedHandle
 end
 
-function pickupAimedObject(playerIndex, playerBiped)
+local function setObjectHighlight(objectHandle, enabled)
+    if not objectHandle then
+        return
+    end
+    local object = getObject(objectHandle)
+    if not object or not object.vitals then
+        return
+    end
+
+    if enabled then
+        object.vitals.health = 1
+        object.vitals.shield = 1
+    else
+        object.vitals.health = 0
+        object.vitals.shield = 0
+    end
+end
+
+local function updateAimedObjectHighlight(playerIndex, aimedObjectHandle)
+    local state = getPlayerState(playerIndex)
+    local previousHandle = state.highlightedObject
+    local attachedHandle = state.attachedObject
+
+    if previousHandle and previousHandle ~= aimedObjectHandle and previousHandle ~= attachedHandle then
+        setObjectHighlight(previousHandle, false)
+    end
+
+    state.highlightedObject = aimedObjectHandle
+    if aimedObjectHandle and aimedObjectHandle ~= attachedHandle then
+        setObjectHighlight(aimedObjectHandle, true)
+    end
+end
+
+    local function pickupAimedObject(playerIndex, playerBiped)
     local aimedHandle = getAimedObjectHandle(playerBiped)
     if not aimedHandle then
         return false
     end
 
+    updateAimedObjectHighlight(playerIndex, nil)
     forge.setAttachedObject(playerIndex, aimedHandle)
-    forge.setMonitorMode("holding")
+    setMonitorMode("holding")
     logger.debug("Player {} picked up object {}", playerIndex, aimedHandle)
     return true
 end
@@ -154,8 +196,12 @@ function forge.setAttachedObject(playerIndex, objectHandle)
     forge.state.player.attachedObject = objectHandle
 end
 
-function forge.detachAttachedObject(playerIndex, deleteObject)
+local function detachAttachedObject(playerIndex, deleteObject)
     local state = getPlayerState(playerIndex)
+    if state.highlightedObject then
+        setObjectHighlight(state.highlightedObject, false)
+        state.highlightedObject = nil
+    end
     if deleteObject and state.attachedObject then
         local object = engine.object.getObject(state.attachedObject)
         if object then
@@ -167,10 +213,10 @@ function forge.detachAttachedObject(playerIndex, deleteObject)
 end
 
 function forge.clearAttachedObject(playerIndex)
-    forge.detachAttachedObject(playerIndex, true)
+    detachAttachedObject(playerIndex, true)
 end
 
-function forge.updateAttachedObjectFromCamera(playerIndex, playerBiped)
+local function updateAttachedObjectFromCamera(playerIndex, playerBiped)
     local state = getPlayerState(playerIndex)
     if not state.attachedObject then
         return false
@@ -178,7 +224,7 @@ function forge.updateAttachedObjectFromCamera(playerIndex, playerBiped)
 
     local attachedObject = getObject(state.attachedObject)
     if not attachedObject or not attachedObject.position then
-        forge.detachAttachedObject(playerIndex, false)
+        detachAttachedObject(playerIndex, false)
         return false
     end
 
@@ -201,7 +247,7 @@ function forge.updateAttachedObjectFromCamera(playerIndex, playerBiped)
     return true
 end
 
-function forge.updateAttachedObjectDistance(playerIndex, playerBiped)
+local function updateAttachedObjectDistance(playerIndex, playerBiped)
     local state = getPlayerState(playerIndex)
     if state.lockDistance or not state.attachedObject then
         return
@@ -262,7 +308,7 @@ function forge.placeObject(itemLabel, tagHandle, playerIndex)
     local objectHandleValue = objectHandle.value or objectHandle
     forge.setAttachedObject(targetPlayerIndex, objectHandleValue)
     logger.debug("Place object selected: {} ({})", itemLabel, objectHandleValue or "unknown")
-    forge.setMonitorMode("holding")
+    setMonitorMode("holding")
     return true
 end
 
@@ -428,7 +474,7 @@ local crosshairModes = {hidden = 0, idle = 1, selected = 2, holding = 3, bounds 
 
 --- Changes Forge crosshair state
 ---@param mode "hidden" | "idle" | "selected" | "holding" | "bounds"
-function forge.setMonitorMode(mode)
+function setMonitorMode(mode)
     if type(mode) ~= "string" then
         return
     end
@@ -505,12 +551,12 @@ function forge.controls()
                     if isMonitor and attachedObjectHandle then
                         local attachedObject = getObject(attachedObjectHandle)
                         if not attachedObject or not attachedObject.position then
-                            forge.detachAttachedObject(playerIndex, false)
-                            forge.setMonitorMode("idle")
+                            detachAttachedObject(playerIndex, false)
+                            setMonitorMode("idle")
                             return
                         end
 
-                        forge.setMonitorMode("holding")
+                        setMonitorMode("holding")
 
                         if input.light then
                             forge.callbacks.launchMonitorMenu("tools")
@@ -518,8 +564,8 @@ function forge.controls()
                         end
 
                         if input.jump then
-                            forge.detachAttachedObject(playerIndex, true)
-                            forge.setMonitorMode("idle")
+                            detachAttachedObject(playerIndex, true)
+                            setMonitorMode("idle")
                             return
                         end
 
@@ -531,14 +577,14 @@ function forge.controls()
                         end
 
                         if input.secondaryTrigger or input.action then
-                            forge.detachAttachedObject(playerIndex, false)
-                            forge.setMonitorMode("idle")
+                            detachAttachedObject(playerIndex, false)
+                            setMonitorMode("idle")
                             return
                         end
 
-                        forge.updateAttachedObjectDistance(playerIndex, playerBiped)
-                        if not forge.updateAttachedObjectFromCamera(playerIndex, playerBiped) then
-                            forge.setMonitorMode("idle")
+                        updateAttachedObjectDistance(playerIndex, playerBiped)
+                        if not updateAttachedObjectFromCamera(playerIndex, playerBiped) then
+                            setMonitorMode("idle")
                             return
                         end
 
@@ -547,10 +593,11 @@ function forge.controls()
 
                     if isMonitor then
                         local aimedObjectHandle = getAimedObjectHandle(playerBiped)
+                        updateAimedObjectHighlight(playerIndex, aimedObjectHandle)
                         if aimedObjectHandle then
-                            forge.setMonitorMode("selected")
+                            setMonitorMode("selected")
                         else
-                            forge.setMonitorMode("idle")
+                            setMonitorMode("idle")
                         end
                     end
 
@@ -573,7 +620,7 @@ function forge.controls()
                             playerBiped.vitals.health = 1
                             playerBiped.vitals.shield = 1
                             -- TODO Restore biped rotation as well
-                            forge.setMonitorMode("idle")
+                            setMonitorMode("idle")
                             Balltze.logger.debug("Player {} monitor mode set to idle", playerIndex)
                         else
                             forge.callbacks.launchMonitorMenu(
@@ -587,7 +634,7 @@ function forge.controls()
                             if not playerBiped then
                                 return
                             end
-                            forge.setMonitorMode("hidden")
+                            setMonitorMode("hidden")
                         end
                     end
                 end
