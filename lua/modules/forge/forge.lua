@@ -52,11 +52,8 @@ local function getPlayerState(playerIndex)
     if type(playerIndex) ~= "number" then
         playerIndex = 0
     end
-    forge.state.players[playerIndex] = forge.state.players[playerIndex] or {
-        attachedObject = nil,
-        distance = 5,
-        lockDistance = true
-    }
+    forge.state.players[playerIndex] = forge.state.players[playerIndex] or
+                                           {attachedObject = nil, distance = 5, lockDistance = true}
     return forge.state.players[playerIndex]
 end
 
@@ -176,7 +173,7 @@ function forge.updateAttachedObjectDistance(playerIndex, playerBiped)
 end
 
 ---@param itemLabel string
----@param tagHandle TagHandle|integer
+---@param tagHandle TagHandle
 ---@param playerIndex integer?
 ---@return boolean
 function forge.placeObject(itemLabel, tagHandle, playerIndex)
@@ -204,6 +201,14 @@ function forge.placeObject(itemLabel, tagHandle, playerIndex)
         }
     end
 
+    -- Force object shadow casting (looks super dope with Balltze shadows)
+    local tagData = getTagData(tagHandle, "scenery")
+    if not tagData then
+        logger.debug("Place object: unable to get scenery tag data for {}", itemLabel)
+        return false
+    end
+    tagData.flags.castShadowByDefault = true
+
     local objectHandle = engine.object.createObject(tagHandle, nil, position)
     if not objectHandle then
         logger.debug("Place object: unable to spawn {}", itemLabel)
@@ -212,8 +217,7 @@ function forge.placeObject(itemLabel, tagHandle, playerIndex)
 
     local objectHandleValue = objectHandle.value or objectHandle
     forge.setAttachedObject(targetPlayerIndex, objectHandleValue)
-    logger.debug("Place object selected: {} ({})", itemLabel,
-                 objectHandleValue or "unknown")
+    logger.debug("Place object selected: {} ({})", itemLabel, objectHandleValue or "unknown")
     forge.setMonitorMode("holding")
     return true
 end
