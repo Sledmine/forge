@@ -7,6 +7,7 @@ local getObject = engine.object.getObject
 local getTagData = engine.tag.getTagData
 local logger = Balltze.logger
 local sqrt = math.sqrt
+local castRay = engine.physics.castRay
 
 local component = require "ui.component"
 local list = require "ui.list"
@@ -86,6 +87,49 @@ local function getBipedViewDirection(playerBiped)
     local cameraY = playerBiped and playerBiped.cameraY or 0
     local cameraZ = playerBiped and playerBiped.cameraZ or 0
     return cameraX, cameraY, cameraZ
+end
+
+local function getAimedObjectHandle(playerBiped)
+    if not playerBiped then
+        return nil
+    end
+
+    local origin = getBipedWorldPosition(playerBiped)
+    local cameraX, cameraY, cameraZ = getBipedViewDirection(playerBiped)
+    local rayLength = 25
+    local hit = castRay(origin, {
+        i = cameraX * rayLength,
+        j = cameraY * rayLength,
+        k = cameraZ * rayLength
+    }, "objects", playerBiped.handle and playerBiped.handle.value)
+
+    if not hit or hit.type ~= "object" or not hit.objectHandle then
+        return nil
+    end
+
+    local aimedHandle = hit.objectHandle.value or hit.objectHandle
+    if not aimedHandle then
+        return nil
+    end
+
+    local aimedObject = getObject(aimedHandle)
+    if not aimedObject then
+        return nil
+    end
+
+    return aimedHandle
+end
+
+function pickupAimedObject(playerIndex, playerBiped)
+    local aimedHandle = getAimedObjectHandle(playerBiped)
+    if not aimedHandle then
+        return false
+    end
+
+    forge.setAttachedObject(playerIndex, aimedHandle)
+    forge.setMonitorMode("holding")
+    logger.debug("Player {} picked up object {}", playerIndex, aimedHandle)
+    return true
 end
 
 function forge.getAttachedObject(playerIndex)
@@ -502,7 +546,18 @@ function forge.controls()
                     end
 
                     if isMonitor then
-                        forge.setMonitorMode("idle")
+                        local aimedObjectHandle = getAimedObjectHandle(playerBiped)
+                        if aimedObjectHandle then
+                            forge.setMonitorMode("selected")
+                        else
+                            forge.setMonitorMode("idle")
+                        end
+                    end
+
+                    if input.primaryTrigger and isMonitor and not attachedObjectHandle then
+                        if pickupAimedObject(playerIndex, playerBiped) then
+                            return
+                        end
                     end
 
                     if input.light then
