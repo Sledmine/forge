@@ -6,6 +6,7 @@ local getPlayer = engine.player.getPlayer
 local getObject = engine.object.getObject
 local getTagData = engine.tag.getTagData
 local logger = Balltze.logger
+local sqrt = math.sqrt
 
 local component = require "ui.component"
 local list = require "ui.list"
@@ -38,7 +39,7 @@ local forge = {
         end
     },
     state = {
-        ---@type table<integer, {attachedObject: integer?}>
+        ---@type table<integer, {attachedObject: integer?, distance: number, lockDistance: boolean}>
         players = {},
         player = {
             ---@type integer?
@@ -51,8 +52,43 @@ local function getPlayerState(playerIndex)
     if type(playerIndex) ~= "number" then
         playerIndex = 0
     end
-    forge.state.players[playerIndex] = forge.state.players[playerIndex] or {attachedObject = nil}
+    forge.state.players[playerIndex] = forge.state.players[playerIndex] or {
+        attachedObject = nil,
+        distance = 5,
+        lockDistance = true
+    }
     return forge.state.players[playerIndex]
+end
+
+local function calculateDistance(a, b)
+    local dx = a.x - b.x
+    local dy = a.y - b.y
+    local dz = a.z - b.z
+    return sqrt(dx * dx + dy * dy + dz * dz)
+end
+
+local function getBipedWorldPosition(playerBiped)
+    if playerBiped and playerBiped.bipedPosition then
+        return playerBiped.bipedPosition
+    end
+    if playerBiped and playerBiped.position then
+        return playerBiped.position
+    end
+    return {x = 0, y = 0, z = 0}
+end
+
+local function getBipedViewDirection(playerBiped)
+    if playerBiped and playerBiped.lookingVector then
+        local lv = playerBiped.lookingVector
+        if lv.i or lv.j or lv.k then
+            return lv.i or 0, lv.j or 0, lv.k or 0
+        end
+    end
+
+    local cameraX = playerBiped and playerBiped.cameraX or 0
+    local cameraY = playerBiped and playerBiped.cameraY or 0
+    local cameraZ = playerBiped and playerBiped.cameraZ or 0
+    return cameraX, cameraY, cameraZ
 end
 
 function forge.getAttachedObject(playerIndex)
@@ -63,12 +99,23 @@ end
 function forge.setAttachedObject(playerIndex, objectHandle)
     local state = getPlayerState(playerIndex)
     state.attachedObject = objectHandle
+
+    local player = getPlayer(playerIndex)
+    if player and player.unitHandle and player.unitHandle.value then
+        local playerBiped = getObject(player.unitHandle.value, "biped")
+        local object = getObject(objectHandle)
+        if playerBiped and object and object.position then
+            local bipedPosition = getBipedWorldPosition(playerBiped)
+            state.distance = calculateDistance(bipedPosition, object.position)
+        end
+    end
+
     forge.state.player.attachedObject = objectHandle
 end
 
-function forge.clearAttachedObject(playerIndex)
+function forge.detachAttachedObject(playerIndex, deleteObject)
     local state = getPlayerState(playerIndex)
-    if state.attachedObject then
+    if deleteObject and state.attachedObject then
         local object = engine.object.getObject(state.attachedObject)
         if object then
             engine.object.deleteObject(state.attachedObject)
@@ -76,6 +123,99 @@ function forge.clearAttachedObject(playerIndex)
     end
     state.attachedObject = nil
     forge.state.player.attachedObject = nil
+end
+
+function forge.clearAttachedObject(playerIndex)
+    forge.detachAttachedObject(playerIndex, true)
+end
+
+function forge.updateAttachedObjectFromCamera(playerIndex, playerBiped)
+    local state = getPlayerState(playerIndex)
+    if not state.attachedObject then
+        return false
+    end
+
+    local attachedObject = getObject(state.attachedObject)
+    if not attachedObject or not attachedObject.position then
+        forge.detachAttachedObject(playerIndex, false)
+        return false
+    end
+
+    if not playerBiped then
+        return false
+    end
+
+    local bipedPosition = getBipedWorldPosition(playerBiped)
+    local cameraX, cameraY, cameraZ = getBipedViewDirection(playerBiped)
+
+    local distance = state.distance or 5
+    if distance < 0.5 then
+        distance = 0.5
+    end
+
+    attachedObject.position.x = bipedPosition.x + cameraX * distance
+    attachedObject.position.y = bipedPosition.y + cameraY * distance
+    attachedObject.position.z = bipedPosition.z + cameraZ * distance
+
+    return true
+end
+
+function forge.updateAttachedObjectDistance(playerIndex, playerBiped)
+    local state = getPlayerState(playerIndex)
+    if state.lockDistance or not state.attachedObject then
+        return
+    end
+
+    local attachedObject = getObject(state.attachedObject)
+    if not attachedObject or not attachedObject.position then
+        return
+    end
+
+    local bipedPosition = getBipedWorldPosition(playerBiped)
+    state.distance = calculateDistance(bipedPosition, attachedObject.position)
+end
+
+---@param itemLabel string
+---@param tagHandle TagHandle|integer
+---@param playerIndex integer?
+---@return boolean
+function forge.placeObject(itemLabel, tagHandle, playerIndex)
+    if not tagHandle then
+        logger.debug("Place object: missing tag handle for {}", itemLabel)
+        return false
+    end
+
+    local targetPlayerIndex = playerIndex or 0
+    local player = getPlayer(targetPlayerIndex)
+    local playerBiped = nil
+    if player and player.unitHandle and player.unitHandle.value then
+        playerBiped = getObject(player.unitHandle.value, "biped")
+    end
+
+    local position = {x = 0, y = 0, z = 0}
+    if playerBiped then
+        local origin = getBipedWorldPosition(playerBiped)
+        local cameraX, cameraY, cameraZ = getBipedViewDirection(playerBiped)
+        local spawnDistance = 5
+        position = {
+            x = origin.x + cameraX * spawnDistance,
+            y = origin.y + cameraY * spawnDistance,
+            z = origin.z + cameraZ * spawnDistance
+        }
+    end
+
+    local objectHandle = engine.object.createObject(tagHandle, nil, position)
+    if not objectHandle then
+        logger.debug("Place object: unable to spawn {}", itemLabel)
+        return false
+    end
+
+    local objectHandleValue = objectHandle.value or objectHandle
+    forge.setAttachedObject(targetPlayerIndex, objectHandleValue)
+    logger.debug("Place object selected: {} ({})", itemLabel,
+                 objectHandleValue or "unknown")
+    forge.setMonitorMode("holding")
+    return true
 end
 
 local monitorCrosshairHudTag
@@ -310,8 +450,58 @@ function forge.controls()
                 }
                 if forge.mode == "edit" then
                     local isMonitor = playerBiped.tagHandle.value == bipeds.monitor.handle.value
+                    local input = playerBiped.unitControlFlags
+                    local playerState = getPlayerState(playerIndex)
+                    local attachedObjectHandle = playerState.attachedObject
 
-                    if playerBiped.unitControlFlags.light then
+                    if isMonitor and attachedObjectHandle then
+                        local attachedObject = getObject(attachedObjectHandle)
+                        if not attachedObject or not attachedObject.position then
+                            forge.detachAttachedObject(playerIndex, false)
+                            forge.setMonitorMode("idle")
+                            return
+                        end
+
+                        forge.setMonitorMode("holding")
+
+                        if input.light then
+                            forge.callbacks.launchMonitorMenu("tools")
+                            return
+                        end
+
+                        if input.jump then
+                            forge.detachAttachedObject(playerIndex, true)
+                            forge.setMonitorMode("idle")
+                            return
+                        end
+
+                        if input.melee then
+                            playerState.lockDistance = not playerState.lockDistance
+                            logger.debug("Player {} distance lock: {}", playerIndex,
+                                         playerState.lockDistance)
+                            return
+                        end
+
+                        if input.secondaryTrigger or input.action then
+                            forge.detachAttachedObject(playerIndex, false)
+                            forge.setMonitorMode("idle")
+                            return
+                        end
+
+                        forge.updateAttachedObjectDistance(playerIndex, playerBiped)
+                        if not forge.updateAttachedObjectFromCamera(playerIndex, playerBiped) then
+                            forge.setMonitorMode("idle")
+                            return
+                        end
+
+                        return
+                    end
+
+                    if isMonitor then
+                        forge.setMonitorMode("idle")
+                    end
+
+                    if input.light then
                         if not isMonitor and playerBiped.tagHandle.value ==
                             bipeds.player.handle.value then
                             Balltze.logger.debug("Player {} is pressing light", playerIndex)
@@ -330,7 +520,7 @@ function forge.controls()
                             forge.callbacks.launchMonitorMenu(
                                 forge.getAttachedObject(playerIndex) and "tools" or "place")
                         end
-                    elseif playerBiped.unitControlFlags.crouch then
+                    elseif input.crouch then
                         if isMonitor then
                             Balltze.logger.debug("Player {} is pressing crouch", playerIndex)
                             playerBiped = forge.swapPlayerBiped(playerIndex, "player",

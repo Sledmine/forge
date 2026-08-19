@@ -38,52 +38,6 @@ local function isMirroredLeaf(node, label)
     return type(child) == "table" and next(child) == nil
 end
 
-local function placeSelectedObject(itemLabel, tagHandle, playerIndex)
-    if not tagHandle then
-        logger.debug("Place object: missing tag handle for {}", itemLabel)
-        return false
-    end
-
-    local player = engine.player.getPlayer(playerIndex or 0)
-    local playerBiped = nil
-    if player and player.unitHandle and player.unitHandle.value then
-        playerBiped = engine.object.getObject(player.unitHandle.value, "biped")
-    end
-
-    local position = {x = 0, y = 0, z = 0}
-    if playerBiped then
-        position = {
-            x = playerBiped.position.x,
-            y = playerBiped.position.y,
-            z = playerBiped.position.z
-        }
-    end
-
-    local objectHandle = engine.object.createObject(tagHandle, nil, position)
-    if not objectHandle then
-        logger.debug("Place object: unable to spawn {}", itemLabel)
-        return false
-    end
-
-    local objectHandleValue = objectHandle.value or objectHandle
-    if playerBiped and playerBiped.handle and playerBiped.handle.value then
-        local ok, err = pcall(function()
-            engine.gameState.attachObject(objectHandleValue, nil, playerBiped.handle.value, nil)
-        end)
-        if not ok then
-            logger.debug("Place object attach failed for {}: {}", itemLabel, err)
-        end
-    end
-
-    forge.setAttachedObject(playerIndex or 0, objectHandleValue)
-    logger.debug("Place object selected: {} ({})", itemLabel,
-                 objectHandleValue or "unknown")
-
-    engine.uiWidget.closeWidget()
-
-    return true
-end
-
 ---@param objectsMenu table
 ---@param objectsDatabase table
 ---@return fun(): table[] buildOptions
@@ -153,12 +107,13 @@ local function createPlaceMenuNavigator(objectsMenu, objectsDatabase)
                     end
 
                     local tagHandle = itemEntryPath
-                    local selectedPlayerIndex = engine.player.getPlayer() and
-                        engine.player.getPlayer().localPlayerIndex or 0
+                    local selectedPlayerIndex = engine.player.getLocalPlayerHandle(engine.player.getPlayer().localPlayerIndex).index
 
-                    if not placeSelectedObject(itemLabel, tagHandle, selectedPlayerIndex) then
+                    if not forge.placeObject(itemLabel, tagHandle, selectedPlayerIndex) then
                         logger.debug("Place option selected: {} ({})", itemLabel,
                                      tagHandle or "unknown")
+                    else
+                        engine.uiWidget.closeWidget()
                     end
                 end,
                 focus = function()
