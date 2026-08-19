@@ -115,6 +115,7 @@ function Balltze.loadSettings() end
 ---@overload fun(eventName: "player_input", callbackFunction: fun(event: PlayerInputEvent), priority?: EventListenerPriority): EventListener
 ---@overload fun(eventName: "widget_loaded", callbackFunction: fun(event: WidgetLoadedEvent), priority?: EventListenerPriority): EventListener
 ---@overload fun(eventName: "widget_event_dispatch", callbackFunction: fun(event: WidgetEventDispatchEvent), priority?: EventListenerPriority): EventListener
+---@overload fun(eventName: "object_damage", callbackFunction: fun(event: ObjectDamageEvent), priority?: EventListenerPriority): EventListener
 function Balltze.addEventListener(eventName, callbackFunction, priority) end
 
 -- Remove every listener subscribed to a named event (across all plugins, not just the caller)
@@ -161,6 +162,44 @@ function Balltze.getClipboard() end
 
 ---@param content string
 function Balltze.setClipboard(content) end
+
+
+-------------------------------------------------------
+-- Balltze.network
+-------------------------------------------------------
+
+Balltze.network = {}
+
+-- Messages go client to server or server to client, never between clients: the server is the
+-- only machine that can address anyone. Channels are named rather than tied to a plugin, so a
+-- server plugin and a client plugin agree on a name rather than on an identity.
+--
+-- Payloads are binary strings of at most 508 bytes and are not fragmented, so anything longer
+-- has to be split by the sender. Payloads from a client are untrusted; validate them.
+
+-- Listen for messages on a channel. senderPlayerIndex is nil when the server sent the message.
+---@param channel string
+---@param listener fun(payload: string, senderPlayerIndex: integer|nil)
+function Balltze.network.subscribe(channel, listener) end
+
+-- Send a payload to the server. Client side; fails on a server, which has no server to send to.
+---@param channel string
+---@param payload string
+---@return boolean sent @false when there is no connection to send it on
+function Balltze.network.send(channel, payload) end
+
+-- Send a payload to one player. Server side.
+---@param playerIndex integer
+---@param channel string
+---@param payload string
+---@return boolean sent @false when not running as the server
+function Balltze.network.sendToPlayer(playerIndex, channel, payload) end
+
+-- Send a payload to every machine. Server side.
+---@param channel string
+---@param payload string
+---@return boolean sent @false when not running as the server
+function Balltze.network.broadcast(channel, payload) end
 
 
 -------------------------------------------------------

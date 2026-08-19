@@ -235,6 +235,18 @@ function Engine.object.createObject(tagHandle, parentObjectHandle, position) end
 ---@param objectHandle ObjectHandle|integer
 function Engine.object.deleteObject(objectHandle) end
 
+-- Get an object's position
+---@param objectHandle ObjectHandle|integer
+---@return Point3d|nil @nil if the handle doesn't refer to a live object
+function Engine.object.getObjectPosition(objectHandle) end
+
+-- Move an object, redoing its BSP bookkeeping (cluster, visibility and collision), unlike writing the position fields directly
+---@param objectHandle ObjectHandle|integer
+---@param position Point3d|{x: number, y: number, z: number}
+---@param forward? Vector3d|{i: number, j: number, k: number} @if omitted, keeps the current rotation
+---@param up? Vector3d|{i: number, j: number, k: number} @if omitted, derived from the forward vector
+function Engine.object.setObjectPosition(objectHandle, position, forward, up) end
+
 -- Attach an object to another object's marker
 ---@param objectHandle ObjectHandle|integer
 ---@param objectMarker string|nil
@@ -284,6 +296,12 @@ Engine.player = {}
 ---@param playerHandle? PlayerHandle|integer
 ---@return Player|nil
 function Engine.player.getPlayer(playerHandle) end
+
+-- Get the handle of a local player, or nil when no local player holds that index.
+-- Only split-screen has an index other than 0.
+---@param localPlayerIndex? integer @default 0
+---@return PlayerHandle|nil
+function Engine.player.getLocalPlayerHandle(localPlayerIndex) end
 
 
 -------------------------------------------------------
