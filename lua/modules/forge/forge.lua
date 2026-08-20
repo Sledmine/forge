@@ -1,5 +1,6 @@
 local engine = Engine
 local core = require "forge.core"
+local json = require "json"
 local script = require "script"
 local sleep = script.sleep
 local getPlayer = engine.player.getPlayer
@@ -7,15 +8,17 @@ local getObject = engine.object.getObject
 local getTagData = engine.tag.getTagData
 local logger = Balltze.logger
 local sqrt = math.sqrt
+local sin = math.sin
+local cos = math.cos
+local rad = math.rad
 local castRay = engine.physics.castRay
 
 local component = require "ui.component"
-local list = require "ui.list"
-local button = require "ui.button"
 component.callbacks()
 
 -- Forward declaration so early helper functions capture this local symbol.
 local setMonitorMode
+local defaultMapsPath = "fmaps"
 
 local forge = {
     ---@type "edit" | "normal"
@@ -71,6 +74,113 @@ local function calculateDistance(a, b)
     local dy = a.y - b.y
     local dz = a.z - b.z
     return sqrt(dx * dx + dy * dy + dz * dz)
+end
+
+local function getScenarioShortName()
+    local cacheHeader = engine.cacheFile.getLoadedCacheFileHeader()
+    local scenarioName = cacheHeader and cacheHeader.scenarioName or ""
+    local shortName = scenarioName:match("([^\\/]+)$") or scenarioName
+    return shortName
+end
+
+local function normalizeMapName(name)
+    if type(name) ~= "string" then
+        return ""
+    end
+    return name:gsub(" ", "_"):lower()
+end
+
+local function stripMapVariant(name)
+    if type(name) ~= "string" then
+        return ""
+    end
+
+    local strippedName = name:lower():gsub("\\", "/")
+    strippedName = strippedName:match("([^/]+)$") or strippedName
+    strippedName = strippedName:gsub("%.fmap$", "")
+    strippedName = strippedName:gsub("_dev$", "")
+    strippedName = strippedName:gsub("_beta$", "")
+    return strippedName
+end
+
+local function isMapCompatible(savedMapName)
+    if type(savedMapName) ~= "string" or savedMapName == "" then
+        return true
+    end
+    local currentMap = normalizeMapName(getScenarioShortName())
+    local savedMap = normalizeMapName(savedMapName)
+
+    local currentBase = stripMapVariant(currentMap)
+    local savedBase = stripMapVariant(savedMap)
+    return currentMap == savedMap or currentBase == savedMap or currentMap == savedBase or
+               currentBase == savedBase
+end
+
+local function resolveSceneryTagHandle(tagPath)
+    if type(tagPath) ~= "string" or tagPath == "" then
+        return nil
+    end
+    local tags = engine.tag.filterTags("scenery", tagPath)
+    if not tags or #tags == 0 then
+        return nil
+    end
+
+    for _, tag in ipairs(tags) do
+        if tag.path == tagPath and tag.handle then
+            return tag.handle
+        end
+    end
+
+    local firstTag = tags[1]
+    return firstTag and firstTag.handle or nil
+end
+
+local function eulerToRotationVectors(yaw, pitch, roll)
+    local yawRad = rad(yaw)
+    local pitchRad = rad(-pitch)
+    local rollRad = rad(roll)
+
+    local cosA = cos(rollRad)
+    local sinA = sin(rollRad)
+    local cosB = cos(pitchRad)
+    local sinB = sin(pitchRad)
+    local cosY = cos(yawRad)
+    local sinY = sin(yawRad)
+
+    local m11 = cosB * cosY
+    local m13 = sinB
+    local m21 = cosA * sinY + sinA * sinB * cosY
+    local m23 = -sinA * cosB
+    local m31 = sinA * sinY - cosA * sinB * cosY
+    local m33 = cosA * cosB
+
+    -- Match blam.rotateObject: v1 is first matrix column, v2 is third matrix column.
+    local forwardVector = {x = m11, y = m21, z = m31}
+    local upVector = {x = m13, y = m23, z = m33}
+    return forwardVector, upVector
+end
+
+local function restoreObjectRotation(objectHandle, yaw, pitch, roll)
+    if type(yaw) ~= "number" or type(pitch) ~= "number" or type(roll) ~= "number" then
+        return
+    end
+
+    local forwardVector, upVector = eulerToRotationVectors(yaw, pitch, roll)
+    if engine.object.setObjectPosition then
+        local objectPosition = engine.object.getObjectPosition(objectHandle)
+        if not objectPosition then
+            return
+        end
+        engine.object.setObjectPosition(objectHandle, objectPosition, {
+            i = forwardVector.x,
+            j = forwardVector.y,
+            k = forwardVector.z
+        }, {
+            i = upVector.x,
+            j = upVector.y,
+            k = upVector.z
+        })
+    end
 end
 
 local function getBipedWorldPosition(playerBiped)
@@ -320,6 +430,82 @@ function forge.load()
     assert(monitorCrosshairHudTag, "Monitor crosshair HUD tag not found")
     monitorCrosshairHudData =
         getTagData(monitorCrosshairHudTag.handle.value, "weapon_hud_interface")
+end
+
+---@param mapName string
+---@return boolean loaded
+---@return integer loadedObjects
+function forge.loadSavedMap(mapName)
+    if type(mapName) ~= "string" or mapName == "" then
+        return false, 0
+    end
+
+    local filePath = string.format("%s/%s.fmap", defaultMapsPath, normalizeMapName(mapName))
+    local fmapContent = Balltze.filesystem.readFile(filePath)
+    if not fmapContent then
+        logger.debug("Forge map file not found: {}", filePath)
+        return false, 0
+    end
+
+    local ok, forgeMap = pcall(json.decode, fmapContent)
+    if not ok or type(forgeMap) ~= "table" then
+        logger.warning("Failed to parse forge map JSON: {}", filePath)
+        return false, 0
+    end
+
+    if not isMapCompatible(forgeMap.map) then
+        logger.warning("Forge map {} is for map '{}' and cannot be loaded on '{}'", mapName,
+                       tostring(forgeMap.map), getScenarioShortName())
+        return false, 0
+    end
+
+    local loadedCount = 0
+    local skippedCount = 0
+    local mapObjects = forgeMap.objects
+    if type(mapObjects) ~= "table" then
+        logger.warning("Forge map {} does not contain a valid objects array", mapName)
+        return false, 0
+    end
+
+    for _, forgeObject in pairs(mapObjects) do
+        local tagPath = forgeObject and forgeObject.tagPath
+        local tagHandle = resolveSceneryTagHandle(tagPath)
+        if tagHandle then
+            local tagData = getTagData(tagHandle, "scenery")
+            if tagData and tagData.flags then
+                tagData.flags.castShadowByDefault = true
+            end
+
+            local position = {
+                x = tonumber(forgeObject.x) or 0,
+                y = tonumber(forgeObject.y) or 0,
+                z = tonumber(forgeObject.z) or 0
+            }
+            local objectHandle = engine.object.createObject(tagHandle, nil, position)
+            if objectHandle then
+                local objectHandleValue = objectHandle.value or objectHandle
+                restoreObjectRotation(objectHandleValue, tonumber(forgeObject.yaw),
+                                      tonumber(forgeObject.pitch), tonumber(forgeObject.roll))
+                loadedCount = loadedCount + 1
+            else
+                skippedCount = skippedCount + 1
+            end
+        else
+            skippedCount = skippedCount + 1
+        end
+    end
+
+    forge.state.map = {
+        name = forgeMap.name or mapName,
+        author = forgeMap.author,
+        description = forgeMap.description,
+        sourceFile = filePath,
+        loadedObjects = loadedCount
+    }
+
+    logger.info("Loaded forge map '{}' ({} objects, {} skipped)", tostring(forge.state.map.name),
+                loadedCount, skippedCount)
+    return true, loadedCount
 end
 
 --- Build a nested menu tree for all forge-available object tags in the current map.

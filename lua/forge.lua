@@ -8,6 +8,7 @@ local balltze = Balltze
 local engine = Engine
 local performance
 inspect = require "inspect"
+local logger = Balltze.logger
 
 assert(require "structures.tag.globals")
 assert(require "structures.object.biped")
@@ -20,16 +21,14 @@ DebugPerformance = false
 if DebugMode then
     performance = require "performance"
     -- ARGB color values 
-    --performance.colors = {
+    -- performance.colors = {
     --    default = {1.0, 0.0, 0.0, 1.0},
     --    white = {0.0, 0.0, 0.0, 1.0},
     --    info = {1.0, 0.0, 0.5, 1.0},
     --    error = {1.0, 0.0, 0.0, 1.0},
     --    warning = {1.0, 0.65, 0.0, 1.0}
-    --}
+    -- }
 end
-
-local commands = require "forge.commands"
 
 -- Override assert function to print traceback as well
 local luaAssert = assert
@@ -76,30 +75,6 @@ balltze.addEventListener("tick", function()
     end
 end)
 
-if not isSapp then
-    -- Commands for Alpha Firefight
-    for command, data in pairs(commands) do
-        -- local command = command:replace("debug_", "")
-        balltze.registerCommand(command, data.description, data.help, data.save or false,
-                                data.minArgs or 0, data.maxArgs or 0, false, true, function(args)
-            -- Balltze.logger.debug("{}", inspect(args))
-            if (args and data.minArgs and data.maxArgs) and (#args < data.minArgs) or
-                (#args > data.maxArgs) then
-                balltze.logger.error("Invalid number of arguments. Usage: {}, Example: {}",
-                                     data.help, data.example)
-                return true
-            end
-            -- data.func(table.unpack(args or {}))
-            local ok, message = pcall(data.func, table.unpack(args or {}))
-            if not ok then
-                balltze.logger.error("Error executing command \"{}\": {}", command, message)
-            end
-            return true
-        end)
-    end
-    balltze.loadSettings()
-end
-
 function PluginOnSappLoad()
     if isSapp then
         -- Register all SAPP callbacks now that all subscribers are in place
@@ -121,4 +96,26 @@ end
 
 function PluginOnGameStart()
     script.setReferenceContext(require "forge.main")
+    local commands = require "forge.commands"
+    for command, data in pairs(commands) do
+        -- local command = command:replace("debug_", "")
+        logger.debug("Registering command \"{}\" with help \"{}\"", command, data.help)
+        balltze.registerCommand(command, data.description, data.help, data.save or false,
+                                data.minArgs or 0, data.maxArgs or 0, true, true, function(args)
+            -- Balltze.logger.debug("{}", inspect(args))
+            if (args and data.minArgs and data.maxArgs) and (#args < data.minArgs) or
+                (#args > data.maxArgs) then
+                balltze.logger.error("Invalid number of arguments. Usage: {}, Example: {}",
+                                     data.help, data.example)
+                return true
+            end
+            -- data.func(table.unpack(args or {}))
+            local ok, message = pcall(data.func, table.unpack(args or {}))
+            if not ok then
+                balltze.logger.error("Error executing command \"{}\": {}", command, message)
+            end
+            return true
+        end)
+    end
+    balltze.loadSettings()
 end
