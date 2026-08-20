@@ -16,8 +16,6 @@ local castRay = engine.physics.castRay
 local component = require "ui.component"
 component.callbacks()
 
--- Forward declaration so early helper functions capture this local symbol.
-local setMonitorMode
 local defaultMapsPath = "fmaps"
 
 local forge = {
@@ -175,11 +173,7 @@ local function restoreObjectRotation(objectHandle, yaw, pitch, roll)
             i = forwardVector.x,
             j = forwardVector.y,
             k = forwardVector.z
-        }, {
-            i = upVector.x,
-            j = upVector.y,
-            k = upVector.z
-        })
+        }, {i = upVector.x, j = upVector.y, k = upVector.z})
     end
 end
 
@@ -271,7 +265,10 @@ local function updateAimedObjectHighlight(playerIndex, aimedObjectHandle)
     end
 end
 
-    local function pickupAimedObject(playerIndex, playerBiped)
+local monitorCrosshairHudTag
+local monitorCrosshairHudData
+
+local function pickupAimedObject(playerIndex, playerBiped)
     local aimedHandle = getAimedObjectHandle(playerBiped)
     if not aimedHandle then
         return false
@@ -421,9 +418,6 @@ function forge.placeObject(itemLabel, tagHandle, playerIndex)
     setMonitorMode("holding")
     return true
 end
-
-local monitorCrosshairHudTag
-local monitorCrosshairHudData
 
 function forge.load()
     monitorCrosshairHudTag = forge.constants.weaponHudInterfaces.monitorCrosshair
@@ -613,49 +607,6 @@ local function getAlphaChannel(color)
     return math.floor(color / 16777216) % 256
 end
 
---- Swap a player's biped and restore gameplay state used by Forge controls.
----@param playerIndex integer
----@param targetBipedName "monitor" | "player"
----@param previousPosition? {x: number, y: number, z: number}
----@return BipedObject?
-function forge.swapPlayerBiped(playerIndex, targetBipedName, previousPosition)
-    -- Reset attached object when swapping bipeds to avoid invalid states
-    forge.clearAttachedObject(playerIndex)
-
-    local player = getPlayer(playerIndex)
-    if not player then
-        return nil
-    end
-
-    local targetBiped = bipeds[targetBipedName]
-    if not targetBiped then
-        return nil
-    end
-
-    core.swapBiped(playerIndex, targetBiped.handle.value)
-    -- If biped exists at this point in time
-    -- if engine.object.getObject(player.unitHandle.value, "biped") then
-    if not player.unitHandle:isNull() then
-        engine.object.deleteObject(player.unitHandle.value)
-    end
-    sleep(1)
-
-    local playerBiped
-    sleep(function()
-        playerBiped = core.getPlayerObject(playerIndex)
-        return playerBiped ~= nil
-    end)
-
-    if not playerBiped then
-        return nil
-    end
-
-    if previousPosition then
-        core.teleportPlayer(playerIndex, previousPosition.x, previousPosition.y, previousPosition.z)
-    end
-    return playerBiped
-end
-
 local crosshairModes = {hidden = 0, idle = 1, selected = 2, holding = 3, bounds = 4}
 
 --- Changes Forge crosshair state
@@ -706,6 +657,49 @@ function setMonitorMode(mode)
     end
 
     overlay.sequenceIndex = state
+end
+
+--- Swap a player's biped and restore gameplay state used by Forge controls.
+---@param playerIndex integer
+---@param targetBipedName "monitor" | "player"
+---@param previousPosition? {x: number, y: number, z: number}
+---@return BipedObject?
+function forge.swapPlayerBiped(playerIndex, targetBipedName, previousPosition)
+    -- Reset attached object when swapping bipeds to avoid invalid states
+    forge.clearAttachedObject(playerIndex)
+
+    local player = getPlayer(playerIndex)
+    if not player then
+        return nil
+    end
+
+    local targetBiped = bipeds[targetBipedName]
+    if not targetBiped then
+        return nil
+    end
+
+    core.swapBiped(playerIndex, targetBiped.handle.value)
+    -- If biped exists at this point in time
+    -- if engine.object.getObject(player.unitHandle.value, "biped") then
+    if not player.unitHandle:isNull() then
+        engine.object.deleteObject(player.unitHandle.value)
+    end
+    sleep(1)
+
+    local playerBiped
+    sleep(function()
+        playerBiped = core.getPlayerObject(playerIndex)
+        return playerBiped ~= nil
+    end)
+
+    if not playerBiped then
+        return nil
+    end
+
+    if previousPosition then
+        core.teleportPlayer(playerIndex, previousPosition.x, previousPosition.y, previousPosition.z)
+    end
+    return playerBiped
 end
 
 function forge.controls()
