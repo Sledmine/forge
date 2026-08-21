@@ -76,7 +76,11 @@ end
 
 local function getScenarioShortName()
     local cacheHeader = engine.cacheFile.getLoadedCacheFileHeader()
-    local scenarioName = cacheHeader and cacheHeader.scenarioName or ""
+    local scenarioName = "forge_island_dev"
+    if cacheHeader and cacheHeader.scenarioName and cacheHeader.scenarioName ~= "" then
+        scenarioName = cacheHeader.scenarioName or scenarioName
+    end
+    logger.debug("Current scenario name: {}", scenarioName)
     local shortName = scenarioName:match("([^\\/]+)$") or scenarioName
     return shortName
 end
@@ -448,7 +452,7 @@ function forge.loadSavedMap(mapName)
     end
 
     if not isMapCompatible(forgeMap.map) then
-        logger.warning("Forge map {} is for map '{}' and cannot be loaded on '{}'", mapName,
+        logger.warning("Forge map \"{}\" is for map \"{}\" and cannot be loaded on \"{}\"", mapName,
                        tostring(forgeMap.map), getScenarioShortName())
         return false, 0
     end
