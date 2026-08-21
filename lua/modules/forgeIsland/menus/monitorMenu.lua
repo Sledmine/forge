@@ -22,7 +22,7 @@ local defaultOptionsData = {
             Balltze.logger.debug("Rotation snap set to {}", value)
         end,
         focus = function()
-            description:setText("CAUSES ALL OBJECT ROTATION TO SNAP TO MULTIPLES OF THIS ANGLE.")
+            description:setText("CAUSES ALL OBJECT ROTATION TO SNAP TO\r\nMULTIPLES OF THIS ANGLE.")
         end
     },
     {
@@ -40,7 +40,7 @@ local defaultOptionsData = {
             Balltze.logger.debug("Unlock all clicked")
         end,
         focus = function()
-            description:setText("UNLOCK ALL OBJECTS THAT ARE CURRENTLY LOCKED.")
+            description:setText("UNLOCK ALL OBJECTS THAT ARE CURRENTLY\r\nLOCKED.")
         end
     }
 }

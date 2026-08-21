@@ -106,7 +106,11 @@ local monitorMenuPath = container {
             posY + 36
         },
         {
-            label {name = menuName .. "_description", text = strmem(128, "WELCOME TO FORGE!")},
+            label {
+                name = menuName .. "_description",
+                text = strmem(128, "WELCOME TO FORGE!"),
+                height = 32
+            },
             577,
             posY + 252
         }
