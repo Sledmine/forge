@@ -34,6 +34,12 @@ return function(props)
                 },
                 script = props.script,
                 ["function"] = props.func
+            },
+            {
+                event_type = "back_button"
+            },
+            {
+                event_type = "deleted"
             }
         },
         conditional_widgets = props.conditionalWidgets,
