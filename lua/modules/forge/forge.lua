@@ -6,6 +6,7 @@ local sleep = script.sleep
 local getPlayer = engine.player.getPlayer
 local getObject = engine.object.getObject
 local getTagData = engine.tag.getTagData
+local getTagEntry = engine.tag.getTagEntry
 local logger = Balltze.logger
 local sqrt = math.sqrt
 local sin = math.sin
@@ -236,12 +237,15 @@ local function getAimedObjectHandle(playerBiped)
     return aimedHandle
 end
 
+---Set higlight effect to a given object
+---@param objectHandle ObjectHandle | integer
+---@param enabled boolean
 local function setObjectHighlight(objectHandle, enabled)
     if not objectHandle then
         return
     end
     local object = getObject(objectHandle)
-    if not object or not object.vitals then
+    if not object then
         return
     end
 
@@ -264,6 +268,7 @@ local function updateAimedObjectHighlight(playerIndex, aimedObjectHandle)
     end
 
     state.highlightedObject = aimedObjectHandle
+    forge.state.player.highlightedObject = aimedObjectHandle
     if aimedObjectHandle and aimedObjectHandle ~= attachedHandle then
         setObjectHighlight(aimedObjectHandle, true)
     end
@@ -272,16 +277,20 @@ end
 local monitorCrosshairHudTag
 local monitorCrosshairHudData
 
+---Make a given player by index to select an object being aimed at
+---@param playerIndex integer
+---@param playerBiped BipedObject
+---@return boolean
 local function pickupAimedObject(playerIndex, playerBiped)
-    local aimedHandle = getAimedObjectHandle(playerBiped)
-    if not aimedHandle then
+    local aimedObjectHandle = getAimedObjectHandle(playerBiped)
+    if not aimedObjectHandle then
         return false
     end
 
-    updateAimedObjectHighlight(playerIndex, nil)
-    forge.setAttachedObject(playerIndex, aimedHandle)
+    forge.setAttachedObject(playerIndex, aimedObjectHandle)
+    setObjectHighlight(aimedObjectHandle, true)
     setMonitorMode("holding")
-    logger.debug("Player {} picked up object {}", playerIndex, aimedHandle)
+    --logger.debug("Player {} picked up object {}", playerIndex, aimedObjectHandle)
     return true
 end
 
@@ -293,6 +302,7 @@ end
 function forge.setAttachedObject(playerIndex, objectHandle)
     local state = getPlayerState(playerIndex)
     state.attachedObject = objectHandle
+    state.highlightedObject = objectHandle
 
     local player = getPlayer(playerIndex)
     if player and player.unitHandle and player.unitHandle.value then
@@ -305,6 +315,9 @@ function forge.setAttachedObject(playerIndex, objectHandle)
     end
 
     forge.state.player.attachedObject = objectHandle
+
+    setObjectHighlight(objectHandle, true)
+    forge.state.player.highlightedObject = objectHandle
 end
 
 local function detachAttachedObject(playerIndex, deleteObject)
@@ -312,12 +325,15 @@ local function detachAttachedObject(playerIndex, deleteObject)
     if state.highlightedObject then
         setObjectHighlight(state.highlightedObject, false)
         state.highlightedObject = nil
+        forge.state.player.highlightedObject = nil
     end
     if deleteObject and state.attachedObject then
         local object = engine.object.getObject(state.attachedObject)
         if object then
             engine.object.deleteObject(state.attachedObject)
         end
+    elseif state.attachedObject then
+        setObjectHighlight(state.attachedObject, false)
     end
     state.attachedObject = nil
     forge.state.player.attachedObject = nil
@@ -613,6 +629,165 @@ end
 
 local crosshairModes = {hidden = 0, idle = 1, selected = 2, holding = 3, bounds = 4}
 
+local highlightShaderGroups = {
+    shader_environment = true,
+    shader_transparent_glass = true,
+    shader_transparent_plasma = true
+}
+
+local highlightModeColors = {
+    selected = {r = 0, g = 1, b = 0},
+    holding = {r = 1, g = 1, b = 0}
+}
+
+local activeHighlightShaderHandle
+local activeHighlightShaderHandleValue
+local activeHighlightMode
+local cachedHighlightShaderColors = {}
+
+local function copyRgbColor(color)
+    if not color then
+        return nil
+    end
+    return {r = color.r, g = color.g, b = color.b}
+end
+
+local function applyRgbColor(targetColor, sourceColor)
+    if not targetColor or not sourceColor then
+        return
+    end
+    targetColor.r = sourceColor.r
+    targetColor.g = sourceColor.g
+    targetColor.b = sourceColor.b
+end
+
+local function getHighlightShaderData(objectHandle)
+    if not objectHandle then
+        return nil, nil, nil
+    end
+
+    local object = getObject(objectHandle)
+    if not object or not object.tagHandle or not object.tagHandle.value then
+        return nil, nil, nil
+    end
+    if object.tagHandle:isNull() then
+        return nil, nil, nil
+    end
+
+    local tagEntry = getTagEntry(object.tagHandle.value)
+    if not tagEntry or tagEntry.group ~= "scenery" then
+        return nil, nil, nil
+    end
+    
+    --logger.debug("Getting highlight shader data for object {}", objectHandle)
+    local sceneryTag = getTagData(object.tagHandle.value, "scenery")
+    if not sceneryTag or not sceneryTag.modifierShader or not sceneryTag.modifierShader.tagHandle then
+        return nil, nil, nil
+    end
+
+    local shaderHandle = sceneryTag.modifierShader.tagHandle
+    if not shaderHandle or not shaderHandle.value then
+        return nil, nil, nil
+    end
+
+    local shaderTagEntry = getTagEntry(shaderHandle.value)
+    if not shaderTagEntry or not highlightShaderGroups[shaderTagEntry.group] then
+        return nil, nil, nil
+    end
+
+    local ok, shaderData = pcall(function()
+        return getTagData(shaderHandle, shaderTagEntry.group)
+    end)
+    if not ok then
+        return nil, nil, nil
+    end
+
+    if not shaderData or not shaderData.perpendicularTintColor or not shaderData.parallelTintColor then
+        return nil, nil, nil
+    end
+
+    return shaderHandle, shaderHandle.value, shaderData
+end
+
+local function restoreActiveHighlightShaderTint()
+    if not activeHighlightShaderHandle or not activeHighlightShaderHandleValue then
+        return
+    end
+
+    local shaderTagEntry = getTagEntry(activeHighlightShaderHandle)
+    local originalColors = cachedHighlightShaderColors[activeHighlightShaderHandleValue]
+    if not shaderTagEntry or not originalColors then
+        activeHighlightShaderHandle = nil
+        activeHighlightShaderHandleValue = nil
+        activeHighlightMode = nil
+        return
+    end
+
+    local ok, shaderData = pcall(function()
+        return getTagData(activeHighlightShaderHandle, shaderTagEntry.group)
+    end)
+    if not ok then
+        activeHighlightShaderHandle = nil
+        activeHighlightShaderHandleValue = nil
+        activeHighlightMode = nil
+        return
+    end
+
+    if shaderData then
+        applyRgbColor(shaderData.perpendicularTintColor, originalColors.perpendicularTintColor)
+        applyRgbColor(shaderData.parallelTintColor, originalColors.parallelTintColor)
+    end
+
+    activeHighlightShaderHandle = nil
+    activeHighlightShaderHandleValue = nil
+    activeHighlightMode = nil
+end
+
+local function updateMonitorHighlightTint(mode)
+    local targetColor = highlightModeColors[mode]
+    local objectHandle
+
+    if mode == "holding" then
+        objectHandle = forge.state.player.attachedObject
+    elseif mode == "selected" then
+        objectHandle = forge.state.player.highlightedObject
+    end
+
+    local shaderHandle
+    local shaderHandleValue
+    local shaderData
+    if targetColor and objectHandle then
+        shaderHandle, shaderHandleValue, shaderData = getHighlightShaderData(objectHandle)
+    end
+
+    if activeHighlightShaderHandle and
+        (activeHighlightShaderHandleValue ~= shaderHandleValue or activeHighlightMode ~= mode) then
+        restoreActiveHighlightShaderTint()
+    end
+
+    if not shaderHandle or not shaderData or not targetColor then
+        return
+    end
+
+    if shaderHandleValue == nil then
+        return
+    end
+    local shaderCacheKey = shaderHandleValue
+
+    if not cachedHighlightShaderColors[shaderCacheKey] then
+        cachedHighlightShaderColors[shaderCacheKey] = {
+            perpendicularTintColor = copyRgbColor(shaderData.perpendicularTintColor),
+            parallelTintColor = copyRgbColor(shaderData.parallelTintColor)
+        }
+    end
+
+    applyRgbColor(shaderData.perpendicularTintColor, targetColor)
+    applyRgbColor(shaderData.parallelTintColor, targetColor)
+    activeHighlightShaderHandle = shaderHandle
+    activeHighlightShaderHandleValue = shaderCacheKey
+    activeHighlightMode = mode
+end
+
 --- Changes Forge crosshair state
 ---@param mode "hidden" | "idle" | "selected" | "holding" | "bounds"
 function setMonitorMode(mode)
@@ -645,19 +820,21 @@ function setMonitorMode(mode)
         return
     end
 
+    updateMonitorHighlightTint(mode)
+
     local defaultColor = overlay.defaultColor.parameters.defaultColor
     local alpha = getAlphaChannel(defaultColor)
-
-    if overlay.sequenceIndex == state then
-        return
-    end
 
     if state == crosshairModes.bounds then
         overlay.defaultColor.parameters.defaultColor = toArgbInt(alpha, 255, 0, 0)
     elseif state == crosshairModes.selected or state == crosshairModes.holding then
         overlay.defaultColor.parameters.defaultColor = toArgbInt(alpha, 0, 255, 0)
-    else
+    elseif state == crosshairModes.idle or state == crosshairModes.hidden then
         overlay.defaultColor.parameters.defaultColor = toArgbInt(alpha, 64, 169, 255)
+    end
+
+    if overlay.sequenceIndex == state then
+        return
     end
 
     overlay.sequenceIndex = state
@@ -762,7 +939,13 @@ function forge.controls()
 
                         if input.secondaryTrigger or input.action then
                             detachAttachedObject(playerIndex, false)
-                            setMonitorMode("idle")
+                            local aimedObjectHandle = getAimedObjectHandle(playerBiped)
+                            updateAimedObjectHighlight(playerIndex, aimedObjectHandle)
+                            if aimedObjectHandle then
+                                setMonitorMode("selected")
+                            else
+                                setMonitorMode("idle")
+                            end
                             return
                         end
 
