@@ -3,158 +3,20 @@ local sleep = script.sleep
 local engine = Engine
 local constants = require "forgeIsland.constants"
 local monitorMenu = require "forgeIsland.menus.monitorMenu"
-local inspect = require "inspect"
 local logger = Balltze.logger
 
 local forge = require "forge.forge"
 
 -- Configure Forge constants
-forge.constants.bipeds.monitor = constants.bipeds.monitor
-forge.constants.bipeds.player = constants.bipeds.player
-forge.constants.tagCollections.forgeObjects = constants.tagCollections.forgeObjects
-forge.constants.weaponHudInterfaces.monitorCrosshair =
-    constants.weaponHudInterfaces.monitorCrosshair
-
-local function sortedKeys(tbl)
-    local keys = {}
-    for key in pairs(tbl or {}) do
-        keys[#keys + 1] = key
-    end
-    table.sort(keys, function(a, b)
-        return tostring(a):lower() < tostring(b):lower()
-    end)
-    return keys
-end
-
-local function isMirroredLeaf(node, label)
-    if type(node) ~= "table" then
-        return false
-    end
-    local keys = sortedKeys(node)
-    if #keys ~= 1 or keys[1] ~= label then
-        return false
-    end
-    local child = node[label]
-    return type(child) == "table" and next(child) == nil
-end
-
----@param objectsMenu table
----@param objectsDatabase table
----@return fun(): table[] buildOptions
-local function createPlaceMenuNavigator(objectsMenu, objectsDatabase)
-    local rootNode = (objectsMenu and objectsMenu.root) or {}
-    local pathStack = {rootNode}
-    local labelStack = {}
-
-    local function currentNode()
-        return pathStack[#pathStack] or rootNode
-    end
-
-    local function goBack()
-        if #pathStack > 1 then
-            table.remove(pathStack)
-            table.remove(labelStack)
-        end
-    end
-
-    local function tryEnter(label)
-        local node = currentNode()[label]
-        if type(node) ~= "table" then
-            return false
-        end
-        if next(node) == nil or isMirroredLeaf(node, label) then
-            return false
-        end
-        pathStack[#pathStack + 1] = node
-        labelStack[#labelStack + 1] = label
-        return true
-    end
-
-    local function buildOptions()
-        local options = {}
-        local node = currentNode()
-
-        monitorMenu:onClose(function()
-            if #pathStack > 1 then
-                goBack()
-                monitorMenu.setOptions(buildOptions())
-                return false
-            end
-        end)
-        --if #pathStack > 1 then
-        --    options[#options + 1] = {
-        --        label = "< BACK",
-        --        click = function()
-        --            goBack()
-        --            monitorMenu.setOptions(buildOptions())
-        --        end,
-        --        focus = function()
-        --            logger.debug("Place menu: go back")
-        --        end
-        --    }
-        --end
-
-        for _, label in ipairs(sortedKeys(node)) do
-            local entryNode = node[label]
-            local canEnter = type(entryNode) == "table" and next(entryNode) ~= nil and
-                not isMirroredLeaf(entryNode, label)
-            local entryPath = objectsDatabase[label]
-            local itemLabel = label
-            local itemDisplayLabel = tostring(label):upper()
-            local itemCanEnter = canEnter
-            local itemEntryPath = entryPath
-
-            options[#options + 1] = {
-                label = itemDisplayLabel,
-                click = function()
-                    if itemCanEnter then
-                        tryEnter(itemLabel)
-                        monitorMenu.setOptions(buildOptions())
-                        return
-                    end
-
-                    local tagHandle = itemEntryPath
-                    local selectedPlayerIndex = engine.player.getLocalPlayerHandle(engine.player.getPlayer().localPlayerIndex).index
-
-                    if not forge.placeObject(itemLabel, tagHandle, selectedPlayerIndex) then
-                        logger.debug("Place option selected: {} ({})", itemLabel,
-                                     tagHandle or "unknown")
-                    else
-                        engine.uiWidget.closeWidget()
-                    end
-                end,
-                focus = function()
-                    --if itemCanEnter then
-                    --    logger.debug("Place category: {}", itemLabel)
-                    --else
-                    --    logger.debug("Place object: {}", itemLabel)
-                    --end
-                end
-            }
-        end
-
-        return options
-    end
-
-    return buildOptions
-end
+local forgeConstants = forge.constants
+forgeConstants.bipeds.monitor = constants.bipeds.monitor
+forgeConstants.bipeds.player = constants.bipeds.player
+forgeConstants.tagCollections.forgeObjects = constants.tagCollections.forgeObjects
+forgeConstants.weaponHudInterfaces.monitorCrosshair = constants.weaponHudInterfaces.monitorCrosshair
 
 forge.callbacks.launchMonitorMenu = function(mode)
     logger.debug("Launching monitor menu with mode={}", mode)
-
-    if mode == "place" then
-        local objectsMenu, objectsDatabase = forge.getAvailableForgeObjectsMenu()
-        local buildPlaceOptions = createPlaceMenuNavigator(objectsMenu, objectsDatabase)
-        local placeOptions = buildPlaceOptions()
-        monitorMenu.setOptions(placeOptions)
-        monitorMenu:launch()
-        return
-    end
-
-    monitorMenu.setOptions()
-    monitorMenu:launch()
-    monitorMenu:onClose(function()
-    end)
+    monitorMenu.launch(mode)
 end
 
 local map = {}
@@ -167,7 +29,6 @@ function map.main()
     if DebugMode then
         forge.swapPlayerBiped(0, "monitor")
         forge.callbacks.launchMonitorMenu("place")
-        --engine.uiWidget.launchWidget(constants.menus.forge.handle.value)
     end
 end
 script.startup(map.main)
