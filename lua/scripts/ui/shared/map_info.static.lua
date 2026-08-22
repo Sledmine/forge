@@ -21,13 +21,22 @@ return wrapper {
             0,
             0
         },
-        {label {name = "map_name", text = strmem(64, "MAP NAME")}, 10, 90},
-        {label {name = "author", text = strmem(64, "AUTHOR")}, 10, 110},
+        {label {name = "map_name", text = strmem(64, "MAP NAME"), variant = "title"}, 10, 100},
+        {label {name = "author", text = strmem(64, "AUTHOR"), variant = "subtitle"}, 10, 120},
         {
-            label {name = "version", text = strmem(64, "VERSION"), justify = "right", width = 153},
-            10,
-            128
+            label {
+                name = "version",
+                text = strmem(64, "VERSION", "left"),
+                justify = "right",
+                width = 274
+            },
+            0,
+            120
         },
-        {label {name = "description", text = strmem(64, "DESCRIPTION"), variant = "subtitle"}, 10, 140}
+        {
+            label {name = "description", text = strmem(64, "DESCRIPTION"), variant = "subtitle"},
+            10,
+            140
+        }
     }
 }

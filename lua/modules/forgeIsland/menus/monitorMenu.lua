@@ -10,6 +10,7 @@ local list = require "ui.list"
 local bar = require "ui.bar"
 
 local monitorMenuComponent = component.new(constants.menus.monitor.handle.value)
+local menuTitle = component.new(monitorMenuComponent:get("monitor_menu_title"))
 local scrollBar = bar.new(monitorMenuComponent:get("scroll"), "scroll")
 local optionsList = list.new(monitorMenuComponent:get("options"))
 optionsList:scrollable(false)
@@ -223,11 +224,11 @@ local function createPlaceMenuNavigator(objectsMenu, objectsDatabase)
                     end
                 end,
                 focus = function()
-                    -- if itemCanEnter then
-                    --    logger.debug("Place category: {}", itemLabel)
-                    -- else
-                    --    logger.debug("Place object: {}", itemLabel)
-                    -- end
+                    if itemCanEnter then
+                       description:setText "SELECT AN OBJECT FROM THIS GROUP."
+                    else
+                       description:setText "PLACE THIS OBJECT."
+                    end
                 end
             }
         end
@@ -240,6 +241,7 @@ end
 
 function monitorMenu.launch(mode)
     if mode == "place" then
+        menuTitle:setText("PLACE OBJECT")
         local objectsMenu, objectsDatabase = forge.getAvailableForgeObjectsMenu()
         local buildPlaceOptions = createPlaceMenuNavigator(objectsMenu, objectsDatabase)
         local placeOptions = buildPlaceOptions()
@@ -248,6 +250,7 @@ function monitorMenu.launch(mode)
         return
     end
 
+    menuTitle:setText("SPECIAL TOOLS")
     monitorMenu.setOptions()
     monitorMenu.component:launch()
     monitorMenu.component:onClose(function()

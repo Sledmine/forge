@@ -7,7 +7,7 @@ local inspect = require "lua.modules.inspect"
 ---@class labelProps
 ---@field name string Name of the component
 ---@field text string | string[] Text to display
----@field variant? "title" | "subtitle" | "text" | "button" | "shadow"
+---@field variant? "title" | "subtitle" | "text" | "button" | "shadow" | "forge"
 ---@field color? "white" | "indigo" | "silver" | "cobalt" | "yellow" | "red" | 
 ---@field justify? "left" | "center" | "right"
 ---@field size? number
@@ -50,6 +50,8 @@ return function(props)
         textFont = constants.fonts.button
     elseif props.variant == "shadow" then
         textFont = constants.fonts.shadow
+    elseif props.variant == "forge" then
+        textFont = constants.fonts.forge
     end
 
     ---Color props

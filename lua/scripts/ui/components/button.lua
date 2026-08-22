@@ -150,6 +150,7 @@ return function(props)
     if variant == "forge" then
         wid.horiz_offset = wid.horiz_offset + 8
         wid.vert_offset = wid.vert_offset + 1
+        wid.text_font = constants.fonts.forge
     end
     if props.unhandleEventsAllChildren then
         wid.flags = {

@@ -24,19 +24,19 @@ return {
     },
     opacity = {primary = 12.5, secondary = 34.5},
     fonts = {
-        text = [[[shm]/halo_4/ui/blender_pro_12.font]], -- small
-        --title = [[[shm]/halo_4/ui/fonts/blender_pro_medium_20.font]], -- ticker
-        title = [[[shm]/halo_4/ui/fonts/arame_numbers_heavy_13.font]], -- ticker
-        subtitle = [[[shm]/halo_4/ui/blender_pro_15.font]], -- gamespy/subtitle
-        button = [[[shm]/halo_4/ui/blender_pro_12.font]], -- large
-        shadow = [[[shm]/halo_4/ui/blender_pro_15.font]]
+        text = [[[shm]/halo_4/ui/fonts/blender_pro_book.vector_font]], -- small
+        title = [[[shm]/halo_4/ui/fonts/blender_pro_book_large.vector_font]], -- ticker
+        subtitle = [[[shm]/halo_4/ui/fonts/blender_pro_book_small.vector_font]], -- gamespy/subtitle
+        button = [[[shm]/halo_4/ui/fonts/blender_pro_book.vector_font]], -- large
+        shadow = [[[shm]/halo_4/ui/fonts/blender_pro_book.vector_font]],
+        forge = [[[shm]/halo_4/ui/fonts/devgothic.vector_font]]
     },
     screen = {width = width, height = height},
     getScreenBounds = function()
         return "0, 0, " .. height .. ", " .. width
     end,
     position = {
-        header = {x = 47, y = 50},
+        header = {x = 46, y = 70},
         options = {x = 30, y = 117},
         back = {x = 685, y = 416},
         backLeft = {x = 20, y = 416},

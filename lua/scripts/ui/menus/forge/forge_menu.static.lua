@@ -21,7 +21,7 @@ local pauseMenuPath = container {
             header {
                 name = menuName,
                 title = "FORGE",
-                subtitle = "Load a Forge map or configure settings"
+                subtitle = "LOAD A FORGE MAP OR CONFIGURE SETTINGS"
             },
             pos.header.x,
             pos.header.y

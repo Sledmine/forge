@@ -101,6 +101,7 @@ local monitorMenuPath = container {
                 type = "scroll",
                 size = 186,
                 thickness = 2,
+                color = "#c5c5c533",
                 barColor = "#b0d9ffff"
             },
             810,
@@ -121,7 +122,8 @@ local monitorMenuPath = container {
             label {
                 name = menuName .. "_description",
                 text = strmem(128, "WELCOME TO FORGE!"),
-                height = 32
+                height = 32,
+                variant = "forge"
             },
             577,
             posY + 252
