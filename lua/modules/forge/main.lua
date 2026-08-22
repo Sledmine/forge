@@ -74,18 +74,25 @@ local function createPlaceMenuNavigator(objectsMenu, objectsDatabase)
         local options = {}
         local node = currentNode()
 
-        if #pathStack > 1 then
-            options[#options + 1] = {
-                label = "< BACK",
-                click = function()
-                    goBack()
-                    monitorMenu.setOptions(buildOptions())
-                end,
-                focus = function()
-                    logger.debug("Place menu: go back")
-                end
-            }
-        end
+        monitorMenu:onClose(function()
+            if #pathStack > 1 then
+                goBack()
+                monitorMenu.setOptions(buildOptions())
+                return false
+            end
+        end)
+        --if #pathStack > 1 then
+        --    options[#options + 1] = {
+        --        label = "< BACK",
+        --        click = function()
+        --            goBack()
+        --            monitorMenu.setOptions(buildOptions())
+        --        end,
+        --        focus = function()
+        --            logger.debug("Place menu: go back")
+        --        end
+        --    }
+        --end
 
         for _, label in ipairs(sortedKeys(node)) do
             local entryNode = node[label]
@@ -117,11 +124,11 @@ local function createPlaceMenuNavigator(objectsMenu, objectsDatabase)
                     end
                 end,
                 focus = function()
-                    if itemCanEnter then
-                        logger.debug("Place category: {}", itemLabel)
-                    else
-                        logger.debug("Place object: {}", itemLabel)
-                    end
+                    --if itemCanEnter then
+                    --    logger.debug("Place category: {}", itemLabel)
+                    --else
+                    --    logger.debug("Place object: {}", itemLabel)
+                    --end
                 end
             }
         end
@@ -146,6 +153,8 @@ forge.callbacks.launchMonitorMenu = function(mode)
 
     monitorMenu.setOptions()
     monitorMenu:launch()
+    monitorMenu:onClose(function()
+    end)
 end
 
 local map = {}
