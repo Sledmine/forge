@@ -25,9 +25,9 @@ function bar.new(handleValue, barType)
 end
 
 ---@param self uiComponentBar
----@param values table
+---@param values WidgetParams
 function bar.setBarValues(self, values)
-    core.setWidgetValues(self:findChildWidgetTag("bar_value").id, values)
+    core.setWidgetValues(self:findChildWidgetTag("bar_value").handle.value, values)
 end
 
 --- Set the value of the bar component.

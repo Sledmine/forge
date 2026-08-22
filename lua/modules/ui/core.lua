@@ -91,6 +91,7 @@ function core.getWidgetValues(widgetTagId)
 end
 
 local function setWidgetValuesDOMSafe(widgetTagHandle, values)
+    --logger.debug("Attempting to set widget values for widgetTagHandle: " .. tostring(widgetTagHandle))
     -- Verify there is a widget loaded in the DOM
     local isWidgetPresent, widget = pcall(core.findWidgetByDefinition, widgetTagHandle)
     if isWidgetPresent and widget then
@@ -113,6 +114,9 @@ end
 ---@param values WidgetParams
 ---@param isAsync? boolean Control if the function should try to set values async if it fails
 function core.setWidgetValues(widgetTagHandleValue, values, isAsync)
+    if not widgetTagHandleValue then
+        error("widgetTagHandleValue is nil, cannot set widget values")
+    end
     local isAsync = isAsync == nil and true or isAsync
     if not setWidgetValuesDOMSafe(widgetTagHandleValue, values) then
         -- If it fails, try again in a script thread until it works or times out after N ticks

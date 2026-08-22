@@ -95,6 +95,18 @@ local monitorMenuPath = container {
         },
         {label {name = menuName .. "_title", text = strmem(64, "SPECIAL TOOLS")}, 575, 168},
         {
+            bar {
+                name = menuName .. "_scroll",
+                orientation = "vertical",
+                type = "scroll",
+                size = 186,
+                thickness = 2,
+                barColor = "#b0d9ffff"
+            },
+            810,
+            posY + 64
+        },
+        {
             options {
                 name = menuName,
                 layout = "vertical",

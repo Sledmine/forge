@@ -157,10 +157,10 @@ function list.refresh(self)
         local scrollBar = scroll:findChildWidgetDefinition("bar_value")
         local elementsCount = #items
         local visibleElementsCount = lastWidgetIndex - firstWidgetIndex + 1
-        local isHorizontal = scrollBackground.height < scrollBackground.width
-        local size = scrollBackground.height
+        local isHorizontal = scrollBackground.bounds.bottom < scrollBackground.bounds.right
+        local size = scrollBackground.bounds.bottom
         if isHorizontal then
-            size = scrollBackground.width
+            size = scrollBackground.bounds.right
         end
         local barSizePerElement = size / elementsCount
         local isScrollBarVisible = elementsCount > visibleElementsCount
@@ -168,19 +168,19 @@ function list.refresh(self)
             local scrollPosition = round((itemIndex - 1) * barSizePerElement)
             if elementsCount > 0 then
                 if isHorizontal then
-                    scrollBar.width = round(barSizePerElement * visibleElementsCount)
+                    scrollBar.bounds.right = round(barSizePerElement * visibleElementsCount)
                     scroll:setBarValues{position = {x = scrollPosition}}
                 else
-                    scrollBar.height = round(barSizePerElement * visibleElementsCount)
+                    scrollBar.bounds.bottom = round(barSizePerElement * visibleElementsCount)
                     scroll:setBarValues{position = {y = scrollPosition}}
                 end
             end
         else
             if isHorizontal then
-                scrollBar.width = scrollBackground.width
+                scrollBar.bounds.right = scrollBackground.bounds.right
                 scroll:setBarValues{position = {x = 0}}
             else
-                scrollBar.height = scrollBackground.height
+                scrollBar.bounds.bottom = scrollBackground.bounds.bottom
                 scroll:setBarValues{position = {y = 0}}
             end
         end

@@ -722,7 +722,7 @@ end
 ---@field definitionTagHandle TagHandle?
 ---@field name string?
 ---@field localPlayerIndex integer?
----@field position Point2dInt?
+---@field position {x: number?, y: number?}?
 ---@field type UiWidgetType?
 ---@field visible boolean?
 ---@field renderRegardlessOfControllerIndex boolean?

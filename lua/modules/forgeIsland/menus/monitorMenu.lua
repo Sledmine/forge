@@ -6,8 +6,10 @@ local list = require "ui.list"
 local bar = require "ui.bar"
 
 local monitorMenu = component.new(constants.menus.monitor.handle.value)
+local scrollBar = bar.new(monitorMenu:get("scroll"), "scroll")
 local optionsList = list.new(monitorMenu:get("options"))
 optionsList:scrollable(false)
+optionsList:setScrollBar(scrollBar)
 local budgetBackground = component.new(monitorMenu:get("budget_background"))
 local budgetBar = bar.new(budgetBackground:get("budget_bar"), "progress")
 local description = component.new(monitorMenu:get("description"))
