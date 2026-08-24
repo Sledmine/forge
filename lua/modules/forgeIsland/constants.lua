@@ -23,7 +23,7 @@ local scenarioName = cacheHeader and cacheHeader.scenarioName or ""
 
 constants.tagCollections = {
     forgeObjects = getTagCollection(scenarioName .. "_objects") or
-        getTagCollection("custom_objects")
+        getTagCollection(scenarioName:replace("_dev", "")) or getTagCollection("custom_objects")
 }
 
 --constants.scenario = engine.tag.filterTags("scenario", "")[1]
