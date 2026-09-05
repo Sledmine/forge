@@ -19,6 +19,17 @@ component.callbacks()
 
 local defaultMapsPath = "fmaps"
 
+---@class forgePlayerRotationState
+---@field attachedObject integer?
+---@field distance number
+---@field lockDistance boolean
+---@field highlightedObject integer?
+---@field currentAngle "yaw" | "pitch" | "roll"
+---@field rotationStep number
+---@field yaw number
+---@field pitch number
+---@field roll number
+
 local forge = {
     ---@type "edit" | "normal"
     mode = "edit",
@@ -45,7 +56,7 @@ local forge = {
         end
     },
     state = {
-        ---@type table<integer, {attachedObject: integer?, distance: number, lockDistance: boolean, highlightedObject: integer?}>
+        ---@type table<integer, forgePlayerRotationState>
         players = {},
         player = {
             ---@type integer?
@@ -63,9 +74,48 @@ local function getPlayerState(playerIndex)
             attachedObject = nil,
             distance = 5,
             lockDistance = true,
-            highlightedObject = nil
+            highlightedObject = nil,
+            currentAngle = "yaw",
+            rotationStep = 5,
+            yaw = 0,
+            pitch = 0,
+            roll = 0
         }
     return forge.state.players[playerIndex]
+end
+
+local function normalizeRotation(value)
+    local normalized = value % 360
+    if normalized < 0 then
+        normalized = normalized + 360
+    end
+    return normalized
+end
+
+local function applyAttachedObjectRotation(playerIndex)
+    local playerState = getPlayerState(playerIndex)
+    if not playerState.attachedObject then
+        return
+    end
+
+    local object = getObject(playerState.attachedObject)
+    if not object or not object.position then
+        return
+    end
+
+    local yaw = tonumber(playerState.yaw) or 0
+    local pitch = tonumber(playerState.pitch) or 0
+    local roll = tonumber(playerState.roll) or 0
+    local forwardVector, upVector = eulerToRotationVectors(yaw, pitch, roll)
+    engine.object.setObjectPosition(playerState.attachedObject, object.position, {
+        i = forwardVector.x,
+        j = forwardVector.y,
+        k = forwardVector.z
+    }, {
+        i = upVector.x,
+        j = upVector.y,
+        k = upVector.z
+    })
 end
 
 local function calculateDistance(a, b)
@@ -303,6 +353,11 @@ function forge.setAttachedObject(playerIndex, objectHandle)
     local state = getPlayerState(playerIndex)
     state.attachedObject = objectHandle
     state.highlightedObject = objectHandle
+    state.currentAngle = state.currentAngle or "yaw"
+    state.rotationStep = state.rotationStep or 5
+    state.yaw = tonumber(state.yaw) or 0
+    state.pitch = tonumber(state.pitch) or 0
+    state.roll = tonumber(state.roll) or 0
 
     local player = getPlayer(playerIndex)
     if player and player.unitHandle and player.unitHandle.value then
@@ -313,6 +368,8 @@ function forge.setAttachedObject(playerIndex, objectHandle)
             state.distance = calculateDistance(bipedPosition, object.position)
         end
     end
+
+    applyAttachedObjectRotation(playerIndex)
 
     forge.state.player.attachedObject = objectHandle
 
@@ -937,7 +994,7 @@ function forge.controls()
                             return
                         end
 
-                        if input.secondaryTrigger or input.action then
+                        if input.secondaryTrigger then
                             detachAttachedObject(playerIndex, false)
                             local aimedObjectHandle = getAimedObjectHandle(playerBiped)
                             updateAimedObjectHighlight(playerIndex, aimedObjectHandle)
@@ -946,6 +1003,38 @@ function forge.controls()
                             else
                                 setMonitorMode("idle")
                             end
+                            return
+                        end
+
+                        local rotationState = getPlayerState(playerIndex)
+                        if input.action then
+                            if rotationState.currentAngle == "yaw" then
+                                rotationState.currentAngle = "pitch"
+                            elseif rotationState.currentAngle == "pitch" then
+                                rotationState.currentAngle = "roll"
+                            else
+                                rotationState.currentAngle = "yaw"
+                            end
+                            logger.debug("Player {} rotation axis: {}", playerIndex,
+                                         rotationState.currentAngle)
+                            return
+                        end
+
+                        local mouseWheel = 0
+                        if engine.input and engine.input.getMouseWheel then
+                            mouseWheel = engine.input.getMouseWheel()
+                        end
+
+                        if mouseWheel ~= 0 then
+                            local currentAxis = rotationState.currentAngle or "yaw"
+                            local step = math.abs(tonumber(rotationState.rotationStep) or 5)
+                            local direction = (mouseWheel > 0) and -1 or 1
+                            local previousRotation = tonumber(rotationState[currentAxis]) or 0
+                            local nextRotation = previousRotation + (step * direction)
+                            rotationState[currentAxis] = normalizeRotation(nextRotation)
+                            applyAttachedObjectRotation(playerIndex)
+                            logger.debug("Player {} {}: {}", playerIndex, currentAxis,
+                                         rotationState[currentAxis])
                             return
                         end
 
