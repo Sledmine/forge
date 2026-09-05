@@ -95,7 +95,7 @@ function OnError(message)
 end
 
 function PluginOnGameStart()
-    script.setReferenceContext(require "forge.main")
+    script.setReferenceContext(require "forgeIsland.main")
     local commands = require "forge.commands"
     for command, data in pairs(commands) do
         -- local command = command:replace("debug_", "")
