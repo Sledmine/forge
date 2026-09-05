@@ -33,4 +33,11 @@ constants.menus = {
     monitor = engine.tag.filterTags("ui_widget_definition", "monitor\\monitor_menu")[1]
 }
 
+constants.fonts = {
+    blenderProBook = {
+        small = engine.tag.filterTags("vector_font", "blender_pro_book_small")[1],
+    },
+    devgothic = engine.tag.filterTags("vector_font", "devgothic")[1]
+}
+
 return constants

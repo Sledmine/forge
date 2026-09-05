@@ -11,7 +11,14 @@ local logger = Balltze.logger
 local sqrt = math.sqrt
 local sin = math.sin
 local cos = math.cos
+local fmod = math.fmod
 local rad = math.rad
+local deg = math.deg
+local atan = math.atan
+local pi = math.pi
+local atan2 = function(y, x)
+    return atan(y / x) + (x < 0 and pi or 0)
+end
 local castRay = engine.physics.castRay
 
 local component = require "ui.component"
@@ -45,12 +52,17 @@ local function isLocalPlayerIndex(playerIndex, player)
     return playerIndex == 0
 end
 
-local function updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle, aimedObjectHandle)
+local function updateMonitorHud(playerIndex,
+                                player,
+                                isMonitor,
+                                attachedObjectHandle,
+                                aimedObjectHandle)
     if not isLocalPlayerIndex(playerIndex, player) then
         return
     end
 
-    return hudText.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle, aimedObjectHandle)
+    return hudText.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle,
+                                    aimedObjectHandle)
 end
 
 ---@class forgePlayerState
@@ -81,6 +93,10 @@ local forge = {
         weaponHudInterfaces = {
             ---@type TagEntry?
             monitorCrosshair = nil
+        },
+        fonts = {
+            ---@type TagEntry?
+            hud = nil
         }
     },
     callbacks = {
@@ -103,18 +119,17 @@ local function getPlayerState(playerIndex)
     if type(playerIndex) ~= "number" then
         playerIndex = 0
     end
-    forge.state.players[playerIndex] = forge.state.players[playerIndex] or
-                                           {
-            attachedObject = nil,
-            distance = 5,
-            lockDistance = true,
-            highlightedObject = nil,
-            currentAngle = "yaw",
-            rotationStep = 5,
-            yaw = 0,
-            pitch = 0,
-            roll = 0
-        }
+    forge.state.players[playerIndex] = forge.state.players[playerIndex] or {
+        attachedObject = nil,
+        distance = 5,
+        lockDistance = true,
+        highlightedObject = nil,
+        currentAngle = "yaw",
+        rotationStep = 5,
+        yaw = 0,
+        pitch = 0,
+        roll = 0
+    }
     return forge.state.players[playerIndex]
 end
 
@@ -151,6 +166,47 @@ local function eulerToRotationVectors(yaw, pitch, roll)
     return forwardVector, upVector
 end
 
+--- Get euler angles rotation from game rotation vectors
+--- @param v1 Vector3d Vector with first column values from rotation matrix
+--- @param v2 Vector3d Vector with third column values from rotation matrix
+--- @return number yaw, number pitch, number roll
+local function vectorsToEulerAngles(v1, v2)
+    -- Match eulerToRotationVectors: v1 is the first matrix column (forward),
+    -- v2 is the third matrix column (up), and the second column is their cross product.
+    local v3 = {
+        i = v1.j * v2.k - v1.k * v2.j,
+        j = v1.k * v2.i - v1.i * v2.k,
+        k = v1.i * v2.j - v1.j * v2.i
+    }
+
+    local matrix = {{v1.i, v3.i, v2.i}, {v1.j, v3.j, v2.j}, {v1.k, v3.k, v2.k}}
+
+    -- Extract individual matrix elements
+    local m11, m12, m13 = matrix[1][1], matrix[1][2], matrix[1][3]
+    local m21, m22, m23 = matrix[2][1], matrix[2][2], matrix[2][3]
+    local m31, m32, m33 = matrix[3][1], matrix[3][2], matrix[3][3]
+
+    -- Calculate yaw (heading) angle
+    local yaw = atan2(m12, m11)
+
+    -- Calculate pitch (attitude) angle
+    local pitch = atan2(-m13, sqrt(m23 ^ 2 + m33 ^ 2))
+
+    -- Calculate roll (bank) angle
+    local roll = -atan2(m23, m33)
+
+    -- Convert angles from radians to degrees
+    yaw = deg(yaw)
+    pitch = deg(pitch)
+    roll = deg(roll)
+
+    -- Adjust angles to the range [0, 359]
+    yaw = fmod(yaw + 360, 360)
+    pitch = fmod(pitch + 360, 360)
+    roll = fmod(roll + 360, 360)
+
+    return yaw, pitch, roll
+end
 
 local function applyAttachedObjectRotation(playerIndex)
     local playerState = getPlayerState(playerIndex)
@@ -171,11 +227,7 @@ local function applyAttachedObjectRotation(playerIndex)
         i = forwardVector.x,
         j = forwardVector.y,
         k = forwardVector.z
-    }, {
-        i = upVector.x,
-        j = upVector.y,
-        k = upVector.z
-    })
+    }, {i = upVector.x, j = upVector.y, k = upVector.z})
 end
 
 local function calculateDistance(a, b)
@@ -248,8 +300,6 @@ local function resolveSceneryTagHandle(tagPath)
     return firstTag and firstTag.handle or nil
 end
 
-
-
 local function restoreObjectRotation(objectHandle, yaw, pitch, roll)
     if type(yaw) ~= "number" or type(pitch) ~= "number" or type(roll) ~= "number" then
         return
@@ -267,6 +317,60 @@ local function restoreObjectRotation(objectHandle, yaw, pitch, roll)
             k = forwardVector.z
         }, {i = upVector.x, j = upVector.y, k = upVector.z})
     end
+end
+
+--- Spawn a forge scenery object from a tag handle with shared logic
+---@param tagHandle TagHandle | integer
+---@param position table {x,y,z}
+---@param opts table? {euler = {yaw,pitch,roll}, forward = {i,j,k}, up = {i,j,k}}
+---@return ObjectHandle? handle
+function forge.spawnForgeObject(tagHandle, position, opts)
+    if not tagHandle then
+        return nil
+    end
+    position = position or {x = 0, y = 0, z = 0}
+    -- Ensure tag data flags (shadow) are set when available
+    local ok, tagData = pcall(function()
+        return getTagData(tagHandle, "scenery")
+    end)
+    if ok and tagData and tagData.flags then
+        tagData.flags.castShadowByDefault = true
+    end
+
+    local objectHandle = engine.object.createObject(tagHandle, nil, position)
+    if not objectHandle then
+        return nil
+    end
+
+    local handleValue = objectHandle.value or objectHandle
+
+    -- Apply rotation/orientation if provided
+    if opts then
+        if opts.euler and type(opts.euler) == "table" then
+            local yaw = tonumber(opts.euler[1]) or tonumber(opts.euler.yaw) or 0
+            local pitch = tonumber(opts.euler[2]) or tonumber(opts.euler.pitch) or 0
+            local roll = tonumber(opts.euler[3]) or tonumber(opts.euler.roll) or 0
+            restoreObjectRotation(handleValue, yaw, pitch, roll)
+        else
+            logger.debug("Spawning object with forward/up vectors")
+            local forward = opts.forward
+            local up = opts.up
+            logger.debug("Forward vector: {}",
+                         forward and
+                             string.format("{i=%.2f,j=%.2f,k=%.2f}", forward.i or 0, forward.j or 0,
+                                           forward.k or 0) or "nil")
+            logger.debug("Up vector: {}", up and
+                             string.format("{i=%.2f,j=%.2f,k=%.2f}", up.i or 0, up.j or 0, up.k or 0) or
+                             "nil")
+            if forward or up then
+                engine.object.setObjectPosition(handleValue, position,
+                                                forward or {i = 0, j = 0, k = 1},
+                                                up or {i = 0, j = 1, k = 0})
+            end
+        end
+    end
+
+    return objectHandle
 end
 
 local function getBipedWorldPosition(playerBiped)
@@ -380,12 +484,6 @@ local function pickupAimedObject(playerIndex, playerBiped)
     forge.setAttachedObject(playerIndex, aimedObjectHandle)
     setObjectHighlight(aimedObjectHandle, true)
     setMonitorMode("holding")
-    local objectName = getObjectHudName(aimedObjectHandle)
-    if objectName then
-        hudText.setHudNotice("OBJECT SELECTED", objectName, 35)
-    else
-        hudText.setHudNotice("OBJECT SELECTED", nil, 35)
-    end
     return true
 end
 
@@ -400,9 +498,14 @@ function forge.setAttachedObject(playerIndex, objectHandle)
     state.highlightedObject = objectHandle
     state.currentAngle = state.currentAngle or "yaw"
     state.rotationStep = state.rotationStep or 5
-    state.yaw = tonumber(state.yaw) or 0
-    state.pitch = tonumber(state.pitch) or 0
-    state.roll = tonumber(state.roll) or 0
+
+    local object = getObject(objectHandle)
+    assert(object, "Object not found for handle: " .. tostring(objectHandle))
+    local yaw, pitch, roll = vectorsToEulerAngles(object.rotation[1], object.rotation[2])
+
+    state.yaw = tonumber(yaw) or 0
+    state.pitch = tonumber(pitch) or 0
+    state.roll = tonumber(roll) or 0
 
     local player = getPlayer(playerIndex)
     if player and player.unitHandle and player.unitHandle.value then
@@ -413,7 +516,6 @@ function forge.setAttachedObject(playerIndex, objectHandle)
             state.distance = calculateDistance(bipedPosition, object.position)
         end
     end
-
     applyAttachedObjectRotation(playerIndex)
 
     forge.state.player.attachedObject = objectHandle
@@ -520,20 +622,11 @@ function forge.placeObject(itemLabel, tagHandle, playerIndex)
         }
     end
 
-    -- Force object shadow casting (looks super dope with Balltze shadows)
-    local tagData = getTagData(tagHandle, "scenery")
-    if not tagData then
-        logger.debug("Place object: unable to get scenery tag data for {}", itemLabel)
-        return false
-    end
-    tagData.flags.castShadowByDefault = true
-
-    local objectHandle = engine.object.createObject(tagHandle, nil, position)
+    local objectHandle = forge.spawnForgeObject(tagHandle, position)
     if not objectHandle then
         logger.debug("Place object: unable to spawn {}", itemLabel)
         return false
     end
-
     local objectHandleValue = objectHandle.value or objectHandle
     forge.setAttachedObject(targetPlayerIndex, objectHandleValue)
     logger.debug("Place object selected: {} ({})", itemLabel, objectHandleValue or "unknown")
@@ -541,8 +634,47 @@ function forge.placeObject(itemLabel, tagHandle, playerIndex)
     return true
 end
 
+--- Copy an existing object (spawn a duplicate near the source)
+---@param playerIndex integer
+---@param sourceObjectHandleValue integer
+---@return integer? newObjectHandle
+function forge.copyObject(playerIndex, sourceObjectHandleValue)
+    if not sourceObjectHandleValue then
+        return nil
+    end
+
+    local sourceObject = getObject(sourceObjectHandleValue)
+    if not sourceObject or sourceObject.tagHandle:isNull() then
+        return nil
+    end
+
+    local tagHandleValue = sourceObject.tagHandle.value
+    local srcPos = sourceObject.position or {x = 0, y = 0, z = 0}
+
+    -- Slight offset to avoid overlapping exactly
+    local position = {x = srcPos.x + 0.5, y = srcPos.y + 0.5, z = srcPos.z}
+
+    -- Copy orientation from source object
+    local forward, up = sourceObject.rotation[1], sourceObject.rotation[2]
+
+    local newObjectHandle = forge.spawnForgeObject(tagHandleValue, position,
+                                                   {forward = forward, up = up})
+    if not newObjectHandle then
+        logger.debug("Copy object: spawn failed for handle {}", tostring(sourceObjectHandleValue))
+        return nil
+    end
+
+    local newHandleValue = newObjectHandle.value or newObjectHandle
+
+    -- Select the newly created object for the player
+    forge.setAttachedObject(playerIndex, newHandleValue)
+    setMonitorMode("holding")
+    return newHandleValue
+end
+
 function forge.load()
     hudCrosshair.init(forge.constants.weaponHudInterfaces.monitorCrosshair)
+    hudText.init(forge.constants.fonts.hud)
 end
 
 ---@param mapName string
@@ -594,11 +726,14 @@ function forge.loadSavedMap(mapName)
                 y = tonumber(forgeObject.y) or 0,
                 z = tonumber(forgeObject.z) or 0
             }
-            local objectHandle = engine.object.createObject(tagHandle, nil, position)
+            local objectHandle = forge.spawnForgeObject(tagHandle, position, {
+                euler = {
+                    tonumber(forgeObject.yaw),
+                    tonumber(forgeObject.pitch),
+                    tonumber(forgeObject.roll)
+                }
+            })
             if objectHandle then
-                local objectHandleValue = objectHandle.value or objectHandle
-                restoreObjectRotation(objectHandleValue, tonumber(forgeObject.yaw),
-                                      tonumber(forgeObject.pitch), tonumber(forgeObject.roll))
                 loadedCount = loadedCount + 1
             else
                 skippedCount = skippedCount + 1
@@ -873,6 +1008,11 @@ function forge.controls()
                             setMonitorMode("selected")
                         else
                             setMonitorMode("idle")
+                        end
+
+                        if input.reload and not attachedObjectHandle and aimedObjectHandle then
+                            forge.copyObject(playerIndex, aimedObjectHandle)
+                            return
                         end
                     end
 

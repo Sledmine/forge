@@ -3,7 +3,7 @@ local getObject = engine.object.getObject
 local getTagEntry = engine.tag.getTagEntry
 
 local hud = {
-    hudTextColor = {a = 1, r = 0.890, g = 0.949, b = 0.992},
+    hudTextColor = {a = 0.8, r = 0.890, g = 0.949, b = 0.992},
     centerHudText = nil,
     centerHudTextValue = nil,
     rightHudText = nil,
@@ -12,6 +12,10 @@ local hud = {
         untilTick = 0,
         primary = nil,
         secondary = nil
+    },
+    constants = {
+        ---@type TagEntry?
+        fontTag = nil
     }
 }
 
@@ -20,7 +24,8 @@ local function formatHudLines(primary, secondary)
         return nil
     end
     if type(secondary) == "string" and secondary ~= "" then
-        return string.format("%s\r%s", primary, secondary)
+        --return string.format("%s\r\n%s", primary, secondary)
+        return string.format("%s\n%s", primary, secondary)
     end
     return primary
 end
@@ -41,6 +46,10 @@ local function removeRightHud()
     hud.rightHudTextValue = nil
 end
 
+---@param text string?
+---@param x integer
+---@param y integer
+---@param options InterfaceTextOptions
 local function setCenterHud(text, x, y, options)
     if not (engine.interface and engine.interface.addText) then
         return
@@ -63,6 +72,10 @@ local function setCenterHud(text, x, y, options)
     end
 end
 
+---@param text string?
+---@param x integer
+---@param y integer
+---@param options InterfaceTextOptions
 local function setRightHud(text, x, y, options)
     if not (engine.interface and engine.interface.addText) then
         return
@@ -149,10 +162,10 @@ function hud.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHand
     if isMonitor then
         if attachedObjectHandle then
             rightPrimary = "FLASHLIGHT KEY - OBJECT PROPERTIES"
-            rightSecondary = "CROUCH KEY - DELETE OBJECT"
+            rightSecondary = "JUMP KEY - DELETE OBJECT"
             local objectName = hud.getObjectHudName(attachedObjectHandle)
             if objectName then
-                centerPrimary = "HOLDING: " .. objectName
+                centerPrimary = objectName
             end
         else
             rightPrimary = "FLASHLIGHT KEY - OBJECTS MENU"
@@ -160,11 +173,11 @@ function hud.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHand
             if aimedObjectHandle then
                 local objectName = hud.getObjectHudName(aimedObjectHandle)
                 if objectName then
-                    centerPrimary = "NAME: " .. objectName
+                    centerPrimary = objectName
                 else
-                    centerPrimary = "NAME: UNKNOWN OBJECT"
+                    centerPrimary = "UNKNOWN OBJECT"
                 end
-                centerSecondary = "HANDLE: " .. tostring(aimedObjectHandle)
+                --centerSecondary = "PRESS FIRE KEY TO PICK UP OBJECT"
             end
         end
     end
@@ -184,7 +197,8 @@ function hud.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHand
         style = "plain",
         justification = "right",
         anchor = "bottomRight",
-        shadow = true
+        shadow = true,
+        font = hud.constants.fontTag.handle
     })
 
     setCenterHud(formatHudLines(centerPrimary, centerSecondary), 0, 94, {
@@ -193,12 +207,18 @@ function hud.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHand
         style = "plain",
         justification = "center",
         anchor = "center",
-        shadow = true
+        shadow = true,
+        font = hud.constants.fontTag.handle
     })
 
     if not isMonitor and not hasNotice then
         hud.clearMonitorHud()
     end
+end
+
+function hud.init(fontTag)
+    hud.constants.fontTag = fontTag
+    assert(hud.constants.fontTag, "Font tag not found")
 end
 
 return hud

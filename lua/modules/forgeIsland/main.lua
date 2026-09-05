@@ -13,6 +13,8 @@ forgeConstants.bipeds.monitor = constants.bipeds.monitor
 forgeConstants.bipeds.player = constants.bipeds.player
 forgeConstants.tagCollections.forgeObjects = constants.tagCollections.forgeObjects
 forgeConstants.weaponHudInterfaces.monitorCrosshair = constants.weaponHudInterfaces.monitorCrosshair
+--forgeConstants.fonts.hud = constants.fonts.blenderProBook.small
+forgeConstants.fonts.hud = constants.fonts.devgothic
 
 forge.callbacks.launchMonitorMenu = function(mode)
     logger.debug("Launching monitor menu with mode={}", mode)
