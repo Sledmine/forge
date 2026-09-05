@@ -1,7 +1,7 @@
 {
-  "name": "forge-island",
+  "name": "forge_island",
   "author": "Insurrection Team",
-  "plugin_main": "forge.lua",
+  "plugin_main": "forge_island.lua",
   "version": "1.0.0",
   "target_api": "2.0.0",
   "maps": [
