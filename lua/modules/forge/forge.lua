@@ -19,118 +19,11 @@ component.callbacks()
 
 local defaultMapsPath = "fmaps"
 
-local hudTextColor = {a = 1, r = 0.890, g = 0.949, b = 0.992}
-local centerHudText = nil
-local centerHudTextValue = nil
-local rightHudText = nil
-local rightHudTextValue = nil
-local hudNoticeState = {
-    untilTick = 0,
-    primary = nil,
-    secondary = nil
-}
-
-local function formatHudLines(primary, secondary)
-    if type(primary) ~= "string" or primary == "" then
-        return nil
-    end
-    if type(secondary) == "string" and secondary ~= "" then
-        return string.format("%s\r%s", primary, secondary)
-    end
-    return primary
-end
-
-local function removeCenterHud()
-    if centerHudText then
-        centerHudText:remove()
-        centerHudText = nil
-    end
-    centerHudTextValue = nil
-end
-
-local function removeRightHud()
-    if rightHudText then
-        rightHudText:remove()
-        rightHudText = nil
-    end
-    rightHudTextValue = nil
-end
-
-local function setCenterHud(text, x, y, options)
-    if not (engine.interface and engine.interface.addText) then
-        return
-    end
-
-    if type(text) ~= "string" or text == "" then
-        removeCenterHud()
-        return
-    end
-
-    if not centerHudText then
-        centerHudText = engine.interface.addText(text, x, y, options)
-        centerHudTextValue = text
-        return
-    end
-
-    if centerHudTextValue ~= text then
-        centerHudText:setText(text)
-        centerHudTextValue = text
-    end
-end
-
-local function setRightHud(text, x, y, options)
-    if not (engine.interface and engine.interface.addText) then
-        return
-    end
-
-    if type(text) ~= "string" or text == "" then
-        removeRightHud()
-        return
-    end
-
-    if not rightHudText then
-        rightHudText = engine.interface.addText(text, x, y, options)
-        rightHudTextValue = text
-        return
-    end
-
-    if rightHudTextValue ~= text then
-        rightHudText:setText(text)
-        rightHudTextValue = text
-    end
-end
-
-local function clearMonitorHud()
-    removeCenterHud()
-    removeRightHud()
-end
-
-local function setHudNotice(primary, secondary, durationTicks)
-    local ticks = tonumber(durationTicks) or 30
-    local nowTick = engine.game.getTickCount() or 0
-    hudNoticeState.primary = primary
-    hudNoticeState.secondary = secondary
-    hudNoticeState.untilTick = nowTick + ticks
-end
+local hudText = require "forge.hud.text"
+local hudCrosshair = require "forge.hud.crosshair"
 
 local function getObjectHudName(objectHandle)
-    if not objectHandle then
-        return nil
-    end
-
-    local object = getObject(objectHandle)
-    if not object or not object.tagHandle or object.tagHandle:isNull() then
-        return nil
-    end
-
-    local tagEntry = getTagEntry(object.tagHandle.value)
-    if not tagEntry or not tagEntry.path then
-        return nil
-    end
-
-    local leafName = tagEntry.path:match("([^\\]+)$") or tagEntry.path
-    leafName = leafName:gsub("_", " "):upper()
-    return leafName
+    return hudText.getObjectHudName(objectHandle)
 end
 
 local function isLocalPlayerIndex(playerIndex, player)
@@ -152,76 +45,15 @@ local function isLocalPlayerIndex(playerIndex, player)
     return playerIndex == 0
 end
 
-
 local function updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle, aimedObjectHandle)
     if not isLocalPlayerIndex(playerIndex, player) then
         return
     end
 
-    local rightPrimary
-    local rightSecondary
-    local centerPrimary
-    local centerSecondary
-
-    local nowTick = engine.game.getTickCount() or 0
-    local hasNotice = hudNoticeState.primary and nowTick <= (hudNoticeState.untilTick or 0)
-
-    if isMonitor then
-        if attachedObjectHandle then
-            rightPrimary = "FLASHLIGHT KEY - OBJECT PROPERTIES"
-            rightSecondary = "CROUCH KEY - DELETE OBJECT"
-            local objectName = getObjectHudName(attachedObjectHandle)
-            if objectName then
-                centerPrimary = "HOLDING: " .. objectName
-            end
-        else
-            rightPrimary = "FLASHLIGHT KEY - OBJECTS MENU"
-            rightSecondary = "CROUCH KEY - SPARTAN MODE"
-            if aimedObjectHandle then
-                local objectName = getObjectHudName(aimedObjectHandle)
-                if objectName then
-                    centerPrimary = "NAME: " .. objectName
-                else
-                    centerPrimary = "NAME: UNKNOWN OBJECT"
-                end
-                centerSecondary = "HANDLE: " .. tostring(aimedObjectHandle)
-            end
-        end
-    end
-
-    if hasNotice then
-        centerPrimary = hudNoticeState.primary
-        centerSecondary = hudNoticeState.secondary
-    elseif hudNoticeState.primary and not hasNotice then
-        hudNoticeState.primary = nil
-        hudNoticeState.secondary = nil
-        hudNoticeState.untilTick = 0
-    end
-
-    setRightHud(formatHudLines(rightPrimary, rightSecondary), 24, 82, {
-        color = hudTextColor,
-        layer = "hud",
-        style = "plain",
-        justification = "right",
-        anchor = "bottomRight",
-        shadow = true
-    })
-
-    setCenterHud(formatHudLines(centerPrimary, centerSecondary), 0, 94, {
-        color = hudTextColor,
-        layer = "hud",
-        style = "plain",
-        justification = "center",
-        anchor = "center",
-        shadow = true
-    })
-
-    if not isMonitor and not hasNotice then
-        clearMonitorHud()
-    end
+    return hudText.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle, aimedObjectHandle)
 end
 
----@class forgePlayerRotationState
+---@class forgePlayerState
 ---@field attachedObject integer?
 ---@field distance number
 ---@field lockDistance boolean
@@ -258,7 +90,7 @@ local forge = {
         end
     },
     state = {
-        ---@type table<integer, forgePlayerRotationState>
+        ---@type table<integer, forgePlayerState>
         players = {},
         player = {
             ---@type integer?
@@ -529,8 +361,11 @@ local function updateAimedObjectHighlight(playerIndex, aimedObjectHandle)
     end
 end
 
-local monitorCrosshairHudTag
-local monitorCrosshairHudData
+--- Changes Forge crosshair state
+---@param mode "hidden" | "idle" | "selected" | "holding" | "bounds"
+local function setMonitorMode(mode)
+    return hudCrosshair.setMode(mode, forge.state)
+end
 
 ---Make a given player by index to select an object being aimed at
 ---@param playerIndex integer
@@ -547,9 +382,9 @@ local function pickupAimedObject(playerIndex, playerBiped)
     setMonitorMode("holding")
     local objectName = getObjectHudName(aimedObjectHandle)
     if objectName then
-        setHudNotice("OBJECT SELECTED", objectName, 35)
+        hudText.setHudNotice("OBJECT SELECTED", objectName, 35)
     else
-        setHudNotice("OBJECT SELECTED", nil, 35)
+        hudText.setHudNotice("OBJECT SELECTED", nil, 35)
     end
     return true
 end
@@ -691,7 +526,7 @@ function forge.placeObject(itemLabel, tagHandle, playerIndex)
         logger.debug("Place object: unable to get scenery tag data for {}", itemLabel)
         return false
     end
-    --tagData.flags.castShadowByDefault = true
+    tagData.flags.castShadowByDefault = true
 
     local objectHandle = engine.object.createObject(tagHandle, nil, position)
     if not objectHandle then
@@ -707,10 +542,7 @@ function forge.placeObject(itemLabel, tagHandle, playerIndex)
 end
 
 function forge.load()
-    monitorCrosshairHudTag = forge.constants.weaponHudInterfaces.monitorCrosshair
-    assert(monitorCrosshairHudTag, "Monitor crosshair HUD tag not found")
-    monitorCrosshairHudData =
-        getTagData(monitorCrosshairHudTag.handle.value, "weapon_hud_interface")
+    hudCrosshair.init(forge.constants.weaponHudInterfaces.monitorCrosshair)
 end
 
 ---@param mapName string
@@ -876,236 +708,6 @@ function forge.getAvailableForgeObjectsMenu()
 end
 
 local bipeds = forge.constants.bipeds
-local weaponHudInterfaces = forge.constants.weaponHudInterfaces
-
---- Pack channels into EngineColorARGBInt (0xAARRGGBB).
----@param alpha integer
----@param red integer
----@param green integer
----@param blue integer
----@return integer
-local function toArgbInt(alpha, red, green, blue)
-    return (((alpha * 256) + red) * 256 + green) * 256 + blue
-end
-
----@param color integer
----@return integer
-local function getAlphaChannel(color)
-    return math.floor(color / 16777216) % 256
-end
-
-local crosshairModes = {hidden = 0, idle = 1, selected = 2, holding = 3, bounds = 4}
-
-local highlightShaderGroups = {
-    shader_environment = true,
-    shader_transparent_glass = true,
-    shader_transparent_plasma = true
-}
-
-local highlightModeColors = {
-    selected = {r = 0, g = 1, b = 0},
-    holding = {r = 1, g = 1, b = 0}
-}
-
-local activeHighlightShaderHandle
-local activeHighlightShaderHandleValue
-local activeHighlightMode
-local cachedHighlightShaderColors = {}
-
-local function copyRgbColor(color)
-    if not color then
-        return nil
-    end
-    return {r = color.r, g = color.g, b = color.b}
-end
-
-local function applyRgbColor(targetColor, sourceColor)
-    if not targetColor or not sourceColor then
-        return
-    end
-    targetColor.r = sourceColor.r
-    targetColor.g = sourceColor.g
-    targetColor.b = sourceColor.b
-end
-
-local function getHighlightShaderData(objectHandle)
-    if not objectHandle then
-        return nil, nil, nil
-    end
-
-    local object = getObject(objectHandle)
-    if not object or not object.tagHandle or not object.tagHandle.value then
-        return nil, nil, nil
-    end
-    if object.tagHandle:isNull() then
-        return nil, nil, nil
-    end
-
-    local tagEntry = getTagEntry(object.tagHandle.value)
-    if not tagEntry or tagEntry.group ~= "scenery" then
-        return nil, nil, nil
-    end
-    
-    --logger.debug("Getting highlight shader data for object {}", objectHandle)
-    local sceneryTag = getTagData(object.tagHandle.value, "scenery")
-    if not sceneryTag or not sceneryTag.modifierShader or not sceneryTag.modifierShader.tagHandle then
-        return nil, nil, nil
-    end
-
-    local shaderHandle = sceneryTag.modifierShader.tagHandle
-    if not shaderHandle or not shaderHandle.value then
-        return nil, nil, nil
-    end
-
-    local shaderTagEntry = getTagEntry(shaderHandle.value)
-    if not shaderTagEntry or not highlightShaderGroups[shaderTagEntry.group] then
-        return nil, nil, nil
-    end
-
-    local ok, shaderData = pcall(function()
-        return getTagData(shaderHandle, shaderTagEntry.group)
-    end)
-    if not ok then
-        return nil, nil, nil
-    end
-
-    if not shaderData or not shaderData.perpendicularTintColor or not shaderData.parallelTintColor then
-        return nil, nil, nil
-    end
-
-    return shaderHandle, shaderHandle.value, shaderData
-end
-
-local function restoreActiveHighlightShaderTint()
-    if not activeHighlightShaderHandle or not activeHighlightShaderHandleValue then
-        return
-    end
-
-    local shaderTagEntry = getTagEntry(activeHighlightShaderHandle)
-    local originalColors = cachedHighlightShaderColors[activeHighlightShaderHandleValue]
-    if not shaderTagEntry or not originalColors then
-        activeHighlightShaderHandle = nil
-        activeHighlightShaderHandleValue = nil
-        activeHighlightMode = nil
-        return
-    end
-
-    local ok, shaderData = pcall(function()
-        return getTagData(activeHighlightShaderHandle, shaderTagEntry.group)
-    end)
-    if not ok then
-        activeHighlightShaderHandle = nil
-        activeHighlightShaderHandleValue = nil
-        activeHighlightMode = nil
-        return
-    end
-
-    if shaderData then
-        applyRgbColor(shaderData.perpendicularTintColor, originalColors.perpendicularTintColor)
-        applyRgbColor(shaderData.parallelTintColor, originalColors.parallelTintColor)
-    end
-
-    activeHighlightShaderHandle = nil
-    activeHighlightShaderHandleValue = nil
-    activeHighlightMode = nil
-end
-
-local function updateMonitorHighlightTint(mode)
-    local targetColor = highlightModeColors[mode]
-    local objectHandle
-
-    if mode == "holding" then
-        objectHandle = forge.state.player.attachedObject
-    elseif mode == "selected" then
-        objectHandle = forge.state.player.highlightedObject
-    end
-
-    local shaderHandle
-    local shaderHandleValue
-    local shaderData
-    if targetColor and objectHandle then
-        shaderHandle, shaderHandleValue, shaderData = getHighlightShaderData(objectHandle)
-    end
-
-    if activeHighlightShaderHandle and
-        (activeHighlightShaderHandleValue ~= shaderHandleValue or activeHighlightMode ~= mode) then
-        restoreActiveHighlightShaderTint()
-    end
-
-    if not shaderHandle or not shaderData or not targetColor then
-        return
-    end
-
-    if shaderHandleValue == nil then
-        return
-    end
-    local shaderCacheKey = shaderHandleValue
-
-    if not cachedHighlightShaderColors[shaderCacheKey] then
-        cachedHighlightShaderColors[shaderCacheKey] = {
-            perpendicularTintColor = copyRgbColor(shaderData.perpendicularTintColor),
-            parallelTintColor = copyRgbColor(shaderData.parallelTintColor)
-        }
-    end
-
-    applyRgbColor(shaderData.perpendicularTintColor, targetColor)
-    applyRgbColor(shaderData.parallelTintColor, targetColor)
-    activeHighlightShaderHandle = shaderHandle
-    activeHighlightShaderHandleValue = shaderCacheKey
-    activeHighlightMode = mode
-end
-
---- Changes Forge crosshair state
----@param mode "hidden" | "idle" | "selected" | "holding" | "bounds"
-function setMonitorMode(mode)
-    if type(mode) ~= "string" then
-        return
-    end
-
-    local state = crosshairModes[mode]
-    if state == nil then
-        return
-    end
-    assert(monitorCrosshairHudTag)
-    assert(monitorCrosshairHudData)
-
-    local crosshairs = monitorCrosshairHudData.crosshairs
-    if not crosshairs or #crosshairs < 1 then
-        return
-    end
-    local crosshair = crosshairs[1]
-    if not crosshair then
-        return
-    end
-
-    local overlays = crosshair.crosshairOverlays
-    if not overlays or #overlays < 1 then
-        return
-    end
-    local overlay = overlays[1]
-    if not overlay then
-        return
-    end
-
-    updateMonitorHighlightTint(mode)
-
-    local defaultColor = overlay.defaultColor.parameters.defaultColor
-    local alpha = getAlphaChannel(defaultColor)
-
-    if state == crosshairModes.bounds then
-        overlay.defaultColor.parameters.defaultColor = toArgbInt(alpha, 255, 0, 0)
-    elseif state == crosshairModes.selected or state == crosshairModes.holding then
-        overlay.defaultColor.parameters.defaultColor = toArgbInt(alpha, 0, 255, 0)
-    elseif state == crosshairModes.idle or state == crosshairModes.hidden then
-        overlay.defaultColor.parameters.defaultColor = toArgbInt(alpha, 64, 169, 255)
-    end
-
-    if overlay.sequenceIndex == state then
-        return
-    end
-
-    overlay.sequenceIndex = state
-end
 
 --- Swap a player's biped and restore gameplay state used by Forge controls.
 ---@param playerIndex integer
