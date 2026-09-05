@@ -29,7 +29,7 @@ return {
         subtitle = [[[shm]/halo_4/ui/fonts/blender_pro_book_small.vector_font]], -- gamespy/subtitle
         button = [[[shm]/halo_4/ui/fonts/blender_pro_book.vector_font]], -- large
         shadow = [[[shm]/halo_4/ui/fonts/blender_pro_book.vector_font]],
-        forge = [[[shm]/halo_4/ui/fonts/devgothic.vector_font]]
+        forge = [[[shm]/halo_4/ui/fonts/arame_thin.vector_font]]
     },
     screen = {width = width, height = height},
     getScreenBounds = function()

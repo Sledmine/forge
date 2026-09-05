@@ -3,7 +3,7 @@ local getObject = engine.object.getObject
 local getTagEntry = engine.tag.getTagEntry
 
 local hud = {
-    hudTextColor = {a = 0.8, r = 0.890, g = 0.949, b = 0.992},
+    hudTextColor = {a = 0.9, r = 0.576471, g = 0.788235, b = 1},
     centerHudText = nil,
     centerHudTextValue = nil,
     rightHudText = nil,
