@@ -1,9 +1,10 @@
 local script = require "script"
 local sleep = script.sleep
 local engine = Engine
+local balltze = Balltze
 local constants = require "forgeIsland.constants"
 local monitorMenu = require "forgeIsland.menus.monitorMenu"
-local logger = Balltze.logger
+local logger = balltze.logger
 
 local forge = require "forge.forge"
 
@@ -50,5 +51,9 @@ function map.hotReload()
     sleep(90)
 end
 script.continuous(map.hotReload)
+
+balltze.addEventListener("frame", function()
+    forge.onFrame()
+end)
 
 return map

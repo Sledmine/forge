@@ -960,37 +960,7 @@ function forge.controls()
                             return
                         end
 
-                        local rotationState = getPlayerState(playerIndex)
-                        if input.action then
-                            if rotationState.currentAngle == "yaw" then
-                                rotationState.currentAngle = "pitch"
-                            elseif rotationState.currentAngle == "pitch" then
-                                rotationState.currentAngle = "roll"
-                            else
-                                rotationState.currentAngle = "yaw"
-                            end
-                            logger.debug("Player {} rotation axis: {}", playerIndex,
-                                         rotationState.currentAngle)
-                            return
-                        end
-
-                        local mouseWheel = 0
-                        if engine.input and engine.input.getMouseWheel then
-                            mouseWheel = engine.input.getMouseWheel()
-                        end
-
-                        if mouseWheel ~= 0 then
-                            local currentAxis = rotationState.currentAngle or "yaw"
-                            local step = math.abs(tonumber(rotationState.rotationStep) or 5)
-                            local direction = (mouseWheel > 0) and -1 or 1
-                            local previousRotation = tonumber(rotationState[currentAxis]) or 0
-                            local nextRotation = previousRotation + (step * direction)
-                            rotationState[currentAxis] = normalizeRotation(nextRotation)
-                            applyAttachedObjectRotation(playerIndex)
-                            logger.debug("Player {} {}: {}", playerIndex, currentAxis,
-                                         rotationState[currentAxis])
-                            return
-                        end
+                        -- Rotation input is handled per-frame above.
 
                         updateAttachedObjectDistance(playerIndex, playerBiped)
                         if not updateAttachedObjectFromCamera(playerIndex, playerBiped) then
@@ -1054,6 +1024,55 @@ function forge.controls()
                     end
                 end
             end)
+        end
+    end
+end
+
+
+--- Handle on-frame rotation inputs. This is intended to be called from the
+--- global engine tick listener so rotation updates occur on the engine frame
+--- rather than via `script.poll`.
+function forge.onFrame()
+    for playerIndex = 0, 15 do
+        local player = getPlayer(playerIndex)
+        if player and player.unitHandle and player.unitHandle.value then
+            local playerBiped = getObject(player.unitHandle.value, "biped")
+            if playerBiped then
+                local playerState = getPlayerState(playerIndex)
+                if playerState.attachedObject then
+                    local input = playerBiped.unitControlFlags or {}
+
+                    if input.action then
+                        local rotationState = playerState
+                        if rotationState.currentAngle == "yaw" then
+                            rotationState.currentAngle = "pitch"
+                        elseif rotationState.currentAngle == "pitch" then
+                            rotationState.currentAngle = "roll"
+                        else
+                            rotationState.currentAngle = "yaw"
+                        end
+                        logger.debug("Player {} rotation axis: {}", playerIndex,
+                                     rotationState.currentAngle)
+                    end
+
+                    local mouseWheel = 0
+                    if engine.input and engine.input.getMouseWheel then
+                        mouseWheel = engine.input.getMouseWheel()
+                    end
+                    if mouseWheel ~= 0 then
+                        local rotationState = playerState
+                        local currentAxis = rotationState.currentAngle or "yaw"
+                        local step = math.abs(tonumber(rotationState.rotationStep) or 5)
+                        local direction = (mouseWheel > 0) and -1 or 1
+                        local previousRotation = tonumber(rotationState[currentAxis]) or 0
+                        local nextRotation = previousRotation + (step * direction)
+                        rotationState[currentAxis] = normalizeRotation(nextRotation)
+                        applyAttachedObjectRotation(playerIndex)
+                        logger.debug("Player {} {}: {}", playerIndex, currentAxis,
+                                     rotationState[currentAxis])
+                    end
+                end
+            end
         end
     end
 end
