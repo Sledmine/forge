@@ -19,6 +19,208 @@ component.callbacks()
 
 local defaultMapsPath = "fmaps"
 
+local hudTextColor = {a = 1, r = 0.890, g = 0.949, b = 0.992}
+local centerHudText = nil
+local centerHudTextValue = nil
+local rightHudText = nil
+local rightHudTextValue = nil
+local hudNoticeState = {
+    untilTick = 0,
+    primary = nil,
+    secondary = nil
+}
+
+local function formatHudLines(primary, secondary)
+    if type(primary) ~= "string" or primary == "" then
+        return nil
+    end
+    if type(secondary) == "string" and secondary ~= "" then
+        return string.format("%s\r%s", primary, secondary)
+    end
+    return primary
+end
+
+local function removeCenterHud()
+    if centerHudText then
+        centerHudText:remove()
+        centerHudText = nil
+    end
+    centerHudTextValue = nil
+end
+
+local function removeRightHud()
+    if rightHudText then
+        rightHudText:remove()
+        rightHudText = nil
+    end
+    rightHudTextValue = nil
+end
+
+local function setCenterHud(text, x, y, options)
+    if not (engine.interface and engine.interface.addText) then
+        return
+    end
+
+    if type(text) ~= "string" or text == "" then
+        removeCenterHud()
+        return
+    end
+
+    if not centerHudText then
+        centerHudText = engine.interface.addText(text, x, y, options)
+        centerHudTextValue = text
+        return
+    end
+
+    if centerHudTextValue ~= text then
+        centerHudText:setText(text)
+        centerHudTextValue = text
+    end
+end
+
+local function setRightHud(text, x, y, options)
+    if not (engine.interface and engine.interface.addText) then
+        return
+    end
+
+    if type(text) ~= "string" or text == "" then
+        removeRightHud()
+        return
+    end
+
+    if not rightHudText then
+        rightHudText = engine.interface.addText(text, x, y, options)
+        rightHudTextValue = text
+        return
+    end
+
+    if rightHudTextValue ~= text then
+        rightHudText:setText(text)
+        rightHudTextValue = text
+    end
+end
+
+local function clearMonitorHud()
+    removeCenterHud()
+    removeRightHud()
+end
+
+local function setHudNotice(primary, secondary, durationTicks)
+    local ticks = tonumber(durationTicks) or 30
+    local nowTick = engine.game.getTickCount() or 0
+    hudNoticeState.primary = primary
+    hudNoticeState.secondary = secondary
+    hudNoticeState.untilTick = nowTick + ticks
+end
+
+local function getObjectHudName(objectHandle)
+    if not objectHandle then
+        return nil
+    end
+
+    local object = getObject(objectHandle)
+    if not object or not object.tagHandle or object.tagHandle:isNull() then
+        return nil
+    end
+
+    local tagEntry = getTagEntry(object.tagHandle.value)
+    if not tagEntry or not tagEntry.path then
+        return nil
+    end
+
+    local leafName = tagEntry.path:match("([^\\]+)$") or tagEntry.path
+    leafName = leafName:gsub("_", " "):upper()
+    return leafName
+end
+
+local function isLocalPlayerIndex(playerIndex, player)
+    local localPlayer = getPlayer()
+    if not localPlayer then
+        return playerIndex == 0
+    end
+
+    if player and player.handle and localPlayer.handle and player.handle.value and
+        localPlayer.handle.value then
+        return player.handle.value == localPlayer.handle.value
+    end
+
+    if player and player.unitHandle and localPlayer.unitHandle and player.unitHandle.value and
+        localPlayer.unitHandle.value then
+        return player.unitHandle.value == localPlayer.unitHandle.value
+    end
+
+    return playerIndex == 0
+end
+
+
+local function updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle, aimedObjectHandle)
+    if not isLocalPlayerIndex(playerIndex, player) then
+        return
+    end
+
+    local rightPrimary
+    local rightSecondary
+    local centerPrimary
+    local centerSecondary
+
+    local nowTick = engine.game.getTickCount() or 0
+    local hasNotice = hudNoticeState.primary and nowTick <= (hudNoticeState.untilTick or 0)
+
+    if isMonitor then
+        if attachedObjectHandle then
+            rightPrimary = "FLASHLIGHT KEY - OBJECT PROPERTIES"
+            rightSecondary = "CROUCH KEY - DELETE OBJECT"
+            local objectName = getObjectHudName(attachedObjectHandle)
+            if objectName then
+                centerPrimary = "HOLDING: " .. objectName
+            end
+        else
+            rightPrimary = "FLASHLIGHT KEY - OBJECTS MENU"
+            rightSecondary = "CROUCH KEY - SPARTAN MODE"
+            if aimedObjectHandle then
+                local objectName = getObjectHudName(aimedObjectHandle)
+                if objectName then
+                    centerPrimary = "NAME: " .. objectName
+                else
+                    centerPrimary = "NAME: UNKNOWN OBJECT"
+                end
+                centerSecondary = "HANDLE: " .. tostring(aimedObjectHandle)
+            end
+        end
+    end
+
+    if hasNotice then
+        centerPrimary = hudNoticeState.primary
+        centerSecondary = hudNoticeState.secondary
+    elseif hudNoticeState.primary and not hasNotice then
+        hudNoticeState.primary = nil
+        hudNoticeState.secondary = nil
+        hudNoticeState.untilTick = 0
+    end
+
+    setRightHud(formatHudLines(rightPrimary, rightSecondary), 24, 82, {
+        color = hudTextColor,
+        layer = "hud",
+        style = "plain",
+        justification = "right",
+        anchor = "bottomRight",
+        shadow = true
+    })
+
+    setCenterHud(formatHudLines(centerPrimary, centerSecondary), 0, 94, {
+        color = hudTextColor,
+        layer = "hud",
+        style = "plain",
+        justification = "center",
+        anchor = "center",
+        shadow = true
+    })
+
+    if not isMonitor and not hasNotice then
+        clearMonitorHud()
+    end
+end
+
 ---@class forgePlayerRotationState
 ---@field attachedObject integer?
 ---@field distance number
@@ -91,6 +293,32 @@ local function normalizeRotation(value)
     end
     return normalized
 end
+
+local function eulerToRotationVectors(yaw, pitch, roll)
+    local yawRad = rad(yaw)
+    local pitchRad = rad(-pitch)
+    local rollRad = rad(roll)
+
+    local cosA = cos(rollRad)
+    local sinA = sin(rollRad)
+    local cosB = cos(pitchRad)
+    local sinB = sin(pitchRad)
+    local cosY = cos(yawRad)
+    local sinY = sin(yawRad)
+
+    local m11 = cosB * cosY
+    local m13 = sinB
+    local m21 = cosA * sinY + sinA * sinB * cosY
+    local m23 = -sinA * cosB
+    local m31 = sinA * sinY - cosA * sinB * cosY
+    local m33 = cosA * cosB
+
+    -- Match blam.rotateObject: v1 is first matrix column, v2 is third matrix column.
+    local forwardVector = {x = m11, y = m21, z = m31}
+    local upVector = {x = m13, y = m23, z = m33}
+    return forwardVector, upVector
+end
+
 
 local function applyAttachedObjectRotation(playerIndex)
     local playerState = getPlayerState(playerIndex)
@@ -188,30 +416,7 @@ local function resolveSceneryTagHandle(tagPath)
     return firstTag and firstTag.handle or nil
 end
 
-local function eulerToRotationVectors(yaw, pitch, roll)
-    local yawRad = rad(yaw)
-    local pitchRad = rad(-pitch)
-    local rollRad = rad(roll)
 
-    local cosA = cos(rollRad)
-    local sinA = sin(rollRad)
-    local cosB = cos(pitchRad)
-    local sinB = sin(pitchRad)
-    local cosY = cos(yawRad)
-    local sinY = sin(yawRad)
-
-    local m11 = cosB * cosY
-    local m13 = sinB
-    local m21 = cosA * sinY + sinA * sinB * cosY
-    local m23 = -sinA * cosB
-    local m31 = sinA * sinY - cosA * sinB * cosY
-    local m33 = cosA * cosB
-
-    -- Match blam.rotateObject: v1 is first matrix column, v2 is third matrix column.
-    local forwardVector = {x = m11, y = m21, z = m31}
-    local upVector = {x = m13, y = m23, z = m33}
-    return forwardVector, upVector
-end
 
 local function restoreObjectRotation(objectHandle, yaw, pitch, roll)
     if type(yaw) ~= "number" or type(pitch) ~= "number" or type(roll) ~= "number" then
@@ -340,7 +545,12 @@ local function pickupAimedObject(playerIndex, playerBiped)
     forge.setAttachedObject(playerIndex, aimedObjectHandle)
     setObjectHighlight(aimedObjectHandle, true)
     setMonitorMode("holding")
-    --logger.debug("Player {} picked up object {}", playerIndex, aimedObjectHandle)
+    local objectName = getObjectHudName(aimedObjectHandle)
+    if objectName then
+        setHudNotice("OBJECT SELECTED", objectName, 35)
+    else
+        setHudNotice("OBJECT SELECTED", nil, 35)
+    end
     return true
 end
 
@@ -481,7 +691,7 @@ function forge.placeObject(itemLabel, tagHandle, playerIndex)
         logger.debug("Place object: unable to get scenery tag data for {}", itemLabel)
         return false
     end
-    tagData.flags.castShadowByDefault = true
+    --tagData.flags.castShadowByDefault = true
 
     local objectHandle = engine.object.createObject(tagHandle, nil, position)
     if not objectHandle then
@@ -965,6 +1175,13 @@ function forge.controls()
                     local input = playerBiped.unitControlFlags
                     local playerState = getPlayerState(playerIndex)
                     local attachedObjectHandle = playerState.attachedObject
+                    local aimedObjectHandle = nil
+                    if isMonitor then
+                        aimedObjectHandle = getAimedObjectHandle(playerBiped)
+                    end
+
+                    updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle,
+                                     aimedObjectHandle)
 
                     if isMonitor and attachedObjectHandle then
                         local attachedObject = getObject(attachedObjectHandle)
