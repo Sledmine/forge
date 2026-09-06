@@ -52,7 +52,7 @@ local function getSetVariableInvocation(varName, varValue)
 end
 
 local function getVariable(varName)
-    local exists, result = pcall(get_global, varName)
+    local exists, result = pcall(engine.script.getGlobal, varName)
     if not exists then
         Balltze.logger.error("Failed to get HSC variable {}: {}", varName, result)
         return nil

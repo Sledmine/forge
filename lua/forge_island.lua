@@ -46,23 +46,7 @@ function assert(...)
     end
 end
 
--- local main
-local loadWhenIn = {"forge_island"}
-
-loadWhenIn = table.extend(loadWhenIn, table.map(loadWhenIn, function(map)
-    return map .. "_dev"
-end))
-
 balltze.logger.muteDebug(not DebugMode)
-
-local isSapp = engine.game.getGameConnectionType() == "networkServer" and
-                   type(balltze.registerSappCallbacks) == "function"
-
-if not isSapp then
-    if balltze.chimera then
-        require "chimeraCompat"()
-    end
-end
 
 balltze.addEventListener("tick", function()
     local tickStart
@@ -75,23 +59,7 @@ balltze.addEventListener("tick", function()
     end
 end)
 
-function PluginOnSappLoad()
-    if isSapp then
-        -- Register all SAPP callbacks now that all subscribers are in place
-        balltze.registerSappCallbacks()
-        blam.rcon.patch()
-    end
-end
-
 function PluginUnload()
-    if isSapp then
-        blam.rcon.unpatch()
-    end
-end
-
-function OnError(message)
-    print(message)
-    print(debug.traceback())
 end
 
 function PluginOnGameStart()
