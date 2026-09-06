@@ -2,6 +2,8 @@ local engine = Engine
 local getObject = engine.object.getObject
 local getTagEntry = engine.tag.getTagEntry
 
+-- HUD text module: presentation only. Rotation/euler calculations belong in forge.lua
+
 local hud = {
     hudTextColor = {a = 0.9, r = 0.576471, g = 0.788235, b = 1},
     centerHudText = nil,
@@ -131,7 +133,7 @@ function hud.getObjectHudName(objectHandle)
     return leafName
 end
 
-function hud.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle, aimedObjectHandle)
+function hud.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle, aimedObjectHandle, centerSecondaryOverride)
     local localPlayer = engine.player.getPlayer()
     if not localPlayer then
         if playerIndex ~= 0 then
@@ -163,10 +165,14 @@ function hud.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHand
         if attachedObjectHandle then
             rightPrimary = "FLASHLIGHT KEY - OBJECT PROPERTIES"
             rightSecondary = "JUMP KEY - DELETE OBJECT"
-            local objectName = hud.getObjectHudName(attachedObjectHandle)
-            if objectName then
-                centerPrimary = objectName
-            end
+                local objectName = hud.getObjectHudName(attachedObjectHandle)
+                if objectName then
+                    centerPrimary = objectName
+                end
+                -- Allow caller to override secondary center text (e.g. rotation)
+                if type(centerSecondaryOverride) == "string" and centerSecondaryOverride ~= "" then
+                    centerSecondary = centerSecondaryOverride
+                end
         else
             rightPrimary = "FLASHLIGHT KEY - OBJECTS MENU"
             rightSecondary = "CROUCH KEY - SPARTAN MODE"
@@ -177,7 +183,7 @@ function hud.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHand
                 else
                     centerPrimary = "UNKNOWN OBJECT"
                 end
-                --centerSecondary = "PRESS FIRE KEY TO PICK UP OBJECT"
+                centerSecondary = "PRESS FIRE KEY TO PICK UP OBJECT"
             end
         end
     end

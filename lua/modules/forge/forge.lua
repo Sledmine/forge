@@ -29,10 +29,6 @@ local defaultMapsPath = "fmaps"
 local hudText = require "forge.hud.text"
 local hudCrosshair = require "forge.hud.crosshair"
 
-local function getObjectHudName(objectHandle)
-    return hudText.getObjectHudName(objectHandle)
-end
-
 local function isLocalPlayerIndex(playerIndex, player)
     local localPlayer = getPlayer()
     if not localPlayer then
@@ -52,6 +48,75 @@ local function isLocalPlayerIndex(playerIndex, player)
     return playerIndex == 0
 end
 
+
+local function eulerToRotationVectors(yaw, pitch, roll)
+    local yawRad = rad(yaw)
+    local pitchRad = rad(-pitch)
+    local rollRad = rad(roll)
+
+    local cosA = cos(rollRad)
+    local sinA = sin(rollRad)
+    local cosB = cos(pitchRad)
+    local sinB = sin(pitchRad)
+    local cosY = cos(yawRad)
+    local sinY = sin(yawRad)
+
+    local m11 = cosB * cosY
+    local m13 = sinB
+    local m21 = cosA * sinY + sinA * sinB * cosY
+    local m23 = -sinA * cosB
+    local m31 = sinA * sinY - cosA * sinB * cosY
+    local m33 = cosA * cosB
+
+    -- Match blam.rotateObject: v1 is first matrix column, v2 is third matrix column.
+    local forwardVector = {x = m11, y = m21, z = m31}
+    local upVector = {x = m13, y = m23, z = m33}
+    return forwardVector, upVector
+end
+
+--- Get euler angles rotation from game rotation vectors
+--- @param v1 Vector3d Vector with first column values from rotation matrix
+--- @param v2 Vector3d Vector with third column values from rotation matrix
+--- @return number yaw, number pitch, number roll
+local function vectorsToEulerAngles(v1, v2)
+    -- Match eulerToRotationVectors: v1 is the first matrix column (forward),
+    -- v2 is the third matrix column (up), and the second column is their cross product.
+    local v3 = {
+        i = v1.j * v2.k - v1.k * v2.j,
+        j = v1.k * v2.i - v1.i * v2.k,
+        k = v1.i * v2.j - v1.j * v2.i
+    }
+
+    local matrix = {{v1.i, v3.i, v2.i}, {v1.j, v3.j, v2.j}, {v1.k, v3.k, v2.k}}
+
+    -- Extract individual matrix elements
+    local m11, m12, m13 = matrix[1][1], matrix[1][2], matrix[1][3]
+    local m21, m22, m23 = matrix[2][1], matrix[2][2], matrix[2][3]
+    local m31, m32, m33 = matrix[3][1], matrix[3][2], matrix[3][3]
+
+    -- Calculate yaw (heading) angle
+    local yaw = atan2(m12, m11)
+
+    -- Calculate pitch (attitude) angle
+    local pitch = atan2(-m13, sqrt(m23 ^ 2 + m33 ^ 2))
+
+    -- Calculate roll (bank) angle
+    local roll = -atan2(m23, m33)
+
+    -- Convert angles from radians to degrees
+    yaw = deg(yaw)
+    pitch = deg(pitch)
+    roll = deg(roll)
+
+    -- Adjust angles to the range [0, 359]
+    yaw = fmod(yaw + 360, 360)
+    pitch = fmod(pitch + 360, 360)
+    roll = fmod(roll + 360, 360)
+
+    return yaw, pitch, roll
+end
+
+
 local function updateMonitorHud(playerIndex,
                                 player,
                                 isMonitor,
@@ -61,8 +126,19 @@ local function updateMonitorHud(playerIndex,
         return
     end
 
+    -- Compute attached object rotation display here (presentation logic belongs in forge)
+    local centerSecondary = nil
+    if attachedObjectHandle then
+        local obj = getObject(attachedObjectHandle)
+        if obj then
+            local yaw, pitch, roll = vectorsToEulerAngles(obj.rotation[1], obj.rotation[2])
+            centerSecondary = string.format("Y: %d  P: %d  R: %d", math.floor(yaw + 0.5),
+                                            math.floor(pitch + 0.5), math.floor(roll + 0.5))
+        end
+    end
+
     return hudText.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle,
-                                    aimedObjectHandle)
+                                    aimedObjectHandle, centerSecondary)
 end
 
 ---@class forgePlayerState
@@ -139,73 +215,6 @@ local function normalizeRotation(value)
         normalized = normalized + 360
     end
     return normalized
-end
-
-local function eulerToRotationVectors(yaw, pitch, roll)
-    local yawRad = rad(yaw)
-    local pitchRad = rad(-pitch)
-    local rollRad = rad(roll)
-
-    local cosA = cos(rollRad)
-    local sinA = sin(rollRad)
-    local cosB = cos(pitchRad)
-    local sinB = sin(pitchRad)
-    local cosY = cos(yawRad)
-    local sinY = sin(yawRad)
-
-    local m11 = cosB * cosY
-    local m13 = sinB
-    local m21 = cosA * sinY + sinA * sinB * cosY
-    local m23 = -sinA * cosB
-    local m31 = sinA * sinY - cosA * sinB * cosY
-    local m33 = cosA * cosB
-
-    -- Match blam.rotateObject: v1 is first matrix column, v2 is third matrix column.
-    local forwardVector = {x = m11, y = m21, z = m31}
-    local upVector = {x = m13, y = m23, z = m33}
-    return forwardVector, upVector
-end
-
---- Get euler angles rotation from game rotation vectors
---- @param v1 Vector3d Vector with first column values from rotation matrix
---- @param v2 Vector3d Vector with third column values from rotation matrix
---- @return number yaw, number pitch, number roll
-local function vectorsToEulerAngles(v1, v2)
-    -- Match eulerToRotationVectors: v1 is the first matrix column (forward),
-    -- v2 is the third matrix column (up), and the second column is their cross product.
-    local v3 = {
-        i = v1.j * v2.k - v1.k * v2.j,
-        j = v1.k * v2.i - v1.i * v2.k,
-        k = v1.i * v2.j - v1.j * v2.i
-    }
-
-    local matrix = {{v1.i, v3.i, v2.i}, {v1.j, v3.j, v2.j}, {v1.k, v3.k, v2.k}}
-
-    -- Extract individual matrix elements
-    local m11, m12, m13 = matrix[1][1], matrix[1][2], matrix[1][3]
-    local m21, m22, m23 = matrix[2][1], matrix[2][2], matrix[2][3]
-    local m31, m32, m33 = matrix[3][1], matrix[3][2], matrix[3][3]
-
-    -- Calculate yaw (heading) angle
-    local yaw = atan2(m12, m11)
-
-    -- Calculate pitch (attitude) angle
-    local pitch = atan2(-m13, sqrt(m23 ^ 2 + m33 ^ 2))
-
-    -- Calculate roll (bank) angle
-    local roll = -atan2(m23, m33)
-
-    -- Convert angles from radians to degrees
-    yaw = deg(yaw)
-    pitch = deg(pitch)
-    roll = deg(roll)
-
-    -- Adjust angles to the range [0, 359]
-    yaw = fmod(yaw + 360, 360)
-    pitch = fmod(pitch + 360, 360)
-    roll = fmod(roll + 360, 360)
-
-    return yaw, pitch, roll
 end
 
 local function applyAttachedObjectRotation(playerIndex)
@@ -894,6 +903,9 @@ function forge.controls()
             -- We create individual anonymous scripts for each player so that each thread
             -- can sleep independently of other players
             script.create(function()
+                if not forge.mode == "edit" then
+                    return
+                end
                 local player = getPlayer(playerIndex)
                 if not player then
                     return
@@ -907,71 +919,48 @@ function forge.controls()
                     y = playerBiped.position.y,
                     z = playerBiped.position.z
                 }
-                if forge.mode == "edit" then
-                    local isMonitor = playerBiped.tagHandle.value == bipeds.monitor.handle.value
-                    local input = playerBiped.unitControlFlags
-                    local playerState = getPlayerState(playerIndex)
-                    local attachedObjectHandle = playerState.attachedObject
-                    local aimedObjectHandle = nil
-                    if isMonitor then
-                        aimedObjectHandle = getAimedObjectHandle(playerBiped)
-                    end
+                local isMonitor = playerBiped.tagHandle.value == bipeds.monitor.handle.value
+                local input = playerBiped.unitControlFlags
+                local playerState = getPlayerState(playerIndex)
+                local attachedObjectHandle = playerState.attachedObject
+                local aimedObjectHandle = nil
+                if isMonitor then
+                    aimedObjectHandle = getAimedObjectHandle(playerBiped)
+                end
 
-                    updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle,
-                                     aimedObjectHandle)
+                updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle,
+                                 aimedObjectHandle)
 
-                    if isMonitor and attachedObjectHandle then
-                        local attachedObject = getObject(attachedObjectHandle)
-                        if not attachedObject or not attachedObject.position then
-                            detachAttachedObject(playerIndex, false)
-                            setMonitorMode("idle")
-                            return
-                        end
-
-                        setMonitorMode("holding")
-
-                        if input.light then
-                            forge.callbacks.launchMonitorMenu("tools")
-                            return
-                        end
-
-                        if input.jump then
-                            detachAttachedObject(playerIndex, true)
-                            setMonitorMode("idle")
-                            return
-                        end
-
-                        if input.melee then
-                            playerState.lockDistance = not playerState.lockDistance
-                            logger.debug("Player {} distance lock: {}", playerIndex,
-                                         playerState.lockDistance)
-                            return
-                        end
-
-                        if input.secondaryTrigger then
-                            detachAttachedObject(playerIndex, false)
-                            local aimedObjectHandle = getAimedObjectHandle(playerBiped)
-                            updateAimedObjectHighlight(playerIndex, aimedObjectHandle)
-                            if aimedObjectHandle then
-                                setMonitorMode("selected")
-                            else
-                                setMonitorMode("idle")
-                            end
-                            return
-                        end
-
-                        -- Rotation input is handled per-frame above.
-
-                        updateAttachedObjectDistance(playerIndex, playerBiped)
-                        if not updateAttachedObjectFromCamera(playerIndex, playerBiped) then
-                            setMonitorMode("idle")
-                            return
-                        end
-
+                if isMonitor and attachedObjectHandle then
+                    local attachedObject = getObject(attachedObjectHandle)
+                    if not attachedObject or not attachedObject.position then
+                        detachAttachedObject(playerIndex, false)
+                        setMonitorMode("idle")
                         return
                     end
 
-                    if isMonitor then
+                    setMonitorMode("holding")
+
+                    if input.light then
+                        forge.callbacks.launchMonitorMenu("tools")
+                        return
+                    end
+
+                    if input.jump then
+                        detachAttachedObject(playerIndex, true)
+                        setMonitorMode("idle")
+                        return
+                    end
+
+                    if input.melee then
+                        playerState.lockDistance = not playerState.lockDistance
+                        logger.debug("Player {} distance lock: {}", playerIndex,
+                                     playerState.lockDistance)
+                        return
+                    end
+
+                    if input.secondaryTrigger then
+                        detachAttachedObject(playerIndex, false)
                         local aimedObjectHandle = getAimedObjectHandle(playerBiped)
                         updateAimedObjectHighlight(playerIndex, aimedObjectHandle)
                         if aimedObjectHandle then
@@ -979,55 +968,73 @@ function forge.controls()
                         else
                             setMonitorMode("idle")
                         end
-
-                        if input.reload and not attachedObjectHandle and aimedObjectHandle then
-                            forge.copyObject(playerIndex, aimedObjectHandle)
-                            return
-                        end
+                        return
                     end
 
-                    if input.primaryTrigger and isMonitor and not attachedObjectHandle then
-                        if pickupAimedObject(playerIndex, playerBiped) then
-                            return
-                        end
+                    -- Rotation input is handled per-frame above.
+
+                    updateAttachedObjectDistance(playerIndex, playerBiped)
+                    if not updateAttachedObjectFromCamera(playerIndex, playerBiped) then
+                        setMonitorMode("idle")
+                        return
                     end
 
-                    if input.light then
-                        if not isMonitor and playerBiped.tagHandle.value ==
-                            bipeds.player.handle.value then
-                            Balltze.logger.debug("Player {} is pressing light", playerIndex)
-                            playerBiped = forge.swapPlayerBiped(playerIndex, "monitor",
-                                                                previousPosition)
-                            if not playerBiped then
-                                return
-                            end
-                            Balltze.logger.debug("Player {} swapped to monitor", playerIndex)
-                            playerBiped.vitals.health = 1
-                            playerBiped.vitals.shield = 1
-                            -- TODO Restore biped rotation as well
-                            setMonitorMode("idle")
-                            Balltze.logger.debug("Player {} monitor mode set to idle", playerIndex)
-                        else
-                            forge.callbacks.launchMonitorMenu(
-                                forge.getAttachedObject(playerIndex) and "tools" or "place")
+                    return
+                end
+
+                if isMonitor then
+                    local aimedObjectHandle = getAimedObjectHandle(playerBiped)
+                    updateAimedObjectHighlight(playerIndex, aimedObjectHandle)
+                    if aimedObjectHandle then
+                        setMonitorMode("selected")
+                    else
+                        setMonitorMode("idle")
+                    end
+
+                    if input.reload and not attachedObjectHandle and aimedObjectHandle then
+                        forge.copyObject(playerIndex, aimedObjectHandle)
+                        return
+                    end
+                end
+
+                if input.primaryTrigger and isMonitor and not attachedObjectHandle then
+                    if pickupAimedObject(playerIndex, playerBiped) then
+                        return
+                    end
+                end
+
+                if input.light then
+                    if not isMonitor and playerBiped.tagHandle.value == bipeds.player.handle.value then
+                        Balltze.logger.debug("Player {} is pressing light", playerIndex)
+                        playerBiped =
+                            forge.swapPlayerBiped(playerIndex, "monitor", previousPosition)
+                        if not playerBiped then
+                            return
                         end
-                    elseif input.crouch then
-                        if isMonitor then
-                            Balltze.logger.debug("Player {} is pressing crouch", playerIndex)
-                            playerBiped = forge.swapPlayerBiped(playerIndex, "player",
-                                                                previousPosition)
-                            if not playerBiped then
-                                return
-                            end
-                            setMonitorMode("hidden")
+                        Balltze.logger.debug("Player {} swapped to monitor", playerIndex)
+                        playerBiped.vitals.health = 1
+                        playerBiped.vitals.shield = 1
+                        -- TODO Restore biped rotation as well
+                        setMonitorMode("idle")
+                        Balltze.logger.debug("Player {} monitor mode set to idle", playerIndex)
+                    else
+                        forge.callbacks.launchMonitorMenu(
+                            forge.getAttachedObject(playerIndex) and "tools" or "place")
+                    end
+                elseif input.crouch then
+                    if isMonitor then
+                        Balltze.logger.debug("Player {} is pressing crouch", playerIndex)
+                        playerBiped = forge.swapPlayerBiped(playerIndex, "player", previousPosition)
+                        if not playerBiped then
+                            return
                         end
+                        setMonitorMode("hidden")
                     end
                 end
             end)
         end
     end
 end
-
 
 --- Handle on-frame rotation inputs. This is intended to be called from the
 --- global engine tick listener so rotation updates occur on the engine frame
@@ -1051,8 +1058,7 @@ function forge.onFrame()
                         else
                             rotationState.currentAngle = "yaw"
                         end
-                        logger.debug("Player {} rotation axis: {}", playerIndex,
-                                     rotationState.currentAngle)
+                        -- logger.debug("Player {} rotation axis: {}", playerIndex, rotationState.currentAngle)
                     end
 
                     local mouseWheel = 0
@@ -1068,8 +1074,7 @@ function forge.onFrame()
                         local nextRotation = previousRotation + (step * direction)
                         rotationState[currentAxis] = normalizeRotation(nextRotation)
                         applyAttachedObjectRotation(playerIndex)
-                        logger.debug("Player {} {}: {}", playerIndex, currentAxis,
-                                     rotationState[currentAxis])
+                        -- logger.debug("Player {} {}: {}", playerIndex, currentAxis, rotationState[currentAxis])
                     end
                 end
             end
