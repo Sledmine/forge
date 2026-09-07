@@ -15,51 +15,30 @@ local hudCrosshair = require "forge.hud.crosshair"
 local rotation = require "forge.math.rotation"
 local vectorsToEulerAngles = rotation.vectorsToEulerAngles
 local eulerToRotationVectors = rotation.eulerToRotationVectors
+local point = require "forge.math.point"
+local pointDistance = point.distance
+local abs = math.abs
 
 component.callbacks()
 
 local defaultMapsPath = "fmaps"
 
----Return if a given index is a local player
----@param playerIndex integer
----@param player Player?
----@return boolean
-local function isLocalPlayerIndex(playerIndex, player)
-    local localPlayer = getPlayer()
-    if not localPlayer then
-        return playerIndex == 0
-    end
-
-    if player and player.unitHandle and localPlayer.unitHandle and player.unitHandle.value and
-        localPlayer.unitHandle.value then
-        return player.unitHandle.value == localPlayer.unitHandle.value
-    end
-
-    return playerIndex == 0
-end
-
-local function updateMonitorHud(playerIndex,
-                                player,
-                                isMonitor,
-                                attachedObjectHandle,
-                                aimedObjectHandle)
-    if not isLocalPlayerIndex(playerIndex, player) then
-        return
-    end
-
+---Update hud data to reflect state
+---@param attachedObjectHandle? integer | ObjectHandle
+---@param aimedObjectHandle? integer | ObjectHandle
+local function updateMonitorHud(attachedObjectHandle, aimedObjectHandle)
     -- Compute attached object rotation display here (presentation logic belongs in forge)
     local centerSecondary = nil
     if attachedObjectHandle then
-        local obj = getObject(attachedObjectHandle)
-        if obj then
-            local yaw, pitch, roll = vectorsToEulerAngles(obj.rotation[1], obj.rotation[2])
+        local object = getObject(attachedObjectHandle)
+        if object then
+            local yaw, pitch, roll = vectorsToEulerAngles(object.rotation[1], object.rotation[2])
             centerSecondary = string.format("Y: %d  P: %d  R: %d", math.floor(yaw + 0.5),
                                             math.floor(pitch + 0.5), math.floor(roll + 0.5))
         end
     end
 
-    return hudText.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle,
-                                    aimedObjectHandle, centerSecondary)
+    return hudText.updateMonitorHud(attachedObjectHandle, aimedObjectHandle, centerSecondary)
 end
 
 ---@class forgePlayerState
@@ -112,6 +91,9 @@ local forge = {
     }
 }
 
+---Get player's state given a player index
+---@param playerIndex integer
+---@return forgePlayerState
 local function getPlayerState(playerIndex)
     if type(playerIndex) ~= "number" then
         playerIndex = 0
@@ -130,6 +112,9 @@ local function getPlayerState(playerIndex)
     return forge.state.players[playerIndex]
 end
 
+---Normalize rotation angle
+---@param value number
+---@return number
 local function normalizeRotation(value)
     local normalized = value % 360
     if normalized < 0 then
@@ -138,6 +123,8 @@ local function normalizeRotation(value)
     return normalized
 end
 
+---Apply object rotation from state given player index
+---@param playerIndex integer
 local function applyAttachedObjectRotation(playerIndex)
     local playerState = getPlayerState(playerIndex)
     if not playerState.attachedObject then
@@ -145,7 +132,7 @@ local function applyAttachedObjectRotation(playerIndex)
     end
 
     local object = getObject(playerState.attachedObject)
-    if not object or not object.position then
+    if not object then
         return
     end
 
@@ -158,13 +145,6 @@ local function applyAttachedObjectRotation(playerIndex)
         j = forwardVector.j,
         k = forwardVector.k
     }, {i = upVector.i, j = upVector.j, k = upVector.k})
-end
-
-local function calculateDistance(a, b)
-    local dx = a.x - b.x
-    local dy = a.y - b.y
-    local dz = a.z - b.z
-    return sqrt(dx * dx + dy * dy + dz * dz)
 end
 
 local function getScenarioShortName()
@@ -251,8 +231,8 @@ end
 
 --- Spawn a forge scenery object from a tag handle with shared logic
 ---@param tagHandle TagHandle | integer
----@param position table {x,y,z}
----@param opts table? {euler = {yaw,pitch,roll}, forward = {i,j,k}, up = {i,j,k}}
+---@param position? Point3d
+---@param opts? {euler?: EulerAngles, forward?: Vector3d, up?: Vector3d}
 ---@return ObjectHandle? handle
 function forge.spawnForgeObject(tagHandle, position, opts)
     if not tagHandle then
@@ -277,9 +257,9 @@ function forge.spawnForgeObject(tagHandle, position, opts)
     -- Apply rotation/orientation if provided
     if opts then
         if opts.euler and type(opts.euler) == "table" then
-            local yaw = tonumber(opts.euler[1]) or tonumber(opts.euler.yaw) or 0
-            local pitch = tonumber(opts.euler[2]) or tonumber(opts.euler.pitch) or 0
-            local roll = tonumber(opts.euler[3]) or tonumber(opts.euler.roll) or 0
+            local yaw = tonumber(opts.euler.yaw) or 0
+            local pitch = tonumber(opts.euler.pitch) or 0
+            local roll = tonumber(opts.euler.roll) or 0
             restoreObjectRotation(handleValue, yaw, pitch, roll)
         else
             logger.debug("Spawning object with forward/up vectors")
@@ -303,6 +283,9 @@ function forge.spawnForgeObject(tagHandle, position, opts)
     return objectHandle
 end
 
+---Get the absolute position of a given biped
+---@param playerBiped BipedObject
+---@return Point3d
 local function getBipedWorldPosition(playerBiped)
     if playerBiped and playerBiped.bipedPosition then
         return playerBiped.bipedPosition
@@ -313,6 +296,9 @@ local function getBipedWorldPosition(playerBiped)
     return {x = 0, y = 0, z = 0}
 end
 
+---Return looking component vectors from a given biped
+---@param playerBiped BipedObject
+---@return integer i, integer j, integer k
 local function getBipedViewDirection(playerBiped)
     if playerBiped and playerBiped.lookingVector then
         local lv = playerBiped.lookingVector
@@ -320,32 +306,29 @@ local function getBipedViewDirection(playerBiped)
             return lv.i or 0, lv.j or 0, lv.k or 0
         end
     end
-
-    local cameraX = playerBiped and playerBiped.cameraX or 0
-    local cameraY = playerBiped and playerBiped.cameraY or 0
-    local cameraZ = playerBiped and playerBiped.cameraZ or 0
-    return cameraX, cameraY, cameraZ
+    return 0, 0, 1
 end
 
+---Get the object handle that a given biped is currently aiming at (if any)
+---@param playerBiped BipedObject
+---@return integer? aimedObjectHandle
 local function getAimedObjectHandle(playerBiped)
     if not playerBiped then
         return nil
     end
 
     local origin = getBipedWorldPosition(playerBiped)
-    local cameraX, cameraY, cameraZ = getBipedViewDirection(playerBiped)
+    local viewI, viewJ, viewK = getBipedViewDirection(playerBiped)
     local rayLength = 25
-    local hit = castRay(origin, {
-        i = cameraX * rayLength,
-        j = cameraY * rayLength,
-        k = cameraZ * rayLength
-    }, "objects", playerBiped.handle and playerBiped.handle.value)
+    local hit = castRay(origin,
+                        {i = viewI * rayLength, j = viewJ * rayLength, k = viewK * rayLength},
+                        "objects")
 
     if not hit or hit.type ~= "object" or not hit.objectHandle then
         return nil
     end
 
-    local aimedHandle = hit.objectHandle.value or hit.objectHandle
+    local aimedHandle = hit.objectHandle.value
     if not aimedHandle then
         return nil
     end
@@ -412,8 +395,6 @@ local function pickupAimedObject(playerIndex, playerBiped)
     end
 
     forge.setAttachedObject(playerIndex, aimedObjectHandle)
-    setObjectHighlight(aimedObjectHandle, true)
-    setMonitorMode("holding")
     return true
 end
 
@@ -438,22 +419,27 @@ function forge.setAttachedObject(playerIndex, objectHandle)
     state.roll = tonumber(roll) or 0
 
     local player = getPlayer(playerIndex)
-    if player and player.unitHandle and player.unitHandle.value then
+    if player then
         local playerBiped = getObject(player.unitHandle.value, "biped")
         local object = getObject(objectHandle)
         if playerBiped and object and object.position then
             local bipedPosition = getBipedWorldPosition(playerBiped)
-            state.distance = calculateDistance(bipedPosition, object.position)
+            state.distance = pointDistance(bipedPosition, object.position)
         end
     end
     applyAttachedObjectRotation(playerIndex)
 
     forge.state.player.attachedObject = objectHandle
 
-    setObjectHighlight(objectHandle, true)
+    updateAimedObjectHighlight(playerIndex, objectHandle)
     forge.state.player.highlightedObject = objectHandle
+
+    setMonitorMode("holding")
 end
 
+---Detach current attached object from a player given player index
+---@param playerIndex integer
+---@param deleteObject? boolean
 local function detachAttachedObject(playerIndex, deleteObject)
     local state = getPlayerState(playerIndex)
     if state.highlightedObject then
@@ -473,10 +459,16 @@ local function detachAttachedObject(playerIndex, deleteObject)
     forge.state.player.attachedObject = nil
 end
 
+---Remove (dettach and removed) attached object from a player given player index
+---@param playerIndex integer
 function forge.clearAttachedObject(playerIndex)
     detachAttachedObject(playerIndex, true)
 end
 
+---Update attached player object relative to camera
+---@param playerIndex integer
+---@param playerBiped BipedObject
+---@return boolean
 local function updateAttachedObjectFromCamera(playerIndex, playerBiped)
     local state = getPlayerState(playerIndex)
     if not state.attachedObject then
@@ -484,8 +476,8 @@ local function updateAttachedObjectFromCamera(playerIndex, playerBiped)
     end
 
     local attachedObject = getObject(state.attachedObject)
-    if not attachedObject or not attachedObject.position then
-        detachAttachedObject(playerIndex, false)
+    if not attachedObject then
+        detachAttachedObject(playerIndex)
         return false
     end
 
@@ -494,20 +486,25 @@ local function updateAttachedObjectFromCamera(playerIndex, playerBiped)
     end
 
     local bipedPosition = getBipedWorldPosition(playerBiped)
-    local cameraX, cameraY, cameraZ = getBipedViewDirection(playerBiped)
+    local viewI, viewJ, viewK = getBipedViewDirection(playerBiped)
 
     local distance = state.distance or 5
     if distance < 0.5 then
         distance = 0.5
     end
 
-    attachedObject.position.x = bipedPosition.x + cameraX * distance
-    attachedObject.position.y = bipedPosition.y + cameraY * distance
-    attachedObject.position.z = bipedPosition.z + cameraZ * distance
+    engine.object.setObjectPosition(state.attachedObject, {
+        x = bipedPosition.x + viewI * distance,
+        y = bipedPosition.y + viewJ * distance,
+        z = bipedPosition.z + viewK * distance
+    })
 
     return true
 end
 
+---Update object distance if allowd
+---@param playerIndex integer
+---@param playerBiped BipedObject
 local function updateAttachedObjectDistance(playerIndex, playerBiped)
     local state = getPlayerState(playerIndex)
     if state.lockDistance or not state.attachedObject then
@@ -515,52 +512,55 @@ local function updateAttachedObjectDistance(playerIndex, playerBiped)
     end
 
     local attachedObject = getObject(state.attachedObject)
-    if not attachedObject or not attachedObject.position then
+    if not attachedObject then
         return
     end
 
     local bipedPosition = getBipedWorldPosition(playerBiped)
-    state.distance = calculateDistance(bipedPosition, attachedObject.position)
+    state.distance = pointDistance(bipedPosition, attachedObject.position)
 end
 
----@param itemLabel string
 ---@param tagHandle TagHandle
 ---@param playerIndex integer?
 ---@return boolean
-function forge.placeObject(itemLabel, tagHandle, playerIndex)
+function forge.placeObject(tagHandle, playerIndex)
     if not tagHandle then
-        logger.debug("Place object: missing tag handle for {}", itemLabel)
+        logger.debug("Place object: missing tag handle for object")
         return false
     end
+    local tagEntry = getTagEntry(tagHandle)
+    assert(tagEntry, "Place object: tag entry not found for handle")
+    local tagPath = tagEntry.path
 
     local targetPlayerIndex = playerIndex or 0
     local player = getPlayer(targetPlayerIndex)
     local playerBiped = nil
-    if player and player.unitHandle and player.unitHandle.value then
-        playerBiped = getObject(player.unitHandle.value, "biped")
+    if player and player.unitHandle then
+        playerBiped = getObject(player.unitHandle, "biped")
     end
 
+    ---@type Point3d
     local position = {x = 0, y = 0, z = 0}
+
     if playerBiped then
         local origin = getBipedWorldPosition(playerBiped)
-        local cameraX, cameraY, cameraZ = getBipedViewDirection(playerBiped)
+        local viewI, viewJ, viewK = getBipedViewDirection(playerBiped)
         local spawnDistance = 5
         position = {
-            x = origin.x + cameraX * spawnDistance,
-            y = origin.y + cameraY * spawnDistance,
-            z = origin.z + cameraZ * spawnDistance
+            x = origin.x + viewI * spawnDistance,
+            y = origin.y + viewJ * spawnDistance,
+            z = origin.z + viewK * spawnDistance
         }
     end
 
     local objectHandle = forge.spawnForgeObject(tagHandle, position)
     if not objectHandle then
-        logger.debug("Place object: unable to spawn {}", itemLabel)
+        logger.debug("Place object: unable to spawn object for tag: {}", tagPath)
         return false
     end
     local objectHandleValue = objectHandle.value or objectHandle
     forge.setAttachedObject(targetPlayerIndex, objectHandleValue)
-    logger.debug("Place object selected: {} ({})", itemLabel, objectHandleValue or "unknown")
-    setMonitorMode("holding")
+    logger.debug("Place object selected: {}", tagPath)
     return true
 end
 
@@ -574,7 +574,7 @@ function forge.copyObject(playerIndex, sourceObjectHandleValue)
     end
 
     local sourceObject = getObject(sourceObjectHandleValue)
-    if not sourceObject or sourceObject.tagHandle:isNull() then
+    if not sourceObject then
         return nil
     end
 
@@ -598,13 +598,8 @@ function forge.copyObject(playerIndex, sourceObjectHandleValue)
 
     -- Select the newly created object for the player
     forge.setAttachedObject(playerIndex, newHandleValue)
-    setMonitorMode("holding")
-    return newHandleValue
-end
 
-function forge.load()
-    hudCrosshair.init(forge.constants.weaponHudInterfaces.monitorCrosshair)
-    hudText.init(forge.constants.fonts.hud)
+    return newHandleValue
 end
 
 ---@param mapName string
@@ -658,9 +653,9 @@ function forge.loadSavedMap(mapName)
             }
             local objectHandle = forge.spawnForgeObject(tagHandle, position, {
                 euler = {
-                    tonumber(forgeObject.yaw),
-                    tonumber(forgeObject.pitch),
-                    tonumber(forgeObject.roll)
+                    yaw = tonumber(forgeObject.yaw) or 0,
+                    pitch = tonumber(forgeObject.pitch) or 0,
+                    roll = tonumber(forgeObject.roll) or 0
                 }
             })
             if objectHandle then
@@ -817,6 +812,13 @@ function forge.swapPlayerBiped(playerIndex, targetBipedName, previousPosition)
     return playerBiped
 end
 
+local isGameClient = engine.game.getGameConnectionType() == "networkClient"
+
+function forge.load()
+    hudCrosshair.init(forge.constants.weaponHudInterfaces.monitorCrosshair)
+    hudText.init(forge.constants.fonts.hud)
+end
+
 function forge.controls()
     for playerIndex = 0, 15 do
         -- Does this player exists?
@@ -840,47 +842,59 @@ function forge.controls()
                     y = playerBiped.position.y,
                     z = playerBiped.position.z
                 }
-                local isMonitor = playerBiped.tagHandle.value == bipeds.monitor.handle.value
-                local input = playerBiped.unitControlFlags
+                local isPlayerMonitor = playerBiped.tagHandle.value == bipeds.monitor.handle.value
+                local playerInput = playerBiped.unitControlFlags
                 local playerState = getPlayerState(playerIndex)
                 local attachedObjectHandle = playerState.attachedObject
                 local aimedObjectHandle = nil
-                if isMonitor then
+                if isPlayerMonitor then
                     aimedObjectHandle = getAimedObjectHandle(playerBiped)
                 end
 
-                updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle,
-                                 aimedObjectHandle)
+                if isGameClient then
+                    updateMonitorHud(attachedObjectHandle, aimedObjectHandle)
+                end
 
-                if isMonitor and attachedObjectHandle then
+                if isPlayerMonitor and attachedObjectHandle then
                     local attachedObject = getObject(attachedObjectHandle)
-                    if not attachedObject or not attachedObject.position then
+                    if not attachedObject then
                         detachAttachedObject(playerIndex, false)
                         setMonitorMode("idle")
                         return
                     end
 
+                    if playerInput.action then
+                        if playerState.currentAngle == "yaw" then
+                            playerState.currentAngle = "pitch"
+                        elseif playerState.currentAngle == "pitch" then
+                            playerState.currentAngle = "roll"
+                        else
+                            playerState.currentAngle = "yaw"
+                        end
+                        -- logger.debug("Player {} rotation axis: {}", playerIndex, rotationState.currentAngle)
+                    end
+
                     setMonitorMode("holding")
 
-                    if input.light then
+                    if playerInput.light then
                         forge.callbacks.launchMonitorMenu("tools")
                         return
                     end
 
-                    if input.jump then
+                    if playerInput.jump then
                         detachAttachedObject(playerIndex, true)
                         setMonitorMode("idle")
                         return
                     end
 
-                    if input.melee then
+                    if playerInput.melee then
                         playerState.lockDistance = not playerState.lockDistance
                         logger.debug("Player {} distance lock: {}", playerIndex,
                                      playerState.lockDistance)
                         return
                     end
 
-                    if input.secondaryTrigger then
+                    if playerInput.secondaryTrigger then
                         detachAttachedObject(playerIndex, false)
                         local aimedObjectHandle = getAimedObjectHandle(playerBiped)
                         updateAimedObjectHighlight(playerIndex, aimedObjectHandle)
@@ -903,7 +917,7 @@ function forge.controls()
                     return
                 end
 
-                if isMonitor then
+                if isPlayerMonitor then
                     local aimedObjectHandle = getAimedObjectHandle(playerBiped)
                     updateAimedObjectHighlight(playerIndex, aimedObjectHandle)
                     if aimedObjectHandle then
@@ -912,39 +926,40 @@ function forge.controls()
                         setMonitorMode("idle")
                     end
 
-                    if input.reload and not attachedObjectHandle and aimedObjectHandle then
+                    if playerInput.action and not attachedObjectHandle and aimedObjectHandle then
                         forge.copyObject(playerIndex, aimedObjectHandle)
                         return
                     end
                 end
 
-                if input.primaryTrigger and isMonitor and not attachedObjectHandle then
+                if playerInput.primaryTrigger and isPlayerMonitor and not attachedObjectHandle then
                     if pickupAimedObject(playerIndex, playerBiped) then
                         return
                     end
                 end
 
-                if input.light then
-                    if not isMonitor and playerBiped.tagHandle.value == bipeds.player.handle.value then
-                        Balltze.logger.debug("Player {} is pressing light", playerIndex)
+                if playerInput.light then
+                    if not isPlayerMonitor and playerBiped.tagHandle.value ==
+                        bipeds.player.handle.value then
+                        logger.debug("Player {} is pressing light", playerIndex)
                         playerBiped =
                             forge.swapPlayerBiped(playerIndex, "monitor", previousPosition)
                         if not playerBiped then
                             return
                         end
-                        Balltze.logger.debug("Player {} swapped to monitor", playerIndex)
+                        logger.debug("Player {} swapped to monitor", playerIndex)
                         playerBiped.vitals.health = 1
                         playerBiped.vitals.shield = 1
                         -- TODO Restore biped rotation as well
                         setMonitorMode("idle")
-                        Balltze.logger.debug("Player {} monitor mode set to idle", playerIndex)
+                        logger.debug("Player {} monitor mode set to idle", playerIndex)
                     else
                         forge.callbacks.launchMonitorMenu(
                             forge.getAttachedObject(playerIndex) and "tools" or "place")
                     end
-                elseif input.crouch then
-                    if isMonitor then
-                        Balltze.logger.debug("Player {} is pressing crouch", playerIndex)
+                elseif playerInput.crouch then
+                    if isPlayerMonitor then
+                        logger.debug("Player {} is pressing crouch", playerIndex)
                         playerBiped = forge.swapPlayerBiped(playerIndex, "player", previousPosition)
                         if not playerBiped then
                             return
@@ -957,47 +972,25 @@ function forge.controls()
     end
 end
 
---- Handle on-frame rotation inputs. This is intended to be called from the
---- global engine tick listener so rotation updates occur on the engine frame
---- rather than via `script.poll`.
-function forge.onFrame()
-    for playerIndex = 0, 15 do
-        local player = getPlayer(playerIndex)
-        if player and player.unitHandle and player.unitHandle.value then
-            local playerBiped = getObject(player.unitHandle.value, "biped")
-            if playerBiped then
-                local playerState = getPlayerState(playerIndex)
-                if playerState.attachedObject then
-                    local input = playerBiped.unitControlFlags or {}
-
-                    if input.action then
-                        local rotationState = playerState
-                        if rotationState.currentAngle == "yaw" then
-                            rotationState.currentAngle = "pitch"
-                        elseif rotationState.currentAngle == "pitch" then
-                            rotationState.currentAngle = "roll"
-                        else
-                            rotationState.currentAngle = "yaw"
-                        end
-                        -- logger.debug("Player {} rotation axis: {}", playerIndex, rotationState.currentAngle)
-                    end
-
-                    local mouseWheel = 0
-                    if engine.input and engine.input.getMouseWheel then
-                        mouseWheel = engine.input.getMouseWheel()
-                    end
-                    if mouseWheel ~= 0 then
-                        local rotationState = playerState
-                        local currentAxis = rotationState.currentAngle or "yaw"
-                        local step = math.abs(tonumber(rotationState.rotationStep) or 5)
-                        local direction = (mouseWheel > 0) and -1 or 1
-                        local previousRotation = tonumber(rotationState[currentAxis]) or 0
-                        local nextRotation = previousRotation + (step * direction)
-                        rotationState[currentAxis] = normalizeRotation(nextRotation)
-                        applyAttachedObjectRotation(playerIndex)
-                        -- logger.debug("Player {} {}: {}", playerIndex, currentAxis, rotationState[currentAxis])
-                    end
-                end
+--- Handle on frame events
+---
+--- - Object rotation using mouse wheel
+function forge.frame()
+    if isGameClient then
+        local localPlayerIndex = engine.player.getLocalPlayerHandle(
+                                     engine.player.getPlayer().localPlayerIndex).index
+        local playerState = getPlayerState(localPlayerIndex)
+        if playerState.attachedObject then
+            local mouseWheel = engine.input.getMouseWheel()
+            if mouseWheel ~= 0 then
+                local currentAxis = playerState.currentAngle or "yaw"
+                local step = abs(tonumber(playerState.rotationStep) or 5)
+                local direction = (mouseWheel > 0) and -1 or 1
+                local previousRotation = tonumber(playerState[currentAxis]) or 0
+                local nextRotation = previousRotation + (step * direction)
+                playerState[currentAxis] = normalizeRotation(nextRotation)
+                applyAttachedObjectRotation(playerIndex)
+                -- logger.debug("Player {} {}: {}", playerIndex, currentAxis, rotationState[currentAxis])
             end
         end
     end

@@ -53,7 +53,7 @@ end
 script.continuous(map.hotReload)
 
 balltze.addEventListener("frame", function()
-    forge.onFrame()
+    forge.frame()
 end)
 
 return map

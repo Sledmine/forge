@@ -12,6 +12,11 @@ local atan2 = function(y, x)
     return atan(y / x) + (x < 0 and pi or 0)
 end
 
+---@class EulerAngles
+---@field yaw number
+---@field pitch number
+---@field roll number
+
 ---Returns game rotation vectors from euler angles, return optional rotation matrix, based on
 ---[mecademic docs.](https://www.mecademic.com/en/how-is-orientation-in-space-represented-with-euler-angles)
 --- @param yaw number

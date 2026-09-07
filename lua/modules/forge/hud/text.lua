@@ -10,11 +10,7 @@ local hud = {
     centerHudTextValue = nil,
     rightHudText = nil,
     rightHudTextValue = nil,
-    hudNoticeState = {
-        untilTick = 0,
-        primary = nil,
-        secondary = nil
-    },
+    hudNoticeState = {untilTick = 0, primary = nil, secondary = nil},
     constants = {
         ---@type TagEntry?
         fontTag = nil
@@ -26,7 +22,7 @@ local function formatHudLines(primary, secondary)
         return nil
     end
     if type(secondary) == "string" and secondary ~= "" then
-        --return string.format("%s\r\n%s", primary, secondary)
+        -- return string.format("%s\r\n%s", primary, secondary)
         return string.format("%s\n%s", primary, secondary)
     end
     return primary
@@ -133,26 +129,9 @@ function hud.getObjectHudName(objectHandle)
     return leafName
 end
 
-function hud.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHandle, aimedObjectHandle, centerSecondaryOverride)
-    local localPlayer = engine.player.getPlayer()
-    if not localPlayer then
-        if playerIndex ~= 0 then
-            return
-        end
-    elseif player and player.handle and localPlayer.handle and player.handle.value and
-        localPlayer.handle.value then
-        if player.handle.value ~= localPlayer.handle.value then
-            return
-        end
-    elseif player and player.unitHandle and localPlayer.unitHandle and player.unitHandle.value and
-        localPlayer.unitHandle.value then
-        if player.unitHandle.value ~= localPlayer.unitHandle.value then
-            return
-        end
-    elseif playerIndex ~= 0 then
-        return
-    end
-
+function hud.updateMonitorHud(attachedObjectHandle,
+                              aimedObjectHandle,
+                              centerSecondaryOverride)
     local rightPrimary
     local rightSecondary
     local centerPrimary
@@ -161,30 +140,28 @@ function hud.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHand
     local nowTick = engine.game.getTickCount() or 0
     local hasNotice = hud.hudNoticeState.primary and nowTick <= (hud.hudNoticeState.untilTick or 0)
 
-    if isMonitor then
-        if attachedObjectHandle then
-            rightPrimary = "FLASHLIGHT KEY - OBJECT PROPERTIES"
-            rightSecondary = "JUMP KEY - DELETE OBJECT"
-                local objectName = hud.getObjectHudName(attachedObjectHandle)
-                if objectName then
-                    centerPrimary = objectName
-                end
-                -- Allow caller to override secondary center text (e.g. rotation)
-                if type(centerSecondaryOverride) == "string" and centerSecondaryOverride ~= "" then
-                    centerSecondary = centerSecondaryOverride
-                end
-        else
-            rightPrimary = "FLASHLIGHT KEY - OBJECTS MENU"
-            rightSecondary = "CROUCH KEY - SPARTAN MODE"
-            if aimedObjectHandle then
-                local objectName = hud.getObjectHudName(aimedObjectHandle)
-                if objectName then
-                    centerPrimary = objectName
-                else
-                    centerPrimary = "UNKNOWN OBJECT"
-                end
-                centerSecondary = "PRESS FIRE KEY TO PICK UP OBJECT"
+    if attachedObjectHandle then
+        rightPrimary = "FLASHLIGHT KEY - OBJECT PROPERTIES"
+        rightSecondary = "JUMP KEY - DELETE OBJECT"
+        local objectName = hud.getObjectHudName(attachedObjectHandle)
+        if objectName then
+            centerPrimary = objectName
+        end
+        -- Allow caller to override secondary center text (e.g. rotation)
+        if type(centerSecondaryOverride) == "string" and centerSecondaryOverride ~= "" then
+            centerSecondary = centerSecondaryOverride
+        end
+    else
+        rightPrimary = "FLASHLIGHT KEY - OBJECTS MENU"
+        rightSecondary = "CROUCH KEY - SPARTAN MODE"
+        if aimedObjectHandle then
+            local objectName = hud.getObjectHudName(aimedObjectHandle)
+            if objectName then
+                centerPrimary = objectName
+            else
+                centerPrimary = "UNKNOWN OBJECT"
             end
+            centerSecondary = "PRESS FIRE KEY TO PICK UP OBJECT"
         end
     end
 
@@ -217,7 +194,7 @@ function hud.updateMonitorHud(playerIndex, player, isMonitor, attachedObjectHand
         font = hud.constants.fontTag.handle
     })
 
-    if not isMonitor and not hasNotice then
+    if not hasNotice then
         hud.clearMonitorHud()
     end
 end

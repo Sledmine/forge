@@ -216,18 +216,17 @@ local function createPlaceMenuNavigator(objectsMenu, objectsDatabase)
                                                                                        .localPlayerIndex)
                                                     .index
 
-                    if not forge.placeObject(itemLabel, tagHandle, selectedPlayerIndex) then
-                        logger.debug("Place option selected: {} ({})", itemLabel,
-                                     tagHandle or "unknown")
+                    if not forge.placeObject(tagHandle, selectedPlayerIndex) then
+                        logger.debug("Place option selected: {}", itemLabel)
                     else
                         engine.uiWidget.closeWidget()
                     end
                 end,
                 focus = function()
                     if itemCanEnter then
-                       description:setText "SELECT AN OBJECT FROM THIS GROUP."
+                        description:setText "SELECT AN OBJECT FROM THIS GROUP."
                     else
-                       description:setText "PLACE THIS OBJECT."
+                        description:setText "PLACE THIS OBJECT."
                     end
                 end
             }
