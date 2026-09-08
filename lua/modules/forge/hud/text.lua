@@ -1,6 +1,7 @@
 local engine = Engine
 local getObject = engine.object.getObject
 local getTagEntry = engine.tag.getTagEntry
+local logger = Balltze.logger
 
 -- HUD text module: presentation only. Rotation/euler calculations belong in forge.lua
 
@@ -194,7 +195,7 @@ function hud.updateMonitorHud(attachedObjectHandle,
         font = hud.constants.fontTag.handle
     })
 
-    if not hasNotice then
+    if hasNotice then
         hud.clearMonitorHud()
     end
 end

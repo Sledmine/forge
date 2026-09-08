@@ -24,9 +24,9 @@ local defaultOptionsData = {
         label = "ROTATION SNAP",
         -- values = {"OFF", "5°", "15°", "30°", "45°", "90°"},
         values = {"OFF", "5", "15", "30", "45", "90"},
-        value = "OFF",
+        value = (not forge.state.rotationStep and "OFF") or forge.state.rotationStep,
         change = function(value)
-            logger.debug("Rotation snap set to {}", value)
+            forge.state.rotationStep = value
         end,
         focus = function()
             description:setText("CAUSES ALL OBJECT ROTATION TO SNAP TO\r\nMULTIPLES OF THIS ANGLE.")

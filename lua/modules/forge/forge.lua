@@ -47,10 +47,12 @@ end
 ---@field lockDistance boolean
 ---@field highlightedObject integer?
 ---@field currentAngle "yaw" | "pitch" | "roll"
----@field rotationStep number
 ---@field yaw number
 ---@field pitch number
 ---@field roll number
+
+---@class forgeLocalState
+---@field rotationStep number
 
 local forge = {
     ---@type "edit" | "normal"
@@ -87,8 +89,9 @@ local forge = {
         player = {
             ---@type integer?
             attachedObject = nil
-        }
-    }
+        },
+        rotationStep = 5
+    },
 }
 
 ---Get player's state given a player index
@@ -104,7 +107,6 @@ local function getPlayerState(playerIndex)
         lockDistance = true,
         highlightedObject = nil,
         currentAngle = "yaw",
-        rotationStep = 5,
         yaw = 0,
         pitch = 0,
         roll = 0
@@ -408,7 +410,6 @@ function forge.setAttachedObject(playerIndex, objectHandle)
     state.attachedObject = objectHandle
     state.highlightedObject = objectHandle
     state.currentAngle = state.currentAngle or "yaw"
-    state.rotationStep = state.rotationStep or 5
 
     local object = getObject(objectHandle)
     assert(object, "Object not found for handle: " .. tostring(objectHandle))
@@ -812,7 +813,7 @@ function forge.swapPlayerBiped(playerIndex, targetBipedName, previousPosition)
     return playerBiped
 end
 
-local isGameClient = engine.game.getGameConnectionType() == "networkClient"
+local isGameClient = engine.game.getGameConnectionType() == "networkClient" or engine.game.getGameConnectionType() == "networkServer"
 
 function forge.load()
     hudCrosshair.init(forge.constants.weaponHudInterfaces.monitorCrosshair)
@@ -976,7 +977,7 @@ end
 ---
 --- - Object rotation using mouse wheel
 function forge.frame()
-    if isGameClient then
+    if isGameClient and not engine.uiWidget.getActiveWidget() then
         local localPlayerIndex = engine.player.getLocalPlayerHandle(
                                      engine.player.getPlayer().localPlayerIndex).index
         local playerState = getPlayerState(localPlayerIndex)
@@ -984,7 +985,7 @@ function forge.frame()
             local mouseWheel = engine.input.getMouseWheel()
             if mouseWheel ~= 0 then
                 local currentAxis = playerState.currentAngle or "yaw"
-                local step = abs(tonumber(playerState.rotationStep) or 5)
+                local step = abs(tonumber(forge.state.rotationStep) or 1)
                 local direction = (mouseWheel > 0) and -1 or 1
                 local previousRotation = tonumber(playerState[currentAxis]) or 0
                 local nextRotation = previousRotation + (step * direction)
