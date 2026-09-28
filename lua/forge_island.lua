@@ -2,17 +2,12 @@ package.preload["luna"] = nil
 package.loaded["luna"] = nil
 require "luna"
 require "chimeraCompat"()
-local blam = require "blam2"
 local script = require "script"
 local balltze = Balltze
 local engine = Engine
 local performance
 inspect = require "inspect"
 local logger = Balltze.logger
-
-assert(require "structures.tag.globals")
-assert(require "structures.object.biped")
-assert(require "structures.tag.weaponHudInterface")
 
 DebugMode = true
 DebugLuaMemory = false

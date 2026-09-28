@@ -44,6 +44,7 @@ local pauseMenuPath = container {
                         },
                         layout()
                     },
+                    {},
                     -- {
                     --    button {
                     --        name = "game_options",
