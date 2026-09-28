@@ -1,5 +1,4 @@
 local luna = require "luna"
-local blam = require "blam2"
 local forge = require "forge.forge"
 
 local commands = {}

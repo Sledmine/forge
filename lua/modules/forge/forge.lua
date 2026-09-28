@@ -19,6 +19,11 @@ local point = require "forge.math.point"
 local pointDistance = point.distance
 local abs = math.abs
 
+-- Forge network synchronization layer, see network/network.lua for the
+-- authority/client split this module relies on
+local network = require "forge.network.network"
+local tracking = network.tracking
+
 component.callbacks()
 
 local defaultMapsPath = "fmaps"
@@ -160,6 +165,21 @@ local function getScenarioShortName()
     return shortName
 end
 
+--- Get this machine's own local player index (as opposed to a replicated
+--- remote player). Used to decide which network messages/state apply to us.
+--- Returns nil when this machine has no local player at all (a dedicated
+--- server authority, which only ever fulfills/broadcasts requests and never
+--- attaches objects to "itself")
+---@return integer?
+local function getLocalPlayerIndex()
+    local localPlayer = getPlayer()
+    if not localPlayer then
+        return nil
+    end
+    local localPlayerHandle = engine.player.getLocalPlayerHandle(localPlayer.localPlayerIndex)
+    return localPlayerHandle and localPlayerHandle.index or nil
+end
+
 local function normalizeMapName(name)
     if type(name) ~= "string" then
         return ""
@@ -284,6 +304,101 @@ function forge.spawnForgeObject(tagHandle, position, opts)
 
     return objectHandle
 end
+
+------------------------------------------------------------------------------
+-- Network handlers
+--
+-- These are the only place forge.lua talks to the network module: they
+-- describe how to (re)apply a Forge object change coming from it. They are
+-- invoked in two situations:
+--   * On the authority, to fulfill a request coming from a client (the
+--     authority is the only one allowed to decide the resulting state).
+--   * On any machine, to mirror a change already confirmed/broadcast by the
+--     authority.
+-- They are also called directly (not through the network dispatcher) by the
+-- authority's own local actions below, so that placing/moving/deleting an
+-- object is always applied through the same single code path regardless of
+-- who originated it.
+------------------------------------------------------------------------------
+
+--- Apply a Forge object spawn described by network data
+---@param data table @{id?: integer, tag: string, x: number, y: number, z: number, yaw?: number, pitch?: number, roll?: number, playerIndex?: integer}
+---@return boolean spawned
+local function applyNetworkSpawn(data)
+    logger.debug("Forge network: applying spawn tag={} playerIndex={}", tostring(data.tag),
+                 tostring(data.playerIndex))
+    local tagHandle = resolveSceneryTagHandle(data.tag)
+    if not tagHandle then
+        logger.warning("Forge network: could not resolve spawn tag \"{}\"", tostring(data.tag))
+        return false
+    end
+
+    local objectHandle = forge.spawnForgeObject(tagHandle, {x = data.x, y = data.y, z = data.z}, {
+        euler = {yaw = data.yaw or 0, pitch = data.pitch or 0, roll = data.roll or 0}
+    })
+    if not objectHandle then
+        return false
+    end
+    local handleValue = objectHandle.value or objectHandle
+
+    -- The authority mints the network id the first time it sees this object,
+    -- a client mirroring a broadcast already receives a final id
+    data.id = data.id or tracking.generateId()
+    tracking.register(data.id, handleValue)
+
+    -- Attach the new object for its target player, but only if that player
+    -- is controlled by this machine
+    if data.playerIndex and data.playerIndex == getLocalPlayerIndex() then
+        forge.setAttachedObject(data.playerIndex, handleValue)
+    end
+
+    if network.isAuthority then
+        -- This is now the confirmed state, let everyone else know
+        network.emitSpawn(data)
+    end
+
+    return true
+end
+network.setHandler(network.kind.spawn, applyNetworkSpawn)
+
+--- Apply a Forge object transform update (final position/rotation) described
+--- by network data
+---@param data table @{id: integer, x: number, y: number, z: number, yaw?: number, pitch?: number, roll?: number}
+local function applyNetworkUpdate(data)
+    local objectHandleValue = tracking.getHandle(data.id)
+    if not objectHandleValue then
+        logger.warning("Forge network: update for unknown object id {}", tostring(data.id))
+        return
+    end
+
+    local forwardVector, upVector = eulerToRotationVectors(data.yaw or 0, data.pitch or 0,
+                                                            data.roll or 0)
+    engine.object.setObjectPosition(objectHandleValue, {x = data.x, y = data.y, z = data.z},
+                                    forwardVector, upVector)
+
+    if network.isAuthority then
+        network.emitUpdate(data)
+    end
+end
+network.setHandler(network.kind.update, applyNetworkUpdate)
+
+--- Apply a Forge object deletion described by network data
+---@param data table @{id: integer}
+local function applyNetworkDelete(data)
+    local objectHandleValue = tracking.getHandle(data.id)
+    if not objectHandleValue then
+        return
+    end
+    if engine.object.getObject(objectHandleValue) then
+        engine.object.deleteObject(objectHandleValue)
+    end
+    tracking.remove(data.id)
+
+    if network.isAuthority then
+        network.emitDelete(data)
+    end
+end
+network.setHandler(network.kind.delete, applyNetworkDelete)
 
 ---Get the absolute position of a given biped
 ---@param playerBiped BipedObject
@@ -448,14 +563,53 @@ local function detachAttachedObject(playerIndex, deleteObject)
         state.highlightedObject = nil
         forge.state.player.highlightedObject = nil
     end
-    if deleteObject and state.attachedObject then
-        local object = engine.object.getObject(state.attachedObject)
-        if object then
-            engine.object.deleteObject(state.attachedObject)
+
+    local attachedObjectHandle = state.attachedObject
+    if attachedObjectHandle then
+        -- Only objects that went through the network layer (spawned/mirrored
+        -- via applyNetworkSpawn) are tracked, anything else is local-only
+        local networkId = tracking.getNetworkId(attachedObjectHandle)
+        if deleteObject then
+            if network.isAuthority then
+                -- We decide this object is gone: delete it now and tell
+                -- everyone else
+                if engine.object.getObject(attachedObjectHandle) then
+                    engine.object.deleteObject(attachedObjectHandle)
+                end
+                if networkId then
+                    tracking.remove(networkId)
+                    network.emitDelete({id = networkId})
+                end
+            elseif networkId then
+                -- We are not authoritative, only ask the authority to delete
+                -- it, our own copy is removed once it confirms the deletion
+                network.emitDelete({id = networkId})
+            end
+        else
+            setObjectHighlight(attachedObjectHandle, false)
+            -- Sync the object's final resting transform. This is the only
+            -- moment a held object's position/rotation travels over the
+            -- network: continuous per-frame dragging stays local only, to
+            -- avoid flooding the connection with redundant updates
+            if networkId then
+                local object = engine.object.getObject(attachedObjectHandle)
+                if object then
+                    local yaw, pitch, roll = vectorsToEulerAngles(object.rotation[1],
+                                                                   object.rotation[2])
+                    network.emitUpdate({
+                        id = networkId,
+                        x = object.position.x,
+                        y = object.position.y,
+                        z = object.position.z,
+                        yaw = yaw,
+                        pitch = pitch,
+                        roll = roll
+                    })
+                end
+            end
         end
-    elseif state.attachedObject then
-        setObjectHighlight(state.attachedObject, false)
     end
+
     state.attachedObject = nil
     forge.state.player.attachedObject = nil
 end
@@ -554,53 +708,70 @@ function forge.placeObject(tagHandle, playerIndex)
         }
     end
 
-    local objectHandle = forge.spawnForgeObject(tagHandle, position)
-    if not objectHandle then
-        logger.debug("Place object: unable to spawn object for tag: {}", tagPath)
-        return false
-    end
-    local objectHandleValue = objectHandle.value or objectHandle
-    forge.setAttachedObject(targetPlayerIndex, objectHandleValue)
     logger.debug("Place object selected: {}", tagPath)
+    
+    -- Describe the spawn once: the authority applies it right away (and
+    -- broadcasts it), a client only requests it from the authority. See
+    -- applyNetworkSpawn above and network/network.lua for the role split
+    local spawnData = {
+        tag = tagPath,
+        x = position.x,
+        y = position.y,
+        z = position.z,
+        playerIndex = targetPlayerIndex
+    }
+    if network.isAuthority then
+        logger.debug("Authority placing object: {}", tagPath)
+        applyNetworkSpawn(spawnData)
+    else
+        logger.debug("Client requesting object placement: {}", tagPath)
+        network.emitSpawn(spawnData)
+    end
     return true
 end
 
 --- Copy an existing object (spawn a duplicate near the source)
 ---@param playerIndex integer
 ---@param sourceObjectHandleValue integer
----@return integer? newObjectHandle
+---@return boolean requested @true when the copy was applied or requested
 function forge.copyObject(playerIndex, sourceObjectHandleValue)
     if not sourceObjectHandleValue then
-        return nil
+        return false
     end
 
     local sourceObject = getObject(sourceObjectHandleValue)
     if not sourceObject then
-        return nil
+        return false
+    end
+    local sourceTagEntry = getTagEntry(sourceObject.tagHandle)
+    if not sourceTagEntry then
+        return false
     end
 
-    local tagHandleValue = sourceObject.tagHandle.value
     local srcPos = sourceObject.position or {x = 0, y = 0, z = 0}
-
     -- Slight offset to avoid overlapping exactly
     local position = {x = srcPos.x + 0.5, y = srcPos.y + 0.5, z = srcPos.z}
-
     -- Copy orientation from source object
-    local forward, up = sourceObject.rotation[1], sourceObject.rotation[2]
+    local yaw, pitch, roll = vectorsToEulerAngles(sourceObject.rotation[1], sourceObject.rotation[2])
 
-    local newObjectHandle = forge.spawnForgeObject(tagHandleValue, position,
-                                                   {forward = forward, up = up})
-    if not newObjectHandle then
-        logger.debug("Copy object: spawn failed for handle {}", tostring(sourceObjectHandleValue))
-        return nil
+    -- Same spawn description used by placeObject, a copy is just a spawn
+    -- that happens to reuse an existing object's tag and orientation
+    local spawnData = {
+        tag = sourceTagEntry.path,
+        x = position.x,
+        y = position.y,
+        z = position.z,
+        yaw = yaw,
+        pitch = pitch,
+        roll = roll,
+        playerIndex = playerIndex
+    }
+    if network.isAuthority then
+        applyNetworkSpawn(spawnData)
+    else
+        network.emitSpawn(spawnData)
     end
-
-    local newHandleValue = newObjectHandle.value or newObjectHandle
-
-    -- Select the newly created object for the player
-    forge.setAttachedObject(playerIndex, newHandleValue)
-
-    return newHandleValue
+    return true
 end
 
 ---@param mapName string
@@ -640,29 +811,29 @@ function forge.loadSavedMap(mapName)
 
     for _, forgeObject in pairs(mapObjects) do
         local tagPath = forgeObject and forgeObject.tagPath
-        local tagHandle = resolveSceneryTagHandle(tagPath)
-        if tagHandle then
-            local tagData = getTagData(tagHandle, "scenery")
-            if tagData and tagData.flags then
-                tagData.flags.castShadowByDefault = true
-            end
-
-            local position = {
+        if type(tagPath) == "string" and tagPath ~= "" then
+            -- Same spawn description used by placeObject/copyObject, so a
+            -- loaded map goes through the exact same authority/client split:
+            -- the authority spawns and broadcasts each object, a client only
+            -- requests them and gets them mirrored back once confirmed
+            local spawnData = {
+                tag = tagPath,
                 x = tonumber(forgeObject.x) or 0,
                 y = tonumber(forgeObject.y) or 0,
-                z = tonumber(forgeObject.z) or 0
+                z = tonumber(forgeObject.z) or 0,
+                yaw = tonumber(forgeObject.yaw) or 0,
+                pitch = tonumber(forgeObject.pitch) or 0,
+                roll = tonumber(forgeObject.roll) or 0
             }
-            local objectHandle = forge.spawnForgeObject(tagHandle, position, {
-                euler = {
-                    yaw = tonumber(forgeObject.yaw) or 0,
-                    pitch = tonumber(forgeObject.pitch) or 0,
-                    roll = tonumber(forgeObject.roll) or 0
-                }
-            })
-            if objectHandle then
-                loadedCount = loadedCount + 1
+            if network.isAuthority then
+                if applyNetworkSpawn(spawnData) then
+                    loadedCount = loadedCount + 1
+                else
+                    skippedCount = skippedCount + 1
+                end
             else
-                skippedCount = skippedCount + 1
+                network.emitSpawn(spawnData)
+                loadedCount = loadedCount + 1
             end
         else
             skippedCount = skippedCount + 1
@@ -827,6 +998,15 @@ function forge.controls()
             -- We create individual anonymous scripts for each player so that each thread
             -- can sleep independently of other players
             script.create(function()
+                -- A network client is not authoritative: it only ever runs
+                -- Forge logic for its own local player and relies on the
+                -- network module to forward that intent to the authority,
+                -- which is the only side allowed to run this for every
+                -- player (needed since only the authority is trusted to
+                -- decide the real Forge state for the whole game)
+                if not network.isAuthority and playerIndex ~= getLocalPlayerIndex() then
+                    return
+                end
                 if not forge.mode == "edit" then
                     return
                 end
@@ -978,8 +1158,7 @@ end
 --- - Object rotation using mouse wheel
 function forge.frame()
     if isGameClient and not engine.uiWidget.getActiveWidget() then
-        local localPlayerIndex = engine.player.getLocalPlayerHandle(
-                                     engine.player.getPlayer().localPlayerIndex).index
+        local localPlayerIndex = getLocalPlayerIndex() or 0
         local playerState = getPlayerState(localPlayerIndex)
         if playerState.attachedObject then
             local mouseWheel = engine.input.getMouseWheel()
@@ -990,8 +1169,8 @@ function forge.frame()
                 local previousRotation = tonumber(playerState[currentAxis]) or 0
                 local nextRotation = previousRotation + (step * direction)
                 playerState[currentAxis] = normalizeRotation(nextRotation)
-                applyAttachedObjectRotation(playerIndex)
-                -- logger.debug("Player {} {}: {}", playerIndex, currentAxis, rotationState[currentAxis])
+                applyAttachedObjectRotation(localPlayerIndex)
+                -- logger.debug("Player {} {}: {}", localPlayerIndex, currentAxis, playerState[currentAxis])
             end
         end
     end
